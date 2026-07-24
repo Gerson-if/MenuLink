@@ -108,6 +108,16 @@ body {
 .form-check-input { background-color: var(--charcoal); border-color: var(--card-border); }
 .form-check-input:checked { background-color: var(--accent); border-color: var(--accent); }
 
+/* Campo de senha com botão de mostrar/ocultar (ver comanda.js) */
+.password-field-wrap { position: relative; }
+.password-field-wrap .form-control { padding-right: 42px; }
+.password-toggle-btn {
+  position: absolute; top: 50%; right: 6px; transform: translateY(-50%);
+  background: none; border: none; color: var(--muted-text); padding: 6px;
+  display: flex; align-items: center; cursor: pointer; border-radius: 6px;
+}
+.password-toggle-btn:hover { color: var(--paper); }
+
 /* ---------- Botões ---------- */
 .btn-chili {
   background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600;

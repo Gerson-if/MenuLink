@@ -23,6 +23,7 @@ class ResetPasswordForm(FlaskForm):
         "Confirme a nova senha",
         validators=[
             DataRequired(message="Confirme a nova senha."),
+            Length(max=128),
             EqualTo("password", message="As senhas não coincidem."),
         ],
     )

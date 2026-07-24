@@ -78,7 +78,7 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="{{ url_for('static', filename='vendor/chartjs/chart.umd.js') }}"></script>
+<script src="{{ static_versioned('vendor/chartjs/chart.umd.js') }}"></script>
 <script>
   const dailyData = {{ daily_series | tojson }};
   new Chart(document.getElementById('revenueChart'), {

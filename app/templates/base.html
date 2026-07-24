@@ -34,14 +34,14 @@
 <link rel="shortcut icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
 {% endblock %}
 
-<link rel="stylesheet" href="{{ url_for('static', filename='vendor/fonts/fonts.css') }}">
-<link href="{{ url_for('static', filename='vendor/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
-<link href="{{ url_for('static', filename='vendor/bootstrap-icons/bootstrap-icons.min.css') }}" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/comanda.css') }}">
+<link rel="stylesheet" href="{{ static_versioned('vendor/fonts/fonts.css') }}">
+<link href="{{ static_versioned('vendor/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
+<link href="{{ static_versioned('vendor/bootstrap-icons/bootstrap-icons.min.css') }}" rel="stylesheet">
+<link rel="stylesheet" href="{{ static_versioned('css/comanda.css') }}">
 
-<script defer src="{{ url_for('static', filename='js/comanda.js') }}"></script>
-<script defer src="{{ url_for('static', filename='vendor/alpinejs/alpine.min.js') }}"></script>
-<script src="{{ url_for('static', filename='vendor/htmx/htmx.min.js') }}"></script>
+<script defer src="{{ static_versioned('js/comanda.js') }}"></script>
+<script defer src="{{ static_versioned('vendor/alpinejs/alpine.min.js') }}"></script>
+<script src="{{ static_versioned('vendor/htmx/htmx.min.js') }}"></script>
 {% block extra_head %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}" hx-headers='{"X-CSRFToken": "{{ csrf_token() }}"}'>
@@ -78,7 +78,7 @@
   </div>
 </div>
 
-<script src="{{ url_for('static', filename='vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+<script src="{{ static_versioned('vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 {% block extra_scripts %}{% endblock %}
 </body>
 </html>

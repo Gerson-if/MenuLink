@@ -9,10 +9,11 @@ Cardápio público — acessível sem login, por slug (/loja/<slug>).
 from flask import Blueprint, current_app, jsonify, render_template, request, session
 from flask_wtf.csrf import validate_csrf, CSRFError
 from marshmallow import ValidationError
+from sqlalchemy.orm import selectinload
 
 from app.controllers.lojista.orders import STATUS_LABELS
-from app.extensions import csrf
-from app.models import Category, Product
+from app.extensions import csrf, limiter
+from app.models import Category, ComplementGroup, Order, OrderItem, Product
 from app.repositories.customer_repository import CustomerRepository
 from app.schemas.checkout_schema import CheckoutSchema
 from app.services.order_service import OrderService, OrderValidationError
@@ -62,6 +63,11 @@ def _serialize_product(product):
 def _build_menu_data(tenant):
     categories = (
         Category.query.filter_by(tenant_id=tenant.id, is_active=True)
+        .options(
+            selectinload(Category.products).selectinload(Product.images),
+            selectinload(Category.products).selectinload(Product.complement_groups)
+            .selectinload(ComplementGroup.options),
+        )
         .order_by(Category.display_order, Category.name)
         .all()
     )
@@ -96,6 +102,10 @@ def _build_menu_data(tenant):
     # parece um bug de duplicação mesmo não sendo.
     uncategorized = (
         Product.query.filter_by(tenant_id=tenant.id, category_id=None, is_active=True)
+        .options(
+            selectinload(Product.images),
+            selectinload(Product.complement_groups).selectinload(ComplementGroup.options),
+        )
         .order_by(Product.display_order, Product.name)
         .all()
     )
@@ -234,6 +244,7 @@ def create_order(slug):
 
 @public_bp.route("/<slug>/entrar", methods=["POST"])
 @csrf.exempt  # validado manualmente abaixo via cabeçalho X-CSRFToken, igual create_order
+@limiter.limit("10 per minute", methods=["POST"])  # mitiga força bruta de telefone
 def customer_login(slug):
     tenant = resolve_tenant_by_slug(slug)
 
@@ -247,6 +258,8 @@ def customer_login(slug):
     raw_phone = (json_data.get("phone") or "").strip()
     if not raw_phone:
         return jsonify({"error": "Informe um telefone."}), 400
+    if len(raw_phone) > 20:
+        return jsonify({"error": "Número inválido. Informe o telefone com DDD, como (67) 99999-9999."}), 400
 
     phone = normalize_br_phone(raw_phone)
     if phone is None:
@@ -261,6 +274,30 @@ def customer_login(slug):
     return jsonify({"name": customer.name})
 
 
+PAYMENT_METHOD_LABELS = {"pix": "Pix", "card": "Cartão", "cash": "Dinheiro", "other": "Outro"}
+
+
+def _order_address_lines(order) -> list[str]:
+    """Endereço de entrega de UM pedido, já formatado em linhas prontas
+    pra exibir — mesma composição usada em lojista/orders/detail.html,
+    só que como lista (o painel do lojista usa <br> direto no HTML; aqui
+    é uma API JSON consumida pelo Alpine.js do cardápio público)."""
+    if not order.address_street:
+        return []
+    first_line = f"{order.address_street}, {order.address_number or 's/n'}"
+    if order.address_complement:
+        first_line += f" ({order.address_complement})"
+    second_line = order.address_neighborhood or ""
+    if order.address_city:
+        second_line += f", {order.address_city}" if second_line else order.address_city
+    lines = [first_line]
+    if second_line:
+        lines.append(second_line)
+    if order.address_reference:
+        lines.append(f"Referência: {order.address_reference}")
+    return lines
+
+
 @public_bp.route("/<slug>/meus-pedidos")
 def customer_orders(slug):
     tenant = resolve_tenant_by_slug(slug)
@@ -273,7 +310,12 @@ def customer_orders(slug):
     if customer is None:
         return jsonify({"logged_in": False, "orders": []})
 
-    orders = sorted(customer.orders, key=lambda o: o.created_at, reverse=True)
+    orders = (
+        Order.query.filter_by(tenant_id=tenant.id, customer_id=customer.id)
+        .options(selectinload(Order.items).selectinload(OrderItem.choices))
+        .order_by(Order.created_at.desc())
+        .all()
+    )
     return jsonify(
         {
             "logged_in": True,
@@ -281,10 +323,27 @@ def customer_orders(slug):
             "orders": [
                 {
                     "order_number": o.order_number,
+                    "status": o.status.value,
                     "status_label": STATUS_LABELS.get(o.status.value, o.status.value),
-                    "total_cents": o.total_cents,
                     "created_at": o.created_at.isoformat(),
-                    "items": [{"name": item.product_name, "quantity": item.quantity} for item in o.items],
+                    "created_at_label": o.created_at.strftime("%d/%m/%Y às %H:%M"),
+                    "delivery_type": o.delivery_type.value,
+                    "address_lines": _order_address_lines(o),
+                    "payment_label": PAYMENT_METHOD_LABELS.get(o.payment_method.value, "Outro"),
+                    "subtotal_cents": o.subtotal_cents,
+                    "delivery_fee_cents": o.delivery_fee_cents,
+                    "total_cents": o.total_cents,
+                    "notes": o.notes,
+                    "items": [
+                        {
+                            "name": item.product_name,
+                            "quantity": item.quantity,
+                            "unit_price_cents": item.unit_price_cents,
+                            "subtotal_cents": item.subtotal_cents,
+                            "choices": [f"{c.group_name}: {c.option_name}" for c in item.choices],
+                        }
+                        for item in o.items
+                    ],
                 }
                 for o in orders
             ],

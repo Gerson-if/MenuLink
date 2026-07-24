@@ -174,6 +174,24 @@ def _register_template_filters(app: Flask) -> None:
         caracteres reservados de URL como o "#" das cores hex do SVG."""
         return base64.b64encode(value.encode("utf-8")).decode("ascii")
 
+    @app.template_global("static_versioned")
+    def static_versioned(filename: str) -> str:
+        """URL de um arquivo em static/ com `?v=<mtime>` — permite ligar
+        cache de longa duração no navegador (ver SEND_FILE_MAX_AGE_DEFAULT
+        em ProductionConfig) sem risco de servir uma versão antiga depois
+        de um deploy: a URL muda sozinha quando o arquivo muda, então o
+        navegador busca de novo em vez de reaproveitar o cache."""
+        import os
+
+        from flask import url_for
+
+        absolute_path = os.path.join(app.static_folder, filename)
+        try:
+            version = int(os.path.getmtime(absolute_path))
+        except OSError:
+            version = 0
+        return f"{url_for('static', filename=filename)}?v={version}"
+
 
 def _register_cli_commands(app: Flask) -> None:
     from app.cli import register_cli

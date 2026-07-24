@@ -525,11 +525,11 @@ obrigatórios são:
 - Se a tela ficar em branco, abra o DevTools do navegador (F12 → aba
   Console/Network): qualquer erro de carregamento de asset ou
   JavaScript aparece ali. Todos os assets críticos (Bootstrap,
-  Alpine.js, HTMX, Chart.js) são servidos localmente pelo Flask a
-  partir de `app/static/vendor/`, então não há risco de firewall
-  corporativo, CSP ou CDN fora do ar quebrando a renderização inicial
-  (as Google Fonts continuam via CDN — se falharem, o navegador só cai
-  numa fonte padrão). O QR Code também é gerado localmente, sem
+  Bootstrap Icons, Alpine.js, HTMX, Chart.js e as fontes) são servidos
+  localmente pelo Flask a partir de `app/static/vendor/` — nada é
+  baixado de CDN em runtime nem em deploy, então não há risco de
+  firewall corporativo, CSP ou serviço externo fora do ar quebrando a
+  renderização inicial. O QR Code também é gerado localmente, sem
   depender de API externa.
 
 ## Comandos úteis

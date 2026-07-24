@@ -99,6 +99,25 @@ function sidebarShell() {
 })();
 
 /*
+ * Botão de mostrar/ocultar senha (login e outros formulários com
+ * .password-toggle-btn) — troca type="password" por type="text" e o
+ * ícone de olho. Progressive enhancement: sem JS o campo continua um
+ * <input type="password"> normal, só sem o botão.
+ */
+(function () {
+  document.querySelectorAll('.password-toggle-btn').forEach((btn) => {
+    const input = document.getElementById(btn.dataset.target);
+    if (!input) return;
+    btn.addEventListener('click', () => {
+      const showingNow = input.type === 'text';
+      input.type = showingNow ? 'password' : 'text';
+      btn.querySelector('i').className = showingNow ? 'bi bi-eye' : 'bi bi-eye-slash';
+      btn.setAttribute('aria-label', showingNow ? 'Mostrar senha' : 'Ocultar senha');
+    });
+  });
+})();
+
+/*
  * Preview local (antes do envio) de imagens/vídeos escolhidos em
  * qualquer ".dropzone" (banner, logo da loja, ícone de categoria,
  * fotos de produto, mídia da landing) — usa URL.createObjectURL (mais

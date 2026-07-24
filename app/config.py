@@ -111,6 +111,13 @@ class ProductionConfig(BaseConfig):
     SESSION_COOKIE_SECURE = os.environ.get("FORCE_HTTPS", "true").lower() != "false"
     PREFERRED_URL_SCHEME = "https" if SESSION_COOKIE_SECURE else "http"
 
+    # Cache de 1 ano para /static/* no navegador — seguro porque todo
+    # asset estático importado em base.html usa static_versioned()
+    # (app/__init__.py), que muda a URL sozinha quando o arquivo muda.
+    # Sem isso, cada navegação entre páginas (app multi-página, sem SPA)
+    # faz o navegador reconferir com o servidor se o CSS/JS mudou.
+    SEND_FILE_MAX_AGE_DEFAULT = 31536000
+
 
 config_by_name = {
     "development": DevelopmentConfig,

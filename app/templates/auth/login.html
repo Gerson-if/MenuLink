@@ -20,7 +20,12 @@
       {{ form.password.label(class="form-label small fw-semibold", **{"style": "margin:0;"}) }}
       <a href="{{ url_for('auth.forgot_password') }}" class="link-chili small">Esqueci a senha</a>
     </div>
-    {{ form.password(class="form-control" + (" border-danger" if form.password.errors else ""), placeholder="••••••••", maxlength=128) }}
+    <div class="password-field-wrap">
+      {{ form.password(class="form-control" + (" border-danger" if form.password.errors else ""), placeholder="••••••••", maxlength=128, id="login-password") }}
+      <button type="button" class="password-toggle-btn" data-target="login-password" aria-label="Mostrar senha" title="Mostrar/ocultar senha">
+        <i class="bi bi-eye"></i>
+      </button>
+    </div>
     {% for error in form.password.errors %}
       <p class="upload-error mt-1">{{ error }}</p>
     {% endfor %}
