@@ -215,14 +215,30 @@ class OrderService:
 
     def _resolve_customer(self, name: str, phone: str):
         customer = self.customer_repo.get_by_phone(phone)
-        if customer is None:
-            from app.models import Customer
+        if customer is not None:
+            if customer.name != name:
+                customer.name = name  # mantém o nome mais recente informado
+            return customer
 
-            customer = Customer(tenant_id=self.tenant.id, name=name, phone=phone)
-            db.session.add(customer)
+        from app.models import Customer
+
+        customer = Customer(tenant_id=self.tenant.id, name=name, phone=phone)
+        db.session.add(customer)
+        try:
             db.session.flush()
-        elif customer.name != name:
-            customer.name = name  # mantém o nome mais recente informado
+        except IntegrityError:
+            # Corrida: dois checkouts concorrentes com o mesmo telefone
+            # (duplo clique, duas abas, retry de rede) — a constraint
+            # uq_customer_tenant_phone barrou nossa tentativa porque outra
+            # requisição já criou o cliente entre nossa consulta e o
+            # insert. Descarta essa tentativa e usa o registro que "ganhou
+            # a corrida", em vez de duplicar o cadastro ou estourar 500.
+            db.session.rollback()
+            customer = self.customer_repo.get_by_phone(phone)
+            if customer is None:
+                raise  # não deveria acontecer — não mascara um erro real
+            if customer.name != name:
+                customer.name = name
         return customer
 
     def _persist_order(self, *, payload, customer_id, items_data, subtotal_cents, delivery_fee_cents, total_cents) -> Order:
@@ -282,6 +298,39 @@ class OrderService:
         from flask import abort
 
         order = self.order_repo.get_by_id(order_id)
+        if order is None:
+            abort(404)
+        return order
+
+    def get_locked_or_404(self, order_id: int) -> Order:
+        """
+        Como get_or_404, mas com lock de linha (SELECT ... FOR UPDATE) —
+        use nas ações que MUDAM o status do pedido (aceitar, rejeitar,
+        atualizar status, voltar status), nunca em telas só de leitura.
+
+        Sem isso, duas requisições concorrentes no mesmo pedido (dois
+        atendentes, duas abas do lojista clicando quase ao mesmo tempo)
+        liam o mesmo status "pending", cada uma validava sua própria
+        transição contra esse status já desatualizado, e a segunda a
+        commitar vencia silenciosamente — sem revalidar o status atual,
+        podia aplicar uma transição que não fazia mais sentido (ex.:
+        confirmar um pedido que a outra aba acabou de cancelar). O lock
+        serializa a segunda requisição até a primeira terminar, e ela
+        então lê o status já atualizado antes de decidir.
+
+        (Em SQLite — usado nos testes — FOR UPDATE é ignorado pelo
+        dialect, sem efeito nem erro; o lock de fato só existe em
+        Postgres, usado em produção.)
+        """
+        from flask import abort
+        from sqlalchemy import select
+
+        stmt = (
+            select(Order)
+            .where(Order.tenant_id == self.tenant.id, Order.id == order_id)
+            .with_for_update()
+        )
+        order = db.session.execute(stmt).scalar_one_or_none()
         if order is None:
             abort(404)
         return order

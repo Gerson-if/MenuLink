@@ -50,9 +50,15 @@
   {% if messages %}
   <div class="toast-flash-stack">
     {% for category, message in messages %}
-    <div class="toast-flash toast-flash-{{ category if category in ['success','danger','warning','info'] else 'secondary' }}" x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 6000)">
-      <span>{{ message }}</span>
-      <button type="button" @click="show = false" aria-label="Fechar">&times;</button>
+    {% set icon = {'success': 'bi-check-circle-fill', 'danger': 'bi-x-circle-fill', 'warning': 'bi-exclamation-triangle-fill', 'info': 'bi-info-circle-fill'}.get(category, 'bi-info-circle-fill') %}
+    <div class="toast-flash toast-flash-{{ category if category in ['success','danger','warning','info'] else 'secondary' }}"
+         x-data="{ show: false }" x-init="requestAnimationFrame(() => show = true); setTimeout(() => show = false, 6000)"
+         x-show="show"
+         x-transition:enter="toast-flash-enter" x-transition:enter-start="toast-flash-enter-start" x-transition:enter-end="toast-flash-enter-end"
+         x-transition:leave="toast-flash-leave" x-transition:leave-start="toast-flash-leave-start" x-transition:leave-end="toast-flash-leave-end">
+      <i class="bi {{ icon }} toast-flash-icon" aria-hidden="true"></i>
+      <span class="toast-flash-message">{{ message }}</span>
+      <button type="button" class="toast-flash-close" @click="show = false" aria-label="Fechar">&times;</button>
     </div>
     {% endfor %}
   </div>

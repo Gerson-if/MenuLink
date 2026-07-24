@@ -243,15 +243,37 @@ body {
 .btn-close { filter: invert(1) brightness(0.9); opacity: .6; }
 
 /* ---------- Toasts de flash ---------- */
-.toast-flash-stack { position: fixed; top: 16px; right: 16px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; max-width: 360px; }
-.toast-flash { border-radius: 8px; padding: 12px 16px; font-size: .875rem; box-shadow: 0 8px 24px rgba(0,0,0,.35); display: flex; justify-content: space-between; align-items: center; gap: 12px; border: 1px solid; }
-.toast-flash button { background: none; border: none; color: inherit; opacity: .6; font-size: 1.1rem; line-height: 1; cursor: pointer; }
-.toast-flash button:hover { opacity: 1; }
-.toast-flash-success { background: rgba(122,160,109,.15); border-color: rgba(122,160,109,.4); color: #BCE2AF; }
-.toast-flash-danger { background: rgba(229,74,54,.15); border-color: rgba(229,74,54,.4); color: #FF8A7A; }
-.toast-flash-warning { background: rgba(240,173,78,.15); border-color: rgba(240,173,78,.4); color: #FCD581; }
-.toast-flash-info { background: rgba(67,97,238,.15); border-color: rgba(67,97,238,.4); color: #9DB2FF; }
-.toast-flash-secondary { background: rgba(255,255,255,.06); border-color: var(--card-border); color: var(--paper); }
+/* top:16px por padrão (páginas sem topbar: landing, login, cardápio
+   público). Nos painéis (lojista/admin), há uma topbar "sticky" no mesmo
+   canto superior — sem o offset abaixo, o toast (z-index mais alto)
+   ficava por cima dos botões da topbar (tema, "Ver cardápio"),
+   bloqueando o clique e parecendo uma sobreposição de informação. */
+.toast-flash-stack { position: fixed; top: 16px; right: 16px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; max-width: 380px; width: calc(100% - 32px); pointer-events: none; }
+body:has(.app-shell) .toast-flash-stack { top: 84px; }
+.toast-flash {
+  border-radius: 10px; padding: 14px 16px; font-size: .875rem; box-shadow: 0 12px 32px rgba(0,0,0,.4);
+  display: flex; align-items: flex-start; gap: 10px; border: 1px solid; backdrop-filter: blur(6px);
+  pointer-events: auto;
+}
+.toast-flash-icon { font-size: 1.05rem; line-height: 1.4; flex-shrink: 0; }
+.toast-flash-message { flex: 1; line-height: 1.4; word-break: break-word; }
+.toast-flash-close { background: none; border: none; color: inherit; opacity: .6; font-size: 1.1rem; line-height: 1; cursor: pointer; flex-shrink: 0; padding: 0; transition: opacity .15s; }
+.toast-flash-close:hover { opacity: 1; }
+.toast-flash-success { background: rgba(122,160,109,.16); border-color: rgba(122,160,109,.4); color: #BCE2AF; }
+.toast-flash-danger { background: rgba(229,74,54,.16); border-color: rgba(229,74,54,.4); color: #FF8A7A; }
+.toast-flash-warning { background: rgba(240,173,78,.16); border-color: rgba(240,173,78,.4); color: #FCD581; }
+.toast-flash-info { background: rgba(67,97,238,.16); border-color: rgba(67,97,238,.4); color: #9DB2FF; }
+.toast-flash-secondary { background: rgba(255,255,255,.07); border-color: var(--card-border); color: var(--paper); }
+
+/* Entrada: desliza da direita + some suavemente. Saída: um pouco mais
+   rápida, encolhendo pra cima — evita o "pisca" de esconder/mostrar
+   instantâneo que existia antes (só display:none/block via x-show). */
+.toast-flash-enter { transition: opacity .35s ease, transform .35s cubic-bezier(.22,.9,.32,1); }
+.toast-flash-enter-start { opacity: 0; transform: translateX(24px) scale(.96); }
+.toast-flash-enter-end { opacity: 1; transform: translateX(0) scale(1); }
+.toast-flash-leave { transition: opacity .2s ease, transform .2s ease, margin-top .2s ease, max-height .2s ease; }
+.toast-flash-leave-start { opacity: 1; transform: scale(1); max-height: 100px; }
+.toast-flash-leave-end { opacity: 0; transform: scale(.97) translateX(8px); max-height: 0; margin-top: -10px; }
 
 /* ---------- Painel de autenticação (login/cadastro/recuperar) ---------- */
 .auth-shell { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 16px; gap: 20px; }
@@ -378,8 +400,28 @@ body {
 .hamburger-icon.is-active span:nth-child(1) { width: 60%; transform: translateY(1px); transition-delay: .04s; }
 .hamburger-icon.is-active span:nth-child(2) { width: 100%; }
 .hamburger-icon.is-active span:nth-child(3) { width: 60%; transform: translateY(-1px); transition-delay: .04s; }
-.sidebar-foot { padding: 20px; border-top: 1px solid var(--sidebar-border); font-size: .8rem; color: var(--sidebar-muted); white-space: nowrap; background: rgba(0,0,0,0.15); }
+.sidebar-foot { padding: 16px 20px; border-top: 1px solid var(--sidebar-border); font-size: .8rem; color: var(--sidebar-muted); white-space: nowrap; background: rgba(0,0,0,0.15); }
 .sidebar.is-collapsed .sidebar-foot { opacity: 0; padding: 16px 0; height: 0; overflow: hidden; border: none; }
+
+/* Chip de usuário no rodapé da sidebar (lojista/admin): avatar com
+   inicial + nome/loja + botão de sair dedicado (ícone maior, com fundo
+   próprio e hover destacado) — antes era só um link de texto simples,
+   fácil de não perceber como a ação de logout. */
+.user-chip { display: flex; align-items: center; gap: 10px; }
+.user-avatar {
+  width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0; display: flex; align-items: center;
+  justify-content: center; font-weight: 700; font-size: 1rem; color: #1B140F;
+  background: conic-gradient(from 220deg, var(--accent), var(--accent-dark, var(--accent)), var(--accent));
+}
+.user-chip-text { flex: 1; min-width: 0; overflow: hidden; }
+.user-chip-name { color: var(--paper); font-weight: 600; font-size: .85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.user-chip-role { color: var(--sidebar-muted); font-size: .7rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.user-logout-btn {
+  width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  color: var(--sidebar-muted); border: 1px solid var(--sidebar-border); background: transparent; font-size: 1.05rem;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.user-logout-btn:hover { background: rgba(229,74,54,.16); border-color: rgba(229,74,54,.4); color: #FF8A7A; }
 
 /* Drawer direito (offcanvas) usado para criar/editar produto — os blocos
    (dados do produto, fotos, complementos) ficam empilhados um abaixo do

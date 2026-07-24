@@ -109,6 +109,14 @@ def _register_blueprints(app: Flask) -> None:
             "marketing/landing.html", plans=plans, current_year=datetime.now().year, landing=landing,
         )
 
+    @app.get("/termos-de-uso")
+    def terms_of_use():
+        return render_template("marketing/terms.html", updated_at="24 de julho de 2026")
+
+    @app.get("/politica-de-privacidade")
+    def privacy_policy():
+        return render_template("marketing/privacy.html", updated_at="24 de julho de 2026")
+
 
 def _register_request_hooks(app: Flask) -> None:
     from app.utils.tenant_context import load_tenant_from_session

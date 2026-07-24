@@ -56,6 +56,8 @@
     transform: translateX(-100%); transition: transform .3s cubic-bezier(.22,.9,.32,1);
   }
   .menu-sidebar.open { transform: translateX(0); }
+  .menu-sidebar .brand, .menu-topbar .brand { cursor: pointer; transition: opacity .15s; }
+  .menu-sidebar .brand:hover, .menu-topbar .brand:hover { opacity: .8; }
   .menu-sidebar .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
   .menu-sidebar .brand-mark {
     width: 40px; height: 40px; border-radius: 12px; overflow: hidden; flex-shrink: 0;
@@ -302,7 +304,7 @@
 <div x-data="menuApp()" x-init="init()">
 
   <aside class="menu-sidebar" :class="{ open: sidebarOpen }">
-    <div class="brand">
+    <div class="brand" role="button" tabindex="0" @click="goHome()" @keydown.enter="goHome()" title="Voltar para o início do cardápio">
       <div class="brand-mark">
         {% if tenant.logo_path %}<img src="{{ url_for('static', filename=tenant.logo_path) }}" alt="{{ tenant.name }}">{% else %}{{ tenant.name[:1]|upper }}{% endif %}
       </div>
@@ -341,6 +343,11 @@
       <div class="mt-2">
         <a href="#" class="customer-account-link" @click.prevent="openCustomerAccount()" x-text="customerLoggedIn ? 'Meus pedidos' : 'Já é cliente? Ver meus pedidos'"></a>
       </div>
+      <div class="mt-2" style="font-size: .68rem; opacity: .7;">
+        <a href="{{ url_for('privacy_policy') }}" target="_blank" class="customer-account-link">Privacidade</a>
+        <span class="mx-1">·</span>
+        <a href="{{ url_for('terms_of_use') }}" target="_blank" class="customer-account-link">Termos</a>
+      </div>
     </div>
   </aside>
 
@@ -352,7 +359,7 @@
         <button type="button" class="hamburger" @click="toggleSidebar()" aria-label="Abrir menu">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg>
         </button>
-        <div class="brand">
+        <div class="brand" role="button" tabindex="0" @click="goHome()" @keydown.enter="goHome()" title="Voltar para o início do cardápio">
           <div class="brand-mark">
             {% if tenant.logo_path %}<img src="{{ url_for('static', filename=tenant.logo_path) }}" alt="{{ tenant.name }}">{% else %}{{ tenant.name[:1]|upper }}{% endif %}
           </div>
@@ -996,6 +1003,16 @@ function menuApp() {
     },
     closeSidebar() {
       this.sidebarOpen = false;
+    },
+    // Clicar na logo/nome da loja (sidebar ou topbar) "volta pro início"
+    // do cardápio: limpa busca e filtro de categoria, fecha a sidebar
+    // mobile e rola pro topo — antes o clique não fazia nada, parecendo
+    // quebrado. Não recarrega a página (preserva o carrinho em memória).
+    goHome() {
+      this.currentCategory = 'all';
+      this.searchTerm = '';
+      this.closeSidebar();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     },
     openCart() {
       // Fecha a sidebar antes de abrir o carrinho — os dois nunca devem
