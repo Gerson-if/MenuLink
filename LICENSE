@@ -1,28 +1,85 @@
-Copyright (c) 2026 Gerson de Castro. Todos os direitos reservados.
+LICENÇA PROPRIETÁRIA — TODOS OS DIREITOS RESERVADOS
 
-Este software e toda a documentação associada (o "Software") são
-propriedade exclusiva de Gerson de Castro.
+Copyright (c) 2026 Gerson Ferreira de Castro. Todos os direitos reservados.
 
-É expressamente proibido, sem autorização prévia e por escrito do
-titular dos direitos:
+Este software, seu código-fonte, sua documentação, seus designs,
+marcas, textos, imagens e quaisquer outros materiais associados
+(em conjunto, o "Software") são propriedade exclusiva de
+Gerson Ferreira de Castro ("Titular"), protegidos pela legislação de
+direitos autorais e propriedade intelectual aplicável no Brasil e em
+tratados internacionais dos quais o Brasil seja signatário.
 
-  1. Copiar, reproduzir ou distribuir o Software, no todo ou em parte,
-     por qualquer meio ou forma;
-  2. Modificar, adaptar, traduzir ou criar obras derivadas a partir do
-     Software;
-  3. Sublicenciar, vender, alugar, ceder ou de qualquer forma
-     disponibilizar o Software a terceiros;
-  4. Realizar engenharia reversa, descompilação ou desmontagem do
-     Software, exceto na medida em que tal restrição seja expressamente
-     proibida por lei aplicável.
+NENHUM DIREITO É CONCEDIDO por este documento, exceto os expressamente
+autorizados por escrito pelo Titular. O simples acesso ao código-fonte,
+por qualquer meio (incluindo repositórios privados, ambientes de
+desenvolvimento, ou cópias de trabalho), não constitui e não deve ser
+interpretado como concessão de licença, autorização de uso ou qualquer
+outro direito sobre o Software.
 
-O SOFTWARE É FORNECIDO "COMO ESTÁ", SEM GARANTIAS DE QUALQUER TIPO,
-EXPRESSAS OU IMPLÍCITAS, INCLUINDO, MAS NÃO SE LIMITANDO A, GARANTIAS
-DE COMERCIALIZAÇÃO, ADEQUAÇÃO A UM PROPÓSITO ESPECÍFICO E NÃO VIOLAÇÃO.
-EM NENHUMA HIPÓTESE O TITULAR DOS DIREITOS SERÁ RESPONSÁVEL POR
-QUALQUER REIVINDICAÇÃO, DANO OU OUTRA RESPONSABILIDADE, SEJA EM AÇÃO DE
-CONTRATO, DELITO OU DE OUTRA FORMA, DECORRENTE DE, OU EM CONEXÃO COM O
-SOFTWARE OU O USO OU OUTRAS NEGOCIAÇÕES NO SOFTWARE.
+1. USO PROIBIDO SEM AUTORIZAÇÃO
+É expressamente proibido, sem autorização prévia, expressa e por
+escrito do Titular:
 
-Todos os direitos não expressamente concedidos são reservados ao
-titular dos direitos.
+  a. Instalar, executar, implantar (deploy) ou de qualquer forma
+     colocar o Software em produção ou em ambiente acessível a
+     terceiros, inclusive na modalidade "software como serviço" (SaaS),
+     hospedagem ou revenda de acesso;
+  b. Copiar, reproduzir, armazenar ou distribuir o Software, no todo ou
+     em parte, por qualquer meio, forma ou suporte, físico ou digital;
+  c. Modificar, adaptar, traduzir, criar obras derivadas, ou incorporar
+     o Software (ou qualquer parte dele) a outro produto ou serviço;
+  d. Sublicenciar, vender, alugar, ceder, doar, emprestar ou de
+     qualquer outra forma disponibilizar o Software, ou acesso a ele, a
+     terceiros, a título gratuito ou oneroso;
+  e. Publicar o Software, no todo ou em parte, em repositórios
+     públicos, fóruns, plataformas de compartilhamento de código ou
+     qualquer meio que amplie seu acesso além do expressamente
+     autorizado pelo Titular;
+  f. Utilizar o Software, seu código-fonte ou sua documentação para
+     treinar, ajustar (fine-tuning) ou alimentar modelos de inteligência
+     artificial, aprendizado de máquina, ou qualquer sistema automatizado
+     de geração de código ou conteúdo;
+  g. Realizar engenharia reversa, descompilação, desmontagem ou
+     qualquer tentativa de extrair o código-fonte a partir de artefatos
+     compilados ou ofuscados do Software, exceto na medida em que tal
+     restrição seja expressamente vedada por lei aplicável de caráter
+     cogente;
+  h. Remover, ocultar ou alterar avisos de direitos autorais, marcas ou
+     esta licença, de qualquer cópia do Software.
+
+2. CONFIDENCIALIDADE
+Qualquer pessoa com acesso ao código-fonte do Software em razão de
+vínculo profissional, contratual ou de colaboração com o Titular deve
+tratá-lo como informação confidencial, não podendo divulgá-lo,
+compartilhá-lo ou utilizá-lo fora do escopo expressamente autorizado
+por escrito, mesmo após o encerramento de tal vínculo.
+
+3. AUSÊNCIA DE GARANTIAS
+O SOFTWARE É FORNECIDO "COMO ESTÁ" ("AS IS"), SEM GARANTIAS DE QUALQUER
+TIPO, EXPRESSAS OU IMPLÍCITAS, INCLUINDO, MAS NÃO SE LIMITANDO A,
+GARANTIAS DE COMERCIALIZAÇÃO, ADEQUAÇÃO A UM PROPÓSITO ESPECÍFICO,
+NÃO VIOLAÇÃO DE DIREITOS DE TERCEIROS, OU AUSÊNCIA DE ERROS.
+
+4. LIMITAÇÃO DE RESPONSABILIDADE
+EM NENHUMA HIPÓTESE O TITULAR SERÁ RESPONSÁVEL POR QUALQUER
+REIVINDICAÇÃO, DANO DIRETO, INDIRETO, INCIDENTAL, ESPECIAL OU
+CONSEQUENCIAL, OU OUTRA RESPONSABILIDADE, SEJA EM AÇÃO CONTRATUAL,
+EXTRACONTRATUAL (DELITO) OU DE OUTRA NATUREZA, DECORRENTE DE, OU EM
+CONEXÃO COM O SOFTWARE, SEU USO OU OUTRAS NEGOCIAÇÕES RELACIONADAS A
+ELE.
+
+5. RESCISÃO
+Qualquer uso não autorizado do Software encerra automaticamente,
+independentemente de aviso, qualquer permissão eventualmente concedida,
+sem prejuízo das medidas judiciais e extrajudiciais cabíveis e da
+reparação por perdas e danos.
+
+6. LEI APLICÁVEL E FORO
+Esta licença é regida pelas leis da República Federativa do Brasil.
+Fica eleito o foro do domicílio do Titular para dirimir quaisquer
+controvérsias dela decorrentes, com renúncia expressa a qualquer outro,
+por mais privilegiado que seja.
+
+7. RESERVA DE DIREITOS
+Todos os direitos não expressamente concedidos por escrito permanecem
+reservados ao Titular.
