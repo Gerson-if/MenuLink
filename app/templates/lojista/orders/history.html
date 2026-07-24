@@ -1,0 +1,32 @@
+{% extends "layouts/lojista_panel.html" %}
+{% block title %}Histórico de Pedidos — Comanda{% endblock %}
+{% block page_title %}Histórico de Pedidos{% endblock %}
+
+{% block panel_content %}
+<p class="text-muted-custom small mb-3">
+  Pedidos já encerrados (concluídos ou cancelados). Para acompanhar pedidos em
+  andamento, veja a tela de <a href="{{ url_for('lojista.orders_list') }}" class="link-chili">Pedidos</a>.
+</p>
+<div class="mb-4 d-flex gap-2 flex-wrap">
+  <a href="{{ url_for('lojista.orders_history') }}"
+     class="btn btn-sm {{ 'btn-chili' if not selected_status else 'btn-outline-secondary' }}">Todos</a>
+  {% for s in all_statuses %}
+  <a href="{{ url_for('lojista.orders_history', status=s) }}"
+     class="btn btn-sm {{ 'btn-chili' if selected_status == s else 'btn-outline-secondary' }}">{{ status_labels.get(s, s) }}</a>
+  {% endfor %}
+</div>
+
+{% if orders %}
+<div class="row g-3">
+  {% for order in orders %}
+  {% include "lojista/orders/_order_card.html" %}
+  {% endfor %}
+</div>
+{% else %}
+<div class="panel empty-state">
+  <i class="bi bi-clock-history"></i>
+  Nenhum pedido encerrado {% if selected_status %}com esse status {% endif %}ainda. Pedidos concluídos ou cancelados aparecem aqui.
+</div>
+{% endif %}
+{% include "_pagination.html" %}
+{% endblock %}

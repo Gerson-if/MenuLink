@@ -3,9 +3,19 @@
 {% block page_title %}Clientes{% endblock %}
 
 {% block panel_content %}
-<p class="text-muted-custom small mb-4">
+<p class="text-muted-custom small mb-3">
   Clientes que se identificaram pelo telefone no seu cardápio público (login opcional, sem senha) — criados/atualizados automaticamente a cada pedido.
 </p>
+
+<div class="mb-4 d-flex gap-2 flex-wrap align-items-center">
+  <span class="text-muted-custom small me-1">Ordenar por:</span>
+  <a href="{{ url_for('lojista.customers_list', sort='recent') }}"
+     class="btn btn-sm {{ 'btn-chili' if selected_sort == 'recent' else 'btn-outline-secondary' }}">Mais recentes</a>
+  <a href="{{ url_for('lojista.customers_list', sort='spent') }}"
+     class="btn btn-sm {{ 'btn-chili' if selected_sort == 'spent' else 'btn-outline-secondary' }}"><i class="bi bi-star-fill"></i> Melhores clientes</a>
+  <a href="{{ url_for('lojista.customers_list', sort='orders') }}"
+     class="btn btn-sm {{ 'btn-chili' if selected_sort == 'orders' else 'btn-outline-secondary' }}">Mais pedidos</a>
+</div>
 
 {% if pagination.items %}
 <div class="panel p-0" style="overflow-x: auto;">
@@ -17,18 +27,33 @@
         <th class="py-2">Pedidos</th>
         <th class="py-2">Total gasto</th>
         <th class="py-2">Último pedido</th>
-        <th class="py-2 pe-3">Cliente desde</th>
+        <th class="py-2">Cliente desde</th>
+        <th class="py-2 pe-3"></th>
       </tr>
     </thead>
     <tbody>
       {% for row in pagination.items %}
       <tr>
-        <td class="px-3 py-2">{{ row.customer.name }}</td>
+        <td class="px-3 py-2">
+          {{ row.customer.name }}
+          {% if row.is_top %}
+          <span class="badge-order ms-1" style="background: var(--accent);" title="Um dos clientes que mais compram nesta loja">
+            <i class="bi bi-star-fill"></i> Top cliente
+          </span>
+          {% endif %}
+        </td>
         <td class="py-2">{{ row.customer.phone or "—" }}</td>
         <td class="py-2">{{ row.order_count }}</td>
         <td class="py-2">R$ {{ "%.2f"|format(row.total_spent_cents / 100) }}</td>
         <td class="py-2">{{ row.last_order_at.strftime("%d/%m/%Y") if row.last_order_at else "—" }}</td>
-        <td class="py-2 pe-3">{{ row.customer.created_at.strftime("%d/%m/%Y") }}</td>
+        <td class="py-2">{{ row.customer.created_at.strftime("%d/%m/%Y") }}</td>
+        <td class="py-2 pe-3 text-end">
+          <form method="POST" action="{{ url_for('lojista.customers_delete', customer_id=row.customer.id) }}"
+                data-confirm-message="Remover o cadastro de {{ row.customer.name }}? Os pedidos já feitos continuam no seu histórico.">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-sm btn-outline-danger" title="Remover cliente"><i class="bi bi-trash"></i></button>
+          </form>
+        </td>
       </tr>
       {% endfor %}
     </tbody>

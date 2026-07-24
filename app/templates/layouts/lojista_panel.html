@@ -72,8 +72,12 @@
       <a href="{{ url_for('lojista.orders_list', status='pending') }}" class="nav-link {{ 'active' if request.endpoint == 'lojista.orders_list' and request.args.get('status') == 'pending' }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Novos Pedidos">
         <i class="bi bi-bell"></i><span class="nav-label">Novos Pedidos</span>
       </a>
-      <a href="{{ url_for('lojista.orders_list') }}" class="nav-link {{ 'active' if request.endpoint in ['lojista.orders_list', 'lojista.orders_detail'] and request.args.get('status') != 'pending' }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Pedidos">
+      {% set order_is_history = request.endpoint == 'lojista.orders_detail' and order is defined and order and order.status.value in ('completed', 'canceled') %}
+      <a href="{{ url_for('lojista.orders_list') }}" class="nav-link {{ 'active' if (request.endpoint == 'lojista.orders_list' and request.args.get('status') != 'pending') or (request.endpoint == 'lojista.orders_detail' and not order_is_history) }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Pedidos">
         <i class="bi bi-receipt"></i><span class="nav-label">Pedidos</span>
+      </a>
+      <a href="{{ url_for('lojista.orders_history') }}" class="nav-link {{ 'active' if request.endpoint == 'lojista.orders_history' or order_is_history }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Histórico de Pedidos">
+        <i class="bi bi-clock-history"></i><span class="nav-label">Histórico</span>
       </a>
       <a href="{{ url_for('lojista.customers_list') }}" class="nav-link {{ 'active' if request.endpoint == 'lojista.customers_list' }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Clientes">
         <i class="bi bi-people"></i><span class="nav-label">Clientes</span>

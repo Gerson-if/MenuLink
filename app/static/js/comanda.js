@@ -99,6 +99,24 @@ function sidebarShell() {
 })();
 
 /*
+ * Mantém o item ativo visível no menu lateral (.nav-food é uma lista
+ * rolável — `overflow-y: auto`, ver comanda.css). Esta app é
+ * multi-página (sem hx-boost no menu): cada clique em uma opção mais
+ * abaixo (Clientes, Cardápio, Vendas, Configurações...) causa um reload
+ * completo, e o navegador sempre recria o scroll do `.nav-food` do zero
+ * (topo), mesmo que o item ativo esteja mais para baixo na lista. Sem
+ * isso, a sidebar "esquecia" a seleção visualmente — o item continuava
+ * ativo (classe `.active` no link certo), só que fora da área visível,
+ * dando a impressão de que a navegação tinha voltado pro topo e perdido
+ * a seleção. `block: 'nearest'` garante que só o `.nav-food` (ancestral
+ * rolável mais próximo) é ajustado, sem mexer no scroll da página.
+ */
+(function () {
+  const activeLink = document.querySelector('.nav-food .nav-link.active');
+  if (activeLink) activeLink.scrollIntoView({ block: 'nearest' });
+})();
+
+/*
  * Botão de mostrar/ocultar senha (login e outros formulários com
  * .password-toggle-btn) — troca type="password" por type="text" e o
  * ícone de olho. Progressive enhancement: sem JS o campo continua um

@@ -12,7 +12,7 @@ from marshmallow import ValidationError
 from sqlalchemy.orm import selectinload
 
 from app.controllers.lojista.orders import STATUS_LABELS
-from app.extensions import csrf, limiter
+from app.extensions import csrf, db, limiter
 from app.models import Category, ComplementGroup, Order, OrderItem, Product
 from app.repositories.customer_repository import CustomerRepository
 from app.schemas.checkout_schema import CheckoutSchema
@@ -271,7 +271,7 @@ def customer_login(slug):
 
     session["customer_phone"] = phone
     session["customer_tenant_id"] = tenant.id
-    return jsonify({"name": customer.name})
+    return jsonify({"name": customer.name, "phone": customer.phone})
 
 
 PAYMENT_METHOD_LABELS = {"pix": "Pix", "card": "Cartão", "cash": "Dinheiro", "other": "Outro"}
@@ -320,6 +320,7 @@ def customer_orders(slug):
         {
             "logged_in": True,
             "name": customer.name,
+            "phone": customer.phone,
             "orders": [
                 {
                     "order_number": o.order_number,
@@ -354,6 +355,85 @@ def customer_orders(slug):
 @public_bp.route("/<slug>/sair", methods=["POST"])
 @csrf.exempt
 def customer_logout(slug):
+    session.pop("customer_phone", None)
+    session.pop("customer_tenant_id", None)
+    return jsonify({"ok": True})
+
+
+def _get_logged_in_customer(tenant):
+    """Cliente da sessão atual, escopado a esse tenant — usado pelas rotas
+    de autoatendimento (editar dados / remover conta) abaixo. Retorna None
+    se ninguém estiver "logado" (telefone) para esta loja."""
+    phone = session.get("customer_phone")
+    if not phone or session.get("customer_tenant_id") != tenant.id:
+        return None
+    return CustomerRepository(tenant.id).get_by_phone(phone)
+
+
+@public_bp.route("/<slug>/meus-dados", methods=["POST"])
+@csrf.exempt  # validado manualmente abaixo, igual create_order/customer_login
+@limiter.limit("10 per minute", methods=["POST"])
+def customer_update_profile(slug):
+    tenant = resolve_tenant_by_slug(slug)
+
+    if current_app.config.get("WTF_CSRF_ENABLED", True):
+        try:
+            validate_csrf(request.headers.get("X-CSRFToken", ""))
+        except CSRFError:
+            return jsonify({"error": "Sessão expirada, atualize a página e tente novamente."}), 400
+
+    customer = _get_logged_in_customer(tenant)
+    if customer is None:
+        return jsonify({"error": "Você precisa entrar com seu telefone antes de editar seus dados."}), 401
+
+    json_data = request.get_json(silent=True) or {}
+    name = (json_data.get("name") or "").strip()
+    raw_phone = (json_data.get("phone") or "").strip()
+
+    if not name:
+        return jsonify({"error": "Informe seu nome."}), 400
+    if len(name) > 150:
+        return jsonify({"error": "Nome muito longo."}), 400
+
+    phone = normalize_br_phone(raw_phone)
+    if phone is None:
+        return jsonify({"error": "Número inválido. Informe o telefone com DDD, como (67) 99999-9999."}), 400
+
+    if phone != customer.phone:
+        conflict = CustomerRepository(tenant.id).get_by_phone(phone)
+        if conflict is not None and conflict.id != customer.id:
+            return jsonify({"error": "Já existe um cadastro com esse telefone nesta loja."}), 409
+
+    customer.name = name
+    customer.phone = phone
+    db.session.commit()
+
+    session["customer_phone"] = phone
+    return jsonify({"name": customer.name, "phone": customer.phone})
+
+
+@public_bp.route("/<slug>/conta/remover", methods=["POST"])
+@csrf.exempt
+@limiter.limit("10 per minute", methods=["POST"])
+def customer_delete_account(slug):
+    tenant = resolve_tenant_by_slug(slug)
+
+    if current_app.config.get("WTF_CSRF_ENABLED", True):
+        try:
+            validate_csrf(request.headers.get("X-CSRFToken", ""))
+        except CSRFError:
+            return jsonify({"error": "Sessão expirada, atualize a página e tente novamente."}), 400
+
+    customer = _get_logged_in_customer(tenant)
+    if customer is None:
+        return jsonify({"error": "Você precisa entrar com seu telefone antes de remover sua conta."}), 401
+
+    # Os pedidos já feitos continuam no histórico do lojista (faturamento,
+    # relatórios) — só perdem o vínculo com o cadastro removido, já que
+    # Order.customer_id é nullable com ondelete=SET NULL.
+    db.session.delete(customer)
+    db.session.commit()
+
     session.pop("customer_phone", None)
     session.pop("customer_tenant_id", None)
     return jsonify({"ok": True})

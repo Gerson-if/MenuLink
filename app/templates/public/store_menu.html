@@ -716,66 +716,119 @@
           </template>
           <template x-if="customerLoggedIn">
             <div>
-              <template x-if="customerOrders.length === 0">
-                <p class="text-center small mb-0" style="color: var(--text-faint);">Nenhum pedido encontrado nesta loja.</p>
-              </template>
-              <template x-for="order in customerOrders" :key="order.order_number">
-                <div class="customer-order-row">
-                  <div class="customer-order-summary" role="button" tabindex="0"
-                       @click="expandedOrder = expandedOrder === order.order_number ? null : order.order_number"
-                       @keydown.enter="expandedOrder = expandedOrder === order.order_number ? null : order.order_number">
-                    <div>
-                      <strong>Pedido #<span x-text="order.order_number"></span></strong>
-                      <div class="small" style="color: var(--text-faint);" x-text="order.created_at_label"></div>
-                    </div>
-                    <div class="text-end">
-                      <span class="customer-order-status" :class="orderStatusClass(order.status)" x-text="order.status_label"></span>
-                      <div class="small mt-1" x-text="'R$ ' + formatCents(order.total_cents)"></div>
-                    </div>
-                    <i class="bi" :class="expandedOrder === order.order_number ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
-                  </div>
+              <ul class="nav nav-pills gap-2 mb-3">
+                <li class="nav-item">
+                  <button type="button" class="btn btn-sm" :class="customerTab === 'orders' ? 'btn-accent' : 'btn-outline-secondary'" @click="customerTab = 'orders'">Meus Pedidos</button>
+                </li>
+                <li class="nav-item">
+                  <button type="button" class="btn btn-sm" :class="customerTab === 'history' ? 'btn-accent' : 'btn-outline-secondary'" @click="customerTab = 'history'">Histórico</button>
+                </li>
+                <li class="nav-item">
+                  <button type="button" class="btn btn-sm" :class="customerTab === 'profile' ? 'btn-accent' : 'btn-outline-secondary'" @click="openProfileTab()">Meus Dados</button>
+                </li>
+              </ul>
 
-                  <template x-if="expandedOrder === order.order_number">
-                    <div class="customer-order-details">
-                      <div class="small mb-2" style="color: var(--text-dim);">
-                        <i class="bi" :class="order.delivery_type === 'delivery' ? 'bi-geo-alt' : 'bi-shop'"></i>
-                        <span x-text="order.delivery_type === 'delivery' ? 'Entrega' : 'Retirada no local'"></span>
-                        <template x-if="order.delivery_type === 'delivery'">
-                          <span>
-                            <template x-for="line in order.address_lines"><div x-text="line"></div></template>
-                          </span>
-                        </template>
-                      </div>
-
-                      <div class="small mb-2" style="color: var(--text-dim);">
-                        <i class="bi bi-credit-card"></i> Pagamento: <span x-text="order.payment_label"></span>
-                      </div>
-
-                      <template x-for="item in order.items" :key="item.name + '-' + item.quantity + '-' + item.unit_price_cents">
-                        <div class="customer-order-item">
-                          <div class="d-flex justify-content-between small">
-                            <span x-text="item.quantity + 'x ' + item.name"></span>
-                            <span x-text="'R$ ' + formatCents(item.subtotal_cents)"></span>
-                          </div>
-                          <div class="small" style="color: var(--text-faint);" x-show="item.choices.length" x-text="item.choices.join(' · ')"></div>
+              <template x-if="customerTab === 'orders' || customerTab === 'history'">
+                <div>
+                  <template x-if="visibleOrders().length === 0">
+                    <p class="text-center small mb-0" style="color: var(--text-faint);" x-text="customerTab === 'history' ? 'Nenhum pedido concluído ou cancelado ainda.' : 'Nenhum pedido em andamento no momento.'"></p>
+                  </template>
+                  <template x-for="order in visibleOrders()" :key="order.order_number">
+                    <div class="customer-order-row">
+                      <div class="customer-order-summary" role="button" tabindex="0"
+                           @click="expandedOrder = expandedOrder === order.order_number ? null : order.order_number"
+                           @keydown.enter="expandedOrder = expandedOrder === order.order_number ? null : order.order_number">
+                        <div>
+                          <strong>Pedido #<span x-text="order.order_number"></span></strong>
+                          <div class="small" style="color: var(--text-faint);" x-text="order.created_at_label"></div>
                         </div>
-                      </template>
-
-                      <div class="small mt-2 pt-2" style="border-top: 1px dashed var(--line); color: var(--text-dim);">
-                        <div class="d-flex justify-content-between"><span>Subtotal</span><span x-text="'R$ ' + formatCents(order.subtotal_cents)"></span></div>
-                        <template x-if="order.delivery_fee_cents > 0">
-                          <div class="d-flex justify-content-between"><span>Taxa de entrega</span><span x-text="'R$ ' + formatCents(order.delivery_fee_cents)"></span></div>
-                        </template>
+                        <div class="text-end">
+                          <span class="customer-order-status" :class="orderStatusClass(order.status)" x-text="order.status_label"></span>
+                          <div class="small mt-1" x-text="'R$ ' + formatCents(order.total_cents)"></div>
+                        </div>
+                        <i class="bi" :class="expandedOrder === order.order_number ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
                       </div>
 
-                      <template x-if="order.notes">
-                        <div class="small mt-2" style="color: var(--text-faint);">Obs: <span x-text="order.notes"></span></div>
+                      <template x-if="expandedOrder === order.order_number">
+                        <div class="customer-order-details">
+                          <div class="small mb-2" style="color: var(--text-dim);">
+                            <i class="bi" :class="order.delivery_type === 'delivery' ? 'bi-geo-alt' : 'bi-shop'"></i>
+                            <span x-text="order.delivery_type === 'delivery' ? 'Entrega' : 'Retirada no local'"></span>
+                            <template x-if="order.delivery_type === 'delivery'">
+                              <span>
+                                <template x-for="line in order.address_lines"><div x-text="line"></div></template>
+                              </span>
+                            </template>
+                          </div>
+
+                          <div class="small mb-2" style="color: var(--text-dim);">
+                            <i class="bi bi-credit-card"></i> Pagamento: <span x-text="order.payment_label"></span>
+                          </div>
+
+                          <template x-for="item in order.items" :key="item.name + '-' + item.quantity + '-' + item.unit_price_cents">
+                            <div class="customer-order-item">
+                              <div class="d-flex justify-content-between small">
+                                <span x-text="item.quantity + 'x ' + item.name"></span>
+                                <span x-text="'R$ ' + formatCents(item.subtotal_cents)"></span>
+                              </div>
+                              <div class="small" style="color: var(--text-faint);" x-show="item.choices.length" x-text="item.choices.join(' · ')"></div>
+                            </div>
+                          </template>
+
+                          <div class="small mt-2 pt-2" style="border-top: 1px dashed var(--line); color: var(--text-dim);">
+                            <div class="d-flex justify-content-between"><span>Subtotal</span><span x-text="'R$ ' + formatCents(order.subtotal_cents)"></span></div>
+                            <template x-if="order.delivery_fee_cents > 0">
+                              <div class="d-flex justify-content-between"><span>Taxa de entrega</span><span x-text="'R$ ' + formatCents(order.delivery_fee_cents)"></span></div>
+                            </template>
+                          </div>
+
+                          <template x-if="order.notes">
+                            <div class="small mt-2" style="color: var(--text-faint);">Obs: <span x-text="order.notes"></span></div>
+                          </template>
+                        </div>
                       </template>
                     </div>
                   </template>
                 </div>
               </template>
-              <button type="button" class="btn btn-ghost-menu w-100 mt-3" @click="logoutCustomer()">Sair</button>
+
+              <template x-if="customerTab === 'profile'">
+                <div>
+                  <label class="form-label small mb-1">Nome</label>
+                  <input type="text" class="form-control mb-2" x-model="profileName" maxlength="150" placeholder="Seu nome">
+                  <label class="form-label small mb-1">Telefone</label>
+                  <input type="tel" class="form-control mb-2" :value="profilePhoneInput" @input="profilePhoneInput = maskPhone($event.target.value)" maxlength="16" placeholder="(67) 99999-9999">
+                  <div class="small mb-2" style="color: var(--rust);" x-show="profileError" x-text="profileError"></div>
+                  <div class="small mb-2" style="color: var(--herb);" x-show="profileSuccess">Dados atualizados com sucesso!</div>
+                  <button type="button" class="btn btn-accent w-100 mb-3" :disabled="profileSaving || !profileName.trim() || !isPhoneValid(profilePhoneInput)" @click="saveProfile()">
+                    <span x-show="!profileSaving">Salvar alterações</span><span x-show="profileSaving">Salvando...</span>
+                  </button>
+
+                  <hr>
+
+                  <template x-if="!deleteConfirming">
+                    <button type="button" class="btn btn-outline-danger w-100" @click="deleteConfirming = true; profileError = null;">
+                      <i class="bi bi-trash"></i> Remover meu cadastro
+                    </button>
+                  </template>
+                  <template x-if="deleteConfirming">
+                    <div>
+                      <p class="small mb-2" style="color: var(--rust);">
+                        Tem certeza? Isso apaga seu cadastro nesta loja (seus pedidos já feitos continuam no histórico do lojista, sem vínculo com você). Essa ação não pode ser desfeita.
+                      </p>
+                      <div class="small mb-2" style="color: var(--rust);" x-show="profileError" x-text="profileError"></div>
+                      <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-secondary flex-grow-1" @click="deleteConfirming = false">Cancelar</button>
+                        <button type="button" class="btn btn-outline-danger flex-grow-1" :disabled="profileDeleting" @click="deleteAccount()">
+                          <span x-show="!profileDeleting">Sim, remover</span><span x-show="profileDeleting">Removendo...</span>
+                        </button>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+              </template>
+
+              <button type="button" class="btn btn-ghost-menu w-100 mt-3" x-show="customerTab !== 'profile'" @click="logoutCustomer()">Sair</button>
             </div>
           </template>
         </div>
@@ -817,12 +870,21 @@ function menuApp() {
     // /entrar, /meus-pedidos, /sair em public_controller.py
     customerLoggedIn: false,
     customerName: '',
+    customerPhone: '', // telefone canônico ("(DD) NNNNN-NNNN") vindo do servidor, usado pra pré-preencher "Meus Dados"
     customerPhoneInput: '',
     customerPhoneTouched: false,
     customerError: null,
     customerLoading: false,
     customerOrders: [],
+    customerTab: 'orders', // 'orders' | 'history' | 'profile' — abas de Meus Pedidos/Histórico/Meus Dados
     expandedOrder: null,
+    profileName: '',
+    profilePhoneInput: '',
+    profileError: null,
+    profileSuccess: false,
+    profileSaving: false,
+    profileDeleting: false,
+    deleteConfirming: false,
     cartBump: false, // pequena animação de feedback ao adicionar item, sem abrir o carrinho
     historyGuardPushed: false, // ver comentário em pushHistoryGuard()
     submitting: false,
@@ -1187,6 +1249,7 @@ function menuApp() {
         if (data.logged_in) {
           this.customerLoggedIn = true;
           this.customerName = data.name;
+          this.customerPhone = data.phone || '';
           this.customerOrders = data.orders;
         }
       } catch (err) {
@@ -1209,6 +1272,7 @@ function menuApp() {
 
         this.customerLoggedIn = true;
         this.customerName = data.name;
+        this.customerPhone = data.phone || '';
         await this.checkCustomerSession();
       } catch (err) {
         this.customerError = 'Falha de conexão. Verifique sua internet e tente novamente.';
@@ -1227,10 +1291,80 @@ function menuApp() {
       }
       this.customerLoggedIn = false;
       this.customerName = '';
+      this.customerPhone = '';
       this.customerOrders = [];
       this.customerPhoneInput = '';
       this.customerPhoneTouched = false;
       this.expandedOrder = null;
+      this.customerTab = 'orders';
+      this.deleteConfirming = false;
+      this.profileError = null;
+      this.profileSuccess = false;
+    },
+
+    // --- Meus Pedidos / Histórico (mesma lista, dividida por status) ---
+    activeOrders() {
+      return this.customerOrders.filter((o) => o.status !== 'completed' && o.status !== 'canceled');
+    },
+    historyOrders() {
+      return this.customerOrders.filter((o) => o.status === 'completed' || o.status === 'canceled');
+    },
+    visibleOrders() {
+      return this.customerTab === 'history' ? this.historyOrders() : this.activeOrders();
+    },
+
+    // --- Meus Dados (editar cadastro / remover conta) ---
+    openProfileTab() {
+      this.customerTab = 'profile';
+      this.profileError = null;
+      this.profileSuccess = false;
+      this.deleteConfirming = false;
+      this.profileName = this.customerName;
+      this.profilePhoneInput = this.customerPhone;
+    },
+    async saveProfile() {
+      this.profileError = null;
+      this.profileSuccess = false;
+      if (!this.profileName.trim()) { this.profileError = 'Informe seu nome.'; return; }
+      if (!this.isPhoneValid(this.profilePhoneInput)) { this.profileError = 'Número inválido. Informe o telefone com DDD, como (67) 99999-9999.'; return; }
+
+      this.profileSaving = true;
+      try {
+        const resp = await fetch(window.location.pathname + '/meus-dados', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
+          body: JSON.stringify({ name: this.profileName.trim(), phone: this.profilePhoneInput.trim() }),
+        });
+        const data = await resp.json();
+        if (!resp.ok) { this.profileError = data.error || 'Não foi possível salvar seus dados.'; return; }
+
+        this.customerName = data.name;
+        this.customerPhone = data.phone;
+        this.profileSuccess = true;
+      } catch (err) {
+        this.profileError = 'Falha de conexão. Verifique sua internet e tente novamente.';
+      } finally {
+        this.profileSaving = false;
+      }
+    },
+    async deleteAccount() {
+      this.profileError = null;
+      this.profileDeleting = true;
+      try {
+        const resp = await fetch(window.location.pathname + '/conta/remover', {
+          method: 'POST',
+          headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
+        });
+        const data = await resp.json();
+        if (!resp.ok) { this.profileError = data.error || 'Não foi possível remover seu cadastro.'; this.profileDeleting = false; return; }
+
+        bootstrap.Modal.getInstance(document.getElementById('customerAccountModal'))?.hide();
+        this.logoutCustomer();
+      } catch (err) {
+        this.profileError = 'Falha de conexão. Verifique sua internet e tente novamente.';
+      } finally {
+        this.profileDeleting = false;
+      }
     },
   };
 }

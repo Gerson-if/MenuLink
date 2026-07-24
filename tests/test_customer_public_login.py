@@ -78,3 +78,84 @@ class TestCustomerLogin:
         if other_tenant is not None:
             resp = client.get(f"/loja/{other_tenant.slug}/meus-pedidos")
             assert resp.get_json()["logged_in"] is False
+
+
+class TestCustomerSelfService:
+    """
+    'Meus Dados': o cliente pode editar nome/telefone ou remover o próprio
+    cadastro direto pelo cardápio público, sem precisar pedir pro lojista.
+    """
+
+    def test_customer_can_update_own_name_and_phone(self, app, client):
+        _create_product_and_order(app, client, phone="67999990010")
+        client.post("/loja/braseiro-cia/entrar", data=json.dumps({"phone": "67999990010"}), content_type="application/json")
+
+        resp = client.post(
+            "/loja/braseiro-cia/meus-dados",
+            data=json.dumps({"name": "Cliente Renomeado", "phone": "67999990011"}),
+            content_type="application/json",
+        )
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["name"] == "Cliente Renomeado"
+
+        # a sessão segue válida com o telefone novo (login "migra" junto)
+        resp = client.get("/loja/braseiro-cia/meus-pedidos")
+        data = resp.get_json()
+        assert data["logged_in"] is True
+        assert data["name"] == "Cliente Renomeado"
+
+    def test_update_profile_requires_login(self, client):
+        resp = client.post(
+            "/loja/braseiro-cia/meus-dados",
+            data=json.dumps({"name": "Sem Login", "phone": "67999990012"}),
+            content_type="application/json",
+        )
+        assert resp.status_code == 401
+
+    def test_update_profile_rejects_phone_already_used_by_another_customer(self, app, client):
+        data = _create_product_and_order(app, client, phone="67999990020")
+
+        with app.app_context():
+            from app.models import Order
+
+            order = db.session.get(Order, data["order_id"])
+            product_id = order.items[0].product_id
+
+        payload = {
+            "customer_name": "Outro Cliente", "customer_phone": "67999990021",
+            "delivery_type": "pickup", "payment_method": "pix",
+            "items": [{"product_id": product_id, "quantity": 1}],
+        }
+        resp = client.post("/loja/braseiro-cia/pedido", data=json.dumps(payload), content_type="application/json")
+        assert resp.status_code == 201
+
+        client.post("/loja/braseiro-cia/entrar", data=json.dumps({"phone": "67999990020"}), content_type="application/json")
+
+        resp = client.post(
+            "/loja/braseiro-cia/meus-dados",
+            data=json.dumps({"name": "Cliente Teste", "phone": "67999990021"}),
+            content_type="application/json",
+        )
+        assert resp.status_code == 409
+
+    def test_customer_can_delete_own_account(self, app, client):
+        _create_product_and_order(app, client, phone="67999990030")
+        client.post("/loja/braseiro-cia/entrar", data=json.dumps({"phone": "67999990030"}), content_type="application/json")
+
+        resp = client.post("/loja/braseiro-cia/conta/remover")
+        assert resp.status_code == 200
+        assert resp.get_json()["ok"] is True
+
+        with app.app_context():
+            from app.models import Customer
+
+            assert Customer.query.filter_by(phone="67999990030").first() is None
+
+        # sessão foi encerrada junto
+        resp = client.get("/loja/braseiro-cia/meus-pedidos")
+        assert resp.get_json()["logged_in"] is False
+
+    def test_delete_account_requires_login(self, client):
+        resp = client.post("/loja/braseiro-cia/conta/remover")
+        assert resp.status_code == 401
