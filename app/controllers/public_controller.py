@@ -9,6 +9,7 @@ Cardápio público — acessível sem login, por slug (/loja/<slug>).
 from flask import Blueprint, current_app, jsonify, render_template, request, session
 from flask_wtf.csrf import validate_csrf, CSRFError
 from marshmallow import ValidationError
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
 from app.controllers.lojista.orders import STATUS_LABELS
@@ -406,7 +407,16 @@ def customer_update_profile(slug):
 
     customer.name = name
     customer.phone = phone
-    db.session.commit()
+    try:
+        db.session.commit()
+    except IntegrityError:
+        # Corrida: outra requisição concorrente "roubou" esse telefone
+        # entre a checagem acima e o commit (ex.: duas abas do mesmo
+        # cliente salvando ao mesmo tempo). A constraint
+        # uq_customer_tenant_phone barra a duplicata no banco — devolve
+        # um erro amigável em vez de 500.
+        db.session.rollback()
+        return jsonify({"error": "Já existe um cadastro com esse telefone nesta loja."}), 409
 
     session["customer_phone"] = phone
     return jsonify({"name": customer.name, "phone": customer.phone})

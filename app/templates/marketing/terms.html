@@ -1,0 +1,46 @@
+{% extends "marketing/_legal_layout.html" %}
+{% block title %}Termos de Uso — Comanda{% endblock %}
+
+{% block legal_content %}
+<h1 class="font-display text-white">Termos de Uso</h1>
+<p class="legal-updated">Última atualização: {{ updated_at }}</p>
+
+<p>Estes Termos de Uso regulam o acesso e uso da plataforma Comanda ("Comanda", "plataforma", "nós"), um serviço de cardápio digital e gestão de pedidos via WhatsApp para estabelecimentos comerciais ("lojista", "loja"). Ao criar uma conta ou usar o cardápio público de uma loja hospedada na Comanda, você concorda com estes termos.</p>
+
+<h2>1. O que é a Comanda</h2>
+<p>A Comanda é uma plataforma de software (SaaS) que permite a um lojista criar e gerenciar um cardápio digital, receber pedidos de clientes finais e organizá-los em um painel de controle. A Comanda não é parte na relação comercial entre o lojista e seus clientes finais — não vendemos produtos, não processamos o pagamento dos pedidos e não somos responsáveis pela qualidade, preço, prazo ou entrega do que é vendido por cada loja.</p>
+
+<h2>2. Cadastro do lojista</h2>
+<ul>
+  <li>O lojista é responsável por fornecer informações verdadeiras e mantê-las atualizadas (nome da loja, e-mail, telefone, endereço, horários de funcionamento e cardápio).</li>
+  <li>O lojista é responsável pela guarda de suas credenciais de acesso e por toda atividade realizada em sua conta.</li>
+  <li>É proibido usar a plataforma para fins ilícitos, para vender produtos proibidos por lei, ou para práticas enganosas com clientes finais.</li>
+</ul>
+
+<h2>3. Cardápio público e clientes finais</h2>
+<p>Ao fazer um pedido pelo cardápio público de uma loja, o cliente final informa nome e telefone para identificação — esses dados pertencem ao contexto daquela loja específica e não são compartilhados com outras lojas da plataforma. O cliente final pode, a qualquer momento, consultar seus pedidos, editar seu cadastro ou solicitar a remoção da própria conta diretamente pelo cardápio ("Meus Dados"). Veja mais detalhes na nossa <a href="{{ url_for('privacy_policy') }}">Política de Privacidade</a>.</p>
+
+<h2>4. Planos e pagamento da assinatura</h2>
+<p>O uso da plataforma pelo lojista pode estar sujeito a um plano de assinatura pago, cobrado recorrentemente através do nosso parceiro de pagamentos (Asaas). O não pagamento de uma cobrança vencida pode resultar na suspensão temporária do acesso ao painel e/ou do cardápio público até a regularização. Cancelamentos podem ser solicitados a qualquer momento; o acesso permanece disponível até o fim do período já pago.</p>
+
+<h2>5. Responsabilidades do lojista</h2>
+<p>O lojista é o único responsável por: preços e disponibilidade dos produtos anunciados, atendimento e comunicação com seus clientes finais, cumprimento das obrigações fiscais e de consumo aplicáveis ao seu negócio, e pela confirmação/entrega dos pedidos recebidos. A Comanda apenas disponibiliza a ferramenta que organiza esse fluxo.</p>
+
+<h2>6. Disponibilidade do serviço</h2>
+<p>Fazemos esforços razoáveis para manter a plataforma disponível e funcionando corretamente, mas não garantimos operação ininterrupta ou livre de falhas. Manutenções programadas ou emergenciais podem causar indisponibilidade temporária.</p>
+
+<h2>7. Propriedade intelectual</h2>
+<p>O software, marca e identidade visual da Comanda são de nossa propriedade. O conteúdo do cardápio (fotos, descrições, preços, banners) cadastrado por cada lojista permanece de propriedade do respectivo lojista, que é responsável por ter os direitos necessários sobre o que publica.</p>
+
+<h2>8. Suspensão e encerramento de conta</h2>
+<p>Podemos suspender ou encerrar contas que violem estes termos, pratiquem fraude, ou deixem de pagar a assinatura por período prolongado, mediante aviso quando possível. O lojista pode encerrar sua conta a qualquer momento entrando em contato conosco.</p>
+
+<h2>9. Alterações destes termos</h2>
+<p>Podemos atualizar estes Termos de Uso periodicamente para refletir mudanças na plataforma ou na legislação aplicável. Alterações relevantes serão comunicadas por e-mail ou aviso no painel. O uso continuado da plataforma após uma atualização representa aceitação dos novos termos.</p>
+
+<h2>10. Lei aplicável</h2>
+<p>Estes termos são regidos pelas leis da República Federativa do Brasil.</p>
+
+<h2>11. Contato</h2>
+<p>Dúvidas sobre estes Termos de Uso podem ser enviadas para o e-mail de suporte informado no rodapé do site ou diretamente ao lojista responsável pela loja acessada, quando a dúvida for sobre um pedido específico.</p>
+{% endblock %}

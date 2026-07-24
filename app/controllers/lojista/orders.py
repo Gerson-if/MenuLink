@@ -92,7 +92,7 @@ def orders_detail(order_id):
 def orders_revert_status(order_id):
     tenant = get_current_tenant()
     service = OrderService(tenant)
-    order = service.get_or_404(order_id)
+    order = service.get_locked_or_404(order_id)
 
     try:
         service.revert_status(order)
@@ -112,7 +112,7 @@ def orders_revert_status(order_id):
 def orders_accept(order_id):
     tenant = get_current_tenant()
     service = OrderService(tenant)
-    order = service.get_or_404(order_id)
+    order = service.get_locked_or_404(order_id)
 
     try:
         service.update_status(order, "confirmed")
@@ -129,7 +129,7 @@ def orders_accept(order_id):
 def orders_reject(order_id):
     tenant = get_current_tenant()
     service = OrderService(tenant)
-    order = service.get_or_404(order_id)
+    order = service.get_locked_or_404(order_id)
 
     try:
         service.update_status(order, "canceled")
@@ -146,7 +146,7 @@ def orders_reject(order_id):
 def orders_update_status(order_id):
     tenant = get_current_tenant()
     service = OrderService(tenant)
-    order = service.get_or_404(order_id)
+    order = service.get_locked_or_404(order_id)
 
     new_status = request.form.get("new_status", "")
     try:
