@@ -122,6 +122,24 @@
         <button type="button" class="theme-toggle-btn" :class="{ 'is-light': colorMode === 'light' }" @click="toggleColorMode()" :title="colorMode === 'light' ? 'Mudar para escuro' : 'Mudar para claro'" :aria-label="colorMode === 'light' ? 'Mudar para escuro' : 'Mudar para claro'">
           <i class="bi bi-moon-stars"></i><i class="bi bi-sun"></i>
         </button>
+        <script>
+          /* Aplica a classe "is-light" no botão sol/lua ANTES do Alpine
+             inicializar — sem isso, o botão nascia sempre no estado
+             escuro (só `class="theme-toggle-btn"`, sem `is-light`) até o
+             Alpine processar `colorMode` e adicionar a classe um instante
+             depois, disparando a transição do ícone (.3s) a cada
+             navegação (app multi-página) mesmo sem o usuário ter clicado
+             em nada — dava a impressão de o ícone "ficar atualizando"
+             sozinho ao trocar de tela no tema claro. Mesma ideia do
+             anti-flash da sidebar recolhida, logo acima. */
+          (function () {
+            try {
+              if (document.documentElement.getAttribute('data-theme') === 'light') {
+                document.currentScript.previousElementSibling.classList.add('is-light');
+              }
+            } catch (e) {}
+          })();
+        </script>
         <a href="{{ cardapio_url_path if cardapio_url_path else '/loja/' ~ current_tenant.slug }}" target="_blank" class="btn btn-sm btn-outline-chili">
           <i class="bi bi-box-arrow-up-right"></i> Ver cardápio
         </a>
