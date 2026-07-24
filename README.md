@@ -338,6 +338,15 @@ localmente).
 
 ## Como rodar localmente (SQLite)
 
+> **Dependência de sistema opcional — `ffmpeg`**: o upload de vídeo de
+> fundo da landing page (Super Admin → Landing Page → Vídeo de fundo do
+> hero) é recomprimido automaticamente via o binário `ffmpeg` (não é
+> `pip install`, precisa estar no `PATH`). Sem ele, o upload continua
+> funcionando normalmente, só que sem a recompressão — o arquivo
+> original enviado é salvo como está. Em produção, instale o pacote
+> `ffmpeg` da distribuição (ex: `apt install ffmpeg`) ou inclua-o na
+> imagem/buildpack de deploy.
+
 ```bash
 # 1. Ambiente virtual
 python3 -m venv venv

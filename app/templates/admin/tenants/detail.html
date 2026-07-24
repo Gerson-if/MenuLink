@@ -10,14 +10,18 @@
     {% include "admin/tenants/_status_badge.html" %}
     {% if tenant.blocked_reason %}<p class="text-muted-custom small mt-2 mb-0">Motivo: {{ tenant.blocked_reason }}</p>{% endif %}
   </div>
-  <a href="{{ url_for('admin.tenants_edit', tenant_id=tenant.id) }}" class="btn btn-sm btn-outline-secondary">Editar dados</a>
+  <button type="button" class="btn btn-sm btn-outline-secondary"
+          hx-get="{{ url_for('admin.tenants_edit', tenant_id=tenant.id) }}" hx-target="#tenant-drawer-body" hx-swap="innerHTML"
+          data-bs-toggle="offcanvas" data-bs-target="#tenantDrawer">Editar dados</button>
 </div>
 
 <div class="row g-4">
   <div class="col-lg-8">
+    <div id="tenant-info" hx-trigger="tenantSaved from:body" hx-get="{{ request.full_path }}" hx-select="#tenant-info" hx-swap="outerHTML" hx-disinherit="hx-select hx-trigger hx-get hx-swap">
     <div class="panel mb-4">
       <div class="panel-title"><i class="bi bi-shop"></i> Dados da loja</div>
       <dl class="row small mb-0">
+        <dt class="col-4 text-muted-custom">Nome</dt><dd class="col-8">{{ tenant.name }}</dd>
         <dt class="col-4 text-muted-custom">E-mail</dt><dd class="col-8">{{ tenant.email }}</dd>
         <dt class="col-4 text-muted-custom">Telefone</dt><dd class="col-8">{{ tenant.phone or "—" }}</dd>
         <dt class="col-4 text-muted-custom">WhatsApp</dt><dd class="col-8">{{ tenant.whatsapp_number or "—" }}</dd>
@@ -25,6 +29,7 @@
         <dt class="col-4 text-muted-custom">Link do cardápio</dt><dd class="col-8"><a href="/loja/{{ tenant.slug }}" target="_blank" class="link-chili">/loja/{{ tenant.slug }}</a></dd>
         <dt class="col-4 text-muted-custom">Cadastrada em</dt><dd class="col-8">{{ tenant.created_at.strftime("%d/%m/%Y") }}</dd>
       </dl>
+    </div>
     </div>
 
     <div class="panel">
@@ -161,6 +166,16 @@
         <button type="submit" class="btn btn-sm btn-outline-danger w-100">Excluir loja permanentemente</button>
       </form>
     </div>
+  </div>
+</div>
+
+<div class="offcanvas offcanvas-end drawer-narrow" tabindex="-1" id="tenantDrawer" aria-labelledby="tenantDrawerLabel">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="tenantDrawerLabel">Editar lojista</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+  </div>
+  <div class="offcanvas-body" id="tenant-drawer-body">
+    <div class="text-center text-muted-custom py-5"><span class="spinner-border spinner-border-sm"></span></div>
   </div>
 </div>
 {% endblock %}

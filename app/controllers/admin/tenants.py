@@ -1,4 +1,4 @@
-from flask import flash, redirect, render_template, request, url_for
+from flask import flash, make_response, redirect, render_template, request, url_for
 
 from app.forms.admin_forms import TenantCreateForm, TenantEditForm, TenantStatusReasonForm
 from app.repositories.plan_repository import PlanRepository
@@ -12,6 +12,25 @@ from app.controllers.admin import admin_bp
 def _populate_plan_choices(form):
     plans = PlanRepository().list_ordered()
     form.plan_id.choices = [(0, "Sem plano")] + [(p.id, p.name) for p in plans]
+
+
+def _rerender_tenant_fragment(tenant, *, trigger=None):
+    """Ver _rerender_banner_fragment em lojista/banners.py — mesmo padrão
+    pra gaveta de "Editar dados" no detalhe do lojista: devolve só o
+    fragmento, com HX-Trigger opcional pra avisar o painel "Dados da
+    loja" (ver tenants/detail.html, hx-trigger="tenantSaved from:body")
+    que precisa se atualizar."""
+    form = TenantEditForm(obj=tenant)
+    form.plan_id.data = tenant.plan_id or 0
+    _populate_plan_choices(form)
+    html = render_template(
+        "admin/tenants/_form_fragment.html", form=form, tenant=tenant,
+        form_action=url_for("admin.tenants_edit", tenant_id=tenant.id), hide_back_link=True,
+    )
+    response = make_response(html)
+    if trigger:
+        response.headers["HX-Trigger"] = trigger
+    return response
 
 
 @admin_bp.route("/lojistas")
@@ -38,6 +57,7 @@ def tenants_list():
 def tenants_create():
     form = TenantCreateForm()
     _populate_plan_choices(form)
+    is_hx = bool(request.headers.get("HX-Request"))
 
     if form.validate_on_submit():
         service = AdminTenantService()
@@ -56,8 +76,22 @@ def tenants_create():
             flash(str(exc), "danger")
         else:
             flash(f"Loja '{tenant.name}' criada com sucesso.", "success")
+            if is_hx:
+                # Loja nova tem muita coisa pra configurar (fatura, plano,
+                # status) — diferente de plano/banner, aqui faz mais
+                # sentido navegar de vez pro detalhe dela do que ficar na
+                # gaveta. HX-Redirect é o jeito do HTMX de forçar uma
+                # navegação de página inteira a partir de uma resposta.
+                response = make_response("")
+                response.headers["HX-Redirect"] = url_for("admin.tenants_detail", tenant_id=tenant.id)
+                return response
             return redirect(url_for("admin.tenants_detail", tenant_id=tenant.id))
 
+    if is_hx:
+        return render_template(
+            "admin/tenants/_form_fragment.html", form=form, tenant=None,
+            form_action=url_for("admin.tenants_create"), hide_back_link=True,
+        )
     return render_template("admin/tenants/form.html", form=form, tenant=None)
 
 
@@ -85,6 +119,7 @@ def tenants_detail(tenant_id):
 def tenants_edit(tenant_id):
     service = AdminTenantService()
     tenant = service.get_or_404(tenant_id)
+    is_hx = bool(request.headers.get("HX-Request"))
 
     form = TenantEditForm(obj=tenant)
     if request.method == "GET":
@@ -104,9 +139,16 @@ def tenants_edit(tenant_id):
         except TenantAdminError as exc:
             flash(str(exc), "danger")
         else:
+            if is_hx:
+                return _rerender_tenant_fragment(tenant, trigger="tenantSaved")
             flash("Dados da loja atualizados.", "success")
             return redirect(url_for("admin.tenants_detail", tenant_id=tenant.id))
 
+    if is_hx:
+        return render_template(
+            "admin/tenants/_form_fragment.html", form=form, tenant=tenant,
+            form_action=url_for("admin.tenants_edit", tenant_id=tenant.id), hide_back_link=True,
+        )
     return render_template("admin/tenants/form.html", form=form, tenant=tenant)
 
 

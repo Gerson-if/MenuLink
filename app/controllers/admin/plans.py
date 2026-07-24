@@ -1,4 +1,4 @@
-from flask import flash, redirect, render_template, request, url_for
+from flask import flash, make_response, redirect, render_template, request, url_for
 
 from app.forms.admin_forms import PlanForm
 from app.services.admin_plan_service import AdminPlanService
@@ -15,14 +15,33 @@ def plans_list():
     return render_template("admin/plans/list.html", plans=plans)
 
 
+def _rerender_plan_fragment(plan, *, trigger=None):
+    """Ver _rerender_banner_fragment em lojista/banners.py — mesmo padrão
+    pro drawer de planos: devolve só o fragmento, com HX-Trigger opcional
+    pra avisar a listagem de fundo (ver plans/list.html,
+    hx-trigger="planSaved from:body")."""
+    form = PlanForm(obj=plan)
+    form.price.data = plan.price_cents / 100
+    form.billing_cycle.data = plan.billing_cycle.value
+    html = render_template(
+        "admin/plans/_form_fragment.html", form=form, plan=plan,
+        form_action=url_for("admin.plans_edit", plan_id=plan.id), hide_back_link=True,
+    )
+    response = make_response(html)
+    if trigger:
+        response.headers["HX-Trigger"] = trigger
+    return response
+
+
 @admin_bp.route("/planos/novo", methods=["GET", "POST"])
 @super_admin_required
 def plans_create():
     form = PlanForm()
+    is_hx = bool(request.headers.get("HX-Request"))
 
     if form.validate_on_submit():
         service = AdminPlanService()
-        service.create(
+        plan = service.create(
             name=form.name.data,
             description=form.description.data,
             price_reais=float(form.price.data),
@@ -33,9 +52,16 @@ def plans_create():
             is_featured=form.is_featured.data,
             display_order=form.display_order.data,
         )
+        if is_hx:
+            return _rerender_plan_fragment(plan, trigger="planSaved")
         flash("Plano criado com sucesso.", "success")
         return redirect(url_for("admin.plans_list"))
 
+    if is_hx:
+        return render_template(
+            "admin/plans/_form_fragment.html", form=form, plan=None,
+            form_action=url_for("admin.plans_create"), hide_back_link=True,
+        )
     return render_template("admin/plans/form.html", form=form, plan=None)
 
 
@@ -44,6 +70,7 @@ def plans_create():
 def plans_edit(plan_id):
     service = AdminPlanService()
     plan = service.get_or_404(plan_id)
+    is_hx = bool(request.headers.get("HX-Request"))
 
     form = PlanForm(obj=plan)
     if request.method == "GET":
@@ -63,9 +90,16 @@ def plans_edit(plan_id):
             is_featured=form.is_featured.data,
             display_order=form.display_order.data,
         )
+        if is_hx:
+            return _rerender_plan_fragment(plan, trigger="planSaved")
         flash("Plano atualizado com sucesso.", "success")
         return redirect(url_for("admin.plans_list"))
 
+    if is_hx:
+        return render_template(
+            "admin/plans/_form_fragment.html", form=form, plan=plan,
+            form_action=url_for("admin.plans_edit", plan_id=plan.id), hide_back_link=True,
+        )
     return render_template("admin/plans/form.html", form=form, plan=plan)
 
 

@@ -1,0 +1,40 @@
+{% set form_action = form_action or request.path %}
+{% if not hide_back_link %}
+<a href="{{ url_for('admin.plans_list') }}" class="link-chili small d-inline-block mb-3">&larr; Voltar para planos</a>
+{% endif %}
+
+<div class="panel" style="max-width: 480px;" id="plan-form-panel">
+  <form method="POST" action="{{ form_action }}" novalidate
+        hx-post="{{ form_action }}" hx-target="#plan-form-panel" hx-select="#plan-form-panel" hx-swap="outerHTML">
+    {{ form.hidden_tag() }}
+
+    <div class="mb-3">{{ form.name.label(class="form-label small fw-semibold") }}{{ form.name(class="form-control", maxlength=80) }}{% for error in form.name.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}</div>
+    <div class="mb-3">{{ form.description.label(class="form-label small fw-semibold") }}{{ form.description(class="form-control", rows=3, maxlength=500) }}</div>
+    <div class="row g-2 mb-3">
+      <div class="col-6">{{ form.price.label(class="form-label small fw-semibold") }}{{ form.price(class="form-control") }}{% for error in form.price.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}</div>
+      <div class="col-6">{{ form.billing_cycle.label(class="form-label small fw-semibold") }}{{ form.billing_cycle(class="form-select") }}</div>
+    </div>
+    <div class="row g-2 mb-3">
+      <div class="col-6">{{ form.max_categories.label(class="form-label small fw-semibold") }}{{ form.max_categories(class="form-control") }}</div>
+      <div class="col-6">{{ form.max_products.label(class="form-label small fw-semibold") }}{{ form.max_products(class="form-control") }}</div>
+    </div>
+    <div class="mb-3">{{ form.max_images_per_product.label(class="form-label small fw-semibold") }}{{ form.max_images_per_product(class="form-control") }}</div>
+
+    <hr class="border-secondary-subtle mb-3">
+    <p class="upload-meta mb-2">Exibição na <a href="{{ url_for('index') }}#planos" target="_blank" class="link-chili">landing page pública</a>:</p>
+    <div class="row g-2 mb-3 align-items-end">
+      <div class="col-6">
+        <div class="form-check">
+          {{ form.is_featured(class="form-check-input") }}
+          {{ form.is_featured.label(class="form-check-label small") }}
+        </div>
+      </div>
+      <div class="col-6">
+        {{ form.display_order.label(class="form-label small fw-semibold") }}
+        {{ form.display_order(class="form-control") }}
+      </div>
+    </div>
+
+    {{ form.submit(class="btn btn-chili") }}
+  </form>
+</div>

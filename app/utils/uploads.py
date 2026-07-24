@@ -1,5 +1,5 @@
 """
-Upload de imagens (produto, banner, logo da loja, landing page).
+Upload de imagens e vídeo (produto, banner, logo da loja, landing page).
 
 Regras:
 - Extensão permitida validada tanto pelo nome do arquivo quanto abrindo o
@@ -13,9 +13,17 @@ Regras:
   isolamento também a nível de sistema de arquivos, não só de banco.
   Imagens da plataforma (sem tenant, ex: landing page) ficam em
   `static/uploads/platform/...`.
+- Vídeo (hoje só o hero da landing page, `save_platform_video`) é
+  recomprimido de verdade via o binário `ffmpeg` do sistema (não é uma
+  dependência pip) — ver `_compress_video`. Isso é opcional em tempo de
+  execução: sem `ffmpeg` no PATH do servidor, ou se a compressão falhar,
+  o upload continua funcionando com o arquivo original sem recomprimir.
 """
 
 import os
+import shutil
+import subprocess
+import tempfile
 import uuid
 
 from flask import current_app
@@ -25,6 +33,7 @@ from werkzeug.utils import secure_filename
 MAX_DIMENSION = 1600
 ICON_DIMENSION = 128
 MAX_VIDEO_BYTES = 25 * 1024 * 1024  # 25MB
+MAX_VIDEO_HEIGHT = 1080  # recompressão via ffmpeg nunca faz upscale, só limita o teto
 ALLOWED_VIDEO_EXTENSIONS = {"mp4", "webm"}
 
 
@@ -100,11 +109,14 @@ def save_platform_image(subdir: str, file_storage) -> str:
 
 
 def save_platform_video(subdir: str, file_storage) -> str:
-    """Vídeo de fundo do hero da landing page. Sem transcodificação (o
-    projeto não tem ffmpeg/lib de vídeo) — só valida extensão e tamanho
-    e salva com nome aleatório; o Super Admin deve enviar um arquivo já
-    otimizado para web (a UI de upload deixa isso explícito). O
-    <video loop muted autoplay> no template cuida do loop automático."""
+    """Vídeo de fundo do hero da landing page. Recomprime de verdade via
+    `ffmpeg` (binário do sistema, chamado por subprocess — ver
+    _compress_video), removendo o áudio (o <video autoplay muted loop>
+    nunca toca som) e limitando a altura a MAX_VIDEO_HEIGHT sem upscale.
+    `ffmpeg` é uma dependência de SISTEMA (não é `pip install`) — se o
+    binário não estiver disponível no PATH do servidor, ou a compressão
+    falhar/travar por qualquer motivo, cai de volta pro arquivo original
+    sem recomprimir. Nunca bloqueamos um upload por causa disso."""
     filename = secure_filename(file_storage.filename or "")
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
     if not filename or ext not in ALLOWED_VIDEO_EXTENSIONS:
@@ -120,10 +132,47 @@ def save_platform_video(subdir: str, file_storage) -> str:
     absolute_dir = os.path.join(current_app.config["UPLOAD_FOLDER"], "platform", subdir)
     os.makedirs(absolute_dir, exist_ok=True)
 
-    new_filename = f"{uuid.uuid4().hex}.{ext}"
-    file_storage.save(os.path.join(absolute_dir, new_filename))
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_input = os.path.join(tmp_dir, f"input.{ext}")
+        file_storage.save(tmp_input)
+
+        compressed_path = _compress_video(tmp_input, tmp_dir)
+        if compressed_path:
+            new_filename = f"{uuid.uuid4().hex}.mp4"
+            shutil.move(compressed_path, os.path.join(absolute_dir, new_filename))
+        else:
+            new_filename = f"{uuid.uuid4().hex}.{ext}"
+            shutil.move(tmp_input, os.path.join(absolute_dir, new_filename))
 
     return os.path.join(relative_dir, new_filename).replace(os.sep, "/")
+
+
+def _compress_video(input_path: str, tmp_dir: str) -> str | None:
+    """Recomprime `input_path` via ffmpeg, sempre normalizando pra
+    `.mp4` (libx264) independente do formato de entrada (mp4 ou webm).
+    Retorna o caminho do arquivo de saída, ou None se o ffmpeg não
+    estiver disponível ou a compressão falhar/travar — quem chamou usa
+    o arquivo original nesse caso."""
+    if not shutil.which("ffmpeg"):
+        return None
+
+    output_path = os.path.join(tmp_dir, "output.mp4")
+    command = [
+        "ffmpeg", "-y", "-i", input_path,
+        "-vf", f"scale=-2:min({MAX_VIDEO_HEIGHT}\\,ih)",
+        "-c:v", "libx264", "-crf", "28", "-preset", "fast",
+        "-an", "-movflags", "+faststart",
+        output_path,
+    ]
+    try:
+        result = subprocess.run(command, capture_output=True, timeout=120)
+    except (subprocess.TimeoutExpired, OSError):
+        return None
+
+    if result.returncode != 0 or not os.path.isfile(output_path) or os.path.getsize(output_path) == 0:
+        return None
+
+    return output_path
 
 
 def _save_validated_image(relative_subdir: str, file_storage) -> str:

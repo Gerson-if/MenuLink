@@ -40,6 +40,12 @@
         {{ form.logo() }}
       </label>
       {% for error in form.logo.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+      {% if tenant.logo_path %}
+      <div class="form-check mt-2">
+        {{ form.remove_logo(class="form-check-input") }}
+        {{ form.remove_logo.label(class="form-check-label small text-muted-custom") }}
+      </div>
+      {% endif %}
     </div>
 
     <hr class="my-4">

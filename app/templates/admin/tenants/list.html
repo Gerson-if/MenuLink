@@ -17,7 +17,9 @@
     <button type="submit" class="btn btn-sm btn-outline-secondary">Filtrar</button>
     {% if term or status %}<a href="{{ url_for('admin.tenants_list') }}" class="btn btn-sm btn-outline-secondary">Limpar</a>{% endif %}
   </form>
-  <a href="{{ url_for('admin.tenants_create') }}" class="btn btn-chili btn-sm">+ Novo lojista</a>
+  <button type="button" class="btn btn-chili btn-sm"
+          hx-get="{{ url_for('admin.tenants_create') }}" hx-target="#tenant-drawer-body" hx-swap="innerHTML"
+          data-bs-toggle="offcanvas" data-bs-target="#tenantDrawer">+ Novo lojista</button>
 </div>
 
 {% if tenants %}
@@ -45,4 +47,14 @@
 <div class="panel empty-state"><i class="bi bi-shop"></i>Nenhum lojista encontrado{% if term or status %} com esse filtro{% endif %}.</div>
 {% endif %}
 {% include "_pagination.html" %}
+
+<div class="offcanvas offcanvas-end drawer-narrow" tabindex="-1" id="tenantDrawer" aria-labelledby="tenantDrawerLabel">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="tenantDrawerLabel">Novo lojista</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+  </div>
+  <div class="offcanvas-body" id="tenant-drawer-body">
+    <div class="text-center text-muted-custom py-5"><span class="spinner-border spinner-border-sm"></span></div>
+  </div>
+</div>
 {% endblock %}

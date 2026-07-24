@@ -119,7 +119,9 @@ def settings_landing():
                 hero_title=form.hero_title.data,
                 hero_subtitle=form.hero_subtitle.data,
                 hero_image_file=form.hero_image.data,
+                remove_hero_image=form.remove_hero_image.data,
                 hero_video_file=form.hero_video.data,
+                remove_hero_video=form.remove_hero_video.data,
                 theme=form.theme.data,
                 features=[
                     {
@@ -130,6 +132,7 @@ def settings_landing():
                     for i in range(3)
                 ],
                 feature_image_files=[getattr(form, f"feature{i + 1}_image").data for i in range(3)],
+                remove_feature_images=[getattr(form, f"remove_feature{i + 1}_image").data for i in range(3)],
             )
         except (InvalidImageError, InvalidVideoError) as exc:
             flash(str(exc), "danger")

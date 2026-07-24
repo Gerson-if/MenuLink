@@ -3,50 +3,5 @@
 {% block page_title %}{{ 'Editar lojista' if tenant else 'Novo lojista' }}{% endblock %}
 
 {% block panel_content %}
-<a href="{{ url_for('admin.tenants_list') }}" class="link-chili small d-inline-block mb-3">&larr; Voltar para lojistas</a>
-
-<div class="panel" style="max-width: 560px;">
-  <form method="POST" novalidate>
-    {{ form.hidden_tag() }}
-    <div class="text-muted-custom small fw-bold text-uppercase mb-3">Dados da loja</div>
-
-    <div class="mb-3">
-      {{ form.name.label(class="form-label small fw-semibold") }}
-      {{ form.name(class="form-control", maxlength=150) }}
-      {% for error in form.name.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
-    </div>
-    <div class="mb-3">
-      {{ form.email.label(class="form-label small fw-semibold") }}
-      {{ form.email(class="form-control", maxlength=180) }}
-      {% for error in form.email.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
-    </div>
-    <div class="row g-2 mb-3">
-      <div class="col-6">{{ form.phone.label(class="form-label small fw-semibold") }}{{ form.phone(class="form-control", maxlength=20) }}</div>
-      <div class="col-6">{{ form.whatsapp_number.label(class="form-label small fw-semibold") }}{{ form.whatsapp_number(class="form-control", maxlength=20) }}</div>
-    </div>
-    <div class="mb-3">{{ form.plan_id.label(class="form-label small fw-semibold") }}{{ form.plan_id(class="form-select") }}</div>
-
-    {% if not tenant %}
-    <div class="text-muted-custom small fw-bold text-uppercase mb-3 mt-4">Acesso do lojista</div>
-    <div class="mb-3">
-      {{ form.owner_name.label(class="form-label small fw-semibold") }}
-      {{ form.owner_name(class="form-control", maxlength=150) }}
-      {% for error in form.owner_name.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
-    </div>
-    <div class="mb-3">
-      {{ form.owner_email.label(class="form-label small fw-semibold") }}
-      {{ form.owner_email(class="form-control", maxlength=180) }}
-      {% for error in form.owner_email.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
-      <div class="upload-meta">E-mail que o lojista vai usar para fazer login.</div>
-    </div>
-    <div class="mb-4">
-      {{ form.owner_password.label(class="form-label small fw-semibold") }}
-      {{ form.owner_password(class="form-control", maxlength=128) }}
-      {% for error in form.owner_password.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
-    </div>
-    {% endif %}
-
-    {{ form.submit(class="btn btn-chili") }}
-  </form>
-</div>
+{% include "admin/tenants/_form_fragment.html" %}
 {% endblock %}

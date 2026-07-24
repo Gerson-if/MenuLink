@@ -5,53 +5,71 @@
 {% block panel_content %}
 {% include "lojista/settings/_tabs.html" %}
 
-<div class="panel" style="max-width: 480px;">
-  <div class="panel-title"><i class="bi bi-palette"></i> Cor de destaque do cardápio</div>
-  <p class="upload-meta mb-3">
-    Essa é a cor usada nos botões, preços e destaques do seu cardápio público
-    (a página que o cliente vê ao escanear o QR Code ou abrir o link da loja).
-    Não afeta este painel de gestão.
-  </p>
-
-  <form method="POST" novalidate>
-    {{ form.hidden_tag() }}
-
-    {# Seletor de cor nativo + campo de texto hexadecimal, sincronizados
-       nos dois sentidos via Alpine — só o input[type=color] é de fato
-       o campo do form (name="accent_color"); o campo de texto é uma UI
-       auxiliar que escreve no valor dele antes do submit. O $watch só
-       aplica o valor digitado ao seletor quando já for um hex completo
-       e válido (6 dígitos) — evita "resetar" o seletor a cada tecla
-       digitada, enquanto o hex ainda está incompleto. #}
-    <div class="mb-3 d-flex align-items-center gap-3"
-         x-data='{ hex: {{ form.accent_color.data|tojson }} }'
-         x-init="$watch('hex', value => { if (/^#[0-9a-fA-F]{6}$/.test(value)) { $refs.accentPicker.value = value; } })">
-      {{ form.accent_color(class="form-control form-control-color", style="width: 70px; height: 46px; padding: 4px;", **{"x-ref": "accentPicker", "@input": "hex = $event.target.value"}) }}
-      <input type="text" class="form-control" style="max-width: 130px;" maxlength="7" placeholder="#E8A33D" x-model="hex">
-      <span class="text-muted-custom small">Escolha uma cor que combine com a identidade da sua loja.</span>
+<div class="settings-option-grid" style="max-width: 480px;">
+  <button type="button" class="settings-option" data-bs-toggle="offcanvas" data-bs-target="#editAppearance" aria-controls="editAppearance">
+    <div class="settings-option-head">
+      <div class="settings-option-icon"><i class="bi bi-palette"></i></div>
+      <span class="settings-option-swatch" style="background: {{ form.accent_color.data }};"></span>
     </div>
-    {% for error in form.accent_color.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+    <div class="settings-option-title">Cor e tema do cardápio</div>
+    <div class="settings-option-preview">Tema {{ dict(form.theme_mode.choices).get(form.theme_mode.data, form.theme_mode.data)|lower }} — cor de destaque {{ form.accent_color.data }}.</div>
+  </button>
+</div>
 
-    <div class="form-check mb-4">
-      {{ form.reset_to_default(class="form-check-input") }}
-      {{ form.reset_to_default.label(class="form-check-label") }}
-    </div>
+<div class="offcanvas offcanvas-end drawer-narrow" tabindex="-1" id="editAppearance" aria-labelledby="editAppearanceLabel">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="editAppearanceLabel"><i class="bi bi-palette me-2"></i>Cor de destaque do cardápio</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+  </div>
+  <div class="offcanvas-body d-flex flex-column">
+    <p class="upload-meta mb-3">
+      Essa é a cor usada nos botões, preços e destaques do seu cardápio público
+      (a página que o cliente vê ao escanear o QR Code ou abrir o link da loja).
+      Não afeta este painel de gestão.
+    </p>
 
-    <div class="mb-4">
-      {{ form.theme_mode.label(class="form-label small fw-semibold d-block") }}
-      <div class="btn-group" role="group">
-        {% for value, label in form.theme_mode.choices %}
-        <input type="radio" class="btn-check" name="theme_mode" id="theme_mode_{{ value }}" value="{{ value }}" {{ "checked" if form.theme_mode.data == value }} autocomplete="off">
-        <label class="btn btn-outline-chili" for="theme_mode_{{ value }}">{{ label }}</label>
-        {% endfor %}
+    <form method="POST" novalidate>
+      {{ form.hidden_tag() }}
+
+      {# Seletor de cor nativo + campo de texto hexadecimal, sincronizados
+         nos dois sentidos via Alpine — só o input[type=color] é de fato
+         o campo do form (name="accent_color"); o campo de texto é uma UI
+         auxiliar que escreve no valor dele antes do submit. O $watch só
+         aplica o valor digitado ao seletor quando já for um hex completo
+         e válido (6 dígitos) — evita "resetar" o seletor a cada tecla
+         digitada, enquanto o hex ainda está incompleto. #}
+      <div class="mb-3 d-flex align-items-center gap-3"
+           x-data='{ hex: {{ form.accent_color.data|tojson }} }'
+           x-init="$watch('hex', value => { if (/^#[0-9a-fA-F]{6}$/.test(value)) { $refs.accentPicker.value = value; } })">
+        {{ form.accent_color(class="form-control form-control-color", style="width: 70px; height: 46px; padding: 4px;", **{"x-ref": "accentPicker", "@input": "hex = $event.target.value"}) }}
+        <input type="text" class="form-control" style="max-width: 130px;" maxlength="7" placeholder="#E8A33D" x-model="hex">
+        <span class="text-muted-custom small">Escolha uma cor que combine com a identidade da sua loja.</span>
       </div>
-      <p class="upload-meta mb-0 mt-2">O tema claro/escuro muda o fundo e as cores do cardápio público — não afeta este painel.</p>
-    </div>
+      {% for error in form.accent_color.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
 
-    {{ form.submit(class="btn btn-chili") }}
-    <a href="{{ url_for('public.store_home', slug=tenant.slug) }}" target="_blank" class="btn btn-outline-secondary">
-      <i class="bi bi-box-arrow-up-right"></i> Ver cardápio
-    </a>
-  </form>
+      <div class="form-check mb-4">
+        {{ form.reset_to_default(class="form-check-input") }}
+        {{ form.reset_to_default.label(class="form-check-label") }}
+      </div>
+
+      <div class="mb-4">
+        {{ form.theme_mode.label(class="form-label small fw-semibold d-block") }}
+        <div class="btn-group" role="group">
+          {% for value, label in form.theme_mode.choices %}
+          <input type="radio" class="btn-check" name="theme_mode" id="theme_mode_{{ value }}" value="{{ value }}" {{ "checked" if form.theme_mode.data == value }} autocomplete="off">
+          <label class="btn btn-outline-chili" for="theme_mode_{{ value }}">{{ label }}</label>
+          {% endfor %}
+        </div>
+        <p class="upload-meta mb-0 mt-2">O tema claro/escuro muda o fundo e as cores do cardápio público — não afeta este painel.</p>
+      </div>
+
+      <div class="drawer-actions mt-auto">
+        {{ form.submit(class="btn btn-chili") }}
+        <a href="{{ url_for('public.store_home', slug=tenant.slug) }}" target="_blank" class="btn btn-outline-secondary">
+          <i class="bi bi-box-arrow-up-right"></i> Ver cardápio
+        </a>
+      </div>
+    </form>
+  </div>
 </div>
 {% endblock %}

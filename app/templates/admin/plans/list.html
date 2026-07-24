@@ -5,8 +5,12 @@
 {% block panel_content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
   <a href="{{ url_for('index') }}#planos" target="_blank" class="link-chili small"><i class="bi bi-box-arrow-up-right"></i> Ver na landing page</a>
-  <a href="{{ url_for('admin.plans_create') }}" class="btn btn-chili btn-sm">+ Novo plano</a>
+  <button type="button" class="btn btn-chili btn-sm"
+          hx-get="{{ url_for('admin.plans_create') }}" hx-target="#plan-drawer-body" hx-swap="innerHTML"
+          data-bs-toggle="offcanvas" data-bs-target="#planDrawer">+ Novo plano</button>
 </div>
+
+<div id="plans-grid-wrap" hx-trigger="planSaved from:body" hx-get="{{ request.full_path }}" hx-select="#plans-grid-wrap" hx-swap="outerHTML" hx-disinherit="hx-select hx-trigger hx-get hx-swap">
 
 {% if plans %}
 <div class="row g-4">
@@ -28,7 +32,9 @@
         <li>Produtos: {{ plan.max_products if plan.max_products is not none else "ilimitado" }}</li>
         <li>Imagens por produto: {{ plan.max_images_per_product }}</li>
       </ul>
-      <a href="{{ url_for('admin.plans_edit', plan_id=plan.id) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
+      <button type="button" class="btn btn-sm btn-outline-secondary"
+              hx-get="{{ url_for('admin.plans_edit', plan_id=plan.id) }}" hx-target="#plan-drawer-body" hx-swap="innerHTML"
+              data-bs-toggle="offcanvas" data-bs-target="#planDrawer">Editar</button>
     </div>
   </div>
   {% endfor %}
@@ -36,4 +42,16 @@
 {% else %}
 <div class="panel empty-state"><i class="bi bi-sliders"></i>Nenhum plano cadastrado ainda.</div>
 {% endif %}
+
+</div>
+
+<div class="offcanvas offcanvas-end drawer-narrow" tabindex="-1" id="planDrawer" aria-labelledby="planDrawerLabel">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="planDrawerLabel">Plano</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+  </div>
+  <div class="offcanvas-body" id="plan-drawer-body">
+    <div class="text-center text-muted-custom py-5"><span class="spinner-border spinner-border-sm"></span></div>
+  </div>
+</div>
 {% endblock %}

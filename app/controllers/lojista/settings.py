@@ -24,6 +24,7 @@ def settings_store():
             service.update_store_info(
                 name=form.name.data, whatsapp_number=form.whatsapp_number.data,
                 phone=form.phone.data, logo_file_storage=form.logo.data,
+                remove_logo=form.remove_logo.data,
                 address_street=form.address_street.data, address_number=form.address_number.data,
                 address_neighborhood=form.address_neighborhood.data, address_city=form.address_city.data,
             )

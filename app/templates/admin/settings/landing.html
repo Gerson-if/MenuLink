@@ -2,9 +2,24 @@
 {% block title %}Landing Page — Comanda Admin{% endblock %}
 {% block page_title %}Landing page{% endblock %}
 
+{# Fora de qualquer {% block %} de propósito: variáveis de topo de um
+   template filho ficam visíveis em TODOS os blocos dele (panel_content
+   E extra_scripts), diferente de um {% set %} dentro de um bloco só —
+   esse ficaria preso ao escopo daquele bloco. Precisamos dos flags de
+   erro tanto no grid de cards (panel_content) quanto no script que
+   reabre a gaveta certa sozinha (extra_scripts). #}
+{% set content = settings.landing_content_or_default %}
+{% set hero_errors = form.hero_title.errors or form.hero_subtitle.errors %}
+{% set arte_errors = form.hero_image.errors %}
+{% set video_errors = form.hero_video.errors %}
+{% set destaques_errors = form.feature1_icon.errors or form.feature1_title.errors or form.feature1_description.errors or form.feature1_image.errors
+    or form.feature2_icon.errors or form.feature2_title.errors or form.feature2_description.errors or form.feature2_image.errors
+    or form.feature3_icon.errors or form.feature3_title.errors or form.feature3_description.errors or form.feature3_image.errors %}
+{% set theme_label = dict(form.theme.choices).get(content.theme, content.theme) %}
+
 {% block extra_head %}
 <style>
-  .landing-editor { max-width: 780px; }
+  .landing-editor { max-width: 900px; }
   .theme-swatch-group { display: flex; gap: 12px; flex-wrap: wrap; }
   .theme-swatch { cursor: pointer; }
   .theme-swatch input { position: absolute; opacity: 0; pointer-events: none; }
@@ -19,114 +34,237 @@
 {% endblock %}
 
 {% block panel_content %}
-{% set content = settings.landing_content_or_default %}
 <p class="text-muted-custom small mb-4">
   Edita a <a href="{{ url_for('index') }}" target="_blank" class="link-chili">página inicial pública</a>
-  (a que os visitantes veem antes de criar uma conta).
+  (a que os visitantes veem antes de criar uma conta). Clique em uma seção abaixo para editá-la.
 </p>
 
-<form method="POST" enctype="multipart/form-data" novalidate class="landing-editor">
+{# Um único <form> por trás de tudo — os "cards" de opção só abrem a
+   gaveta (offcanvas) da seção correspondente (botões type="button",
+   não submetem nada sozinhos); os campos de cada seção continuam
+   dentro deste mesmo <form>, só reorganizados visualmente em gavetas
+   em vez de um formulário longo e centralizado. Isso preserva o envio
+   único já validado no controller (settings_landing), sem precisar de
+   um endpoint por seção. #}
+<form method="POST" enctype="multipart/form-data" novalidate class="landing-editor" id="landingContentForm">
   {{ form.hidden_tag() }}
 
-  <div class="panel mb-3">
-    <div class="panel-title"><i class="bi bi-type"></i> Hero — título e subtítulo</div>
+  <div class="settings-option-grid">
+    <button type="button" class="settings-option" data-bs-toggle="offcanvas" data-bs-target="#editHero" aria-controls="editHero">
+      <div class="settings-option-head">
+        <div class="settings-option-icon"><i class="bi bi-type"></i></div>
+        {% if hero_errors %}<span class="settings-option-badge"><i class="bi bi-exclamation-triangle-fill"></i> Erro</span>{% endif %}
+      </div>
+      <div class="settings-option-title">Hero — título e subtítulo</div>
+      <div class="settings-option-preview">{{ content.hero_title|truncate(70) }}</div>
+    </button>
 
-    <div class="mb-3">
-      {{ form.hero_title.label(class="form-label small fw-semibold") }}
-      {{ form.hero_title(class="form-control") }}
-      {% for error in form.hero_title.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
-    </div>
-
-    <div class="mb-0">
-      {{ form.hero_subtitle.label(class="form-label small fw-semibold") }}
-      {{ form.hero_subtitle(class="form-control", rows=3) }}
-      {% for error in form.hero_subtitle.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
-    </div>
-  </div>
-
-  <div class="panel mb-3">
-    <div class="panel-title"><i class="bi bi-image"></i> Arte de destaque</div>
-    <p class="upload-meta mb-3">Imagem estática exibida ao lado do texto do hero (ignorada se um vídeo de fundo for enviado abaixo).</p>
-    <label class="dropzone d-block" onclick="this.querySelector('input[type=file]').click()">
-      <img class="dropzone-preview {{ '' if content.hero_image else 'd-none' }}" alt=""
-           src="{{ url_for('static', filename=content.hero_image) if content.hero_image else '' }}">
-      <i class="bi bi-cloud-arrow-up d-block {{ 'd-none' if content.hero_image }}"></i>
-      <span class="small {{ 'd-none' if content.hero_image }}">Clique para enviar uma imagem de destaque</span>
-      {{ form.hero_image() }}
-    </label>
-    {% for error in form.hero_image.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
-  </div>
-
-  <div class="panel mb-3">
-    <div class="panel-title"><i class="bi bi-camera-reels"></i> Vídeo de fundo do hero</div>
-    <p class="upload-meta mb-3">
-      Opcional — toca em loop automático atrás do texto do hero (tem prioridade sobre a arte de destaque).
-      MP4 ou WEBM, até 25MB. Envie um arquivo já otimizado/comprimido para web — o sistema não reprocessa o vídeo.
-    </p>
-    <label class="dropzone d-block" onclick="this.querySelector('input[type=file]').click()">
-      {% if content.hero_video %}
-      <video src="{{ url_for('static', filename=content.hero_video) }}" muted loop autoplay playsinline class="dropzone-preview"></video>
+    <button type="button" class="settings-option" data-bs-toggle="offcanvas" data-bs-target="#editArte" aria-controls="editArte">
+      <div class="settings-option-head">
+        <div class="settings-option-icon"><i class="bi bi-image"></i></div>
+        {% if arte_errors %}<span class="settings-option-badge"><i class="bi bi-exclamation-triangle-fill"></i> Erro</span>{% endif %}
+      </div>
+      <div class="settings-option-title">Arte de destaque</div>
+      {% if content.hero_image %}
+      <img class="settings-option-thumb" src="{{ url_for('static', filename=content.hero_image) }}" alt="">
       {% else %}
-      <i class="bi bi-cloud-arrow-up d-block"></i>
-      <span class="small">Clique para enviar um vídeo de fundo</span>
+      <div class="settings-option-preview">Nenhuma imagem enviada</div>
       {% endif %}
-      {{ form.hero_video() }}
-    </label>
-    {% for error in form.hero_video.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+    </button>
+
+    <button type="button" class="settings-option" data-bs-toggle="offcanvas" data-bs-target="#editVideo" aria-controls="editVideo">
+      <div class="settings-option-head">
+        <div class="settings-option-icon"><i class="bi bi-camera-reels"></i></div>
+        {% if video_errors %}<span class="settings-option-badge"><i class="bi bi-exclamation-triangle-fill"></i> Erro</span>{% endif %}
+      </div>
+      <div class="settings-option-title">Vídeo de fundo do hero</div>
+      <div class="settings-option-preview">{{ "Vídeo configurado — toca em loop atrás do texto" if content.hero_video else "Nenhum vídeo enviado" }}</div>
+    </button>
+
+    <button type="button" class="settings-option" data-bs-toggle="offcanvas" data-bs-target="#editTema" aria-controls="editTema">
+      <div class="settings-option-head">
+        <div class="settings-option-icon"><i class="bi bi-palette2"></i></div>
+      </div>
+      <div class="settings-option-title">Tema da landing page</div>
+      <div class="settings-option-preview">{{ theme_label }}</div>
+    </button>
+
+    <button type="button" class="settings-option" data-bs-toggle="offcanvas" data-bs-target="#editDestaques" aria-controls="editDestaques">
+      <div class="settings-option-head">
+        <div class="settings-option-icon"><i class="bi bi-grid-3x3-gap"></i></div>
+        {% if destaques_errors %}<span class="settings-option-badge"><i class="bi bi-exclamation-triangle-fill"></i> Erro</span>{% endif %}
+      </div>
+      <div class="settings-option-title">Destaques (3 caixas)</div>
+      <div class="settings-option-preview">{{ content.features|length }} destaque(s) configurado(s)</div>
+    </button>
   </div>
 
-  <div class="panel mb-3">
-    <div class="panel-title"><i class="bi bi-palette2"></i> Tema da landing page</div>
-    <div class="theme-swatch-group">
-      {% for value, label in form.theme.choices %}
-      <label class="theme-swatch">
-        <input type="radio" name="theme" value="{{ value }}" {{ "checked" if form.theme.data == value }}>
-        <div class="theme-swatch-card">
-          <div class="theme-swatch-preview" style="background: {{ {'chili': 'linear-gradient(135deg,#1A1612,#E54A36)', 'blue': 'linear-gradient(135deg,#0F111A,#4361EE)', 'light': 'linear-gradient(135deg,#F7F1E4,#E54A36)'}[value] }};"></div>
-          <span class="theme-swatch-label">{{ label }}</span>
-        </div>
+  <div class="offcanvas offcanvas-end drawer-narrow" tabindex="-1" id="editHero">
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title"><i class="bi bi-type me-2"></i>Hero — título e subtítulo</h5>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+    </div>
+    <div class="offcanvas-body d-flex flex-column">
+      <div class="mb-3">
+        {{ form.hero_title.label(class="form-label small fw-semibold") }}
+        {{ form.hero_title(class="form-control") }}
+        {% for error in form.hero_title.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+      </div>
+      <div class="mb-0">
+        {{ form.hero_subtitle.label(class="form-label small fw-semibold") }}
+        {{ form.hero_subtitle(class="form-control", rows=4) }}
+        {% for error in form.hero_subtitle.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+      </div>
+      <div class="drawer-actions mt-auto">{{ form.submit(class="btn btn-chili w-100") }}</div>
+    </div>
+  </div>
+
+  <div class="offcanvas offcanvas-end drawer-narrow" tabindex="-1" id="editArte">
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title"><i class="bi bi-image me-2"></i>Arte de destaque</h5>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+    </div>
+    <div class="offcanvas-body d-flex flex-column">
+      <p class="upload-meta mb-3">Imagem estática exibida ao lado do texto do hero (ignorada se um vídeo de fundo for enviado abaixo).</p>
+      <label class="dropzone d-block" onclick="this.querySelector('input[type=file]').click()">
+        <img class="dropzone-preview {{ '' if content.hero_image else 'd-none' }}" alt=""
+             src="{{ url_for('static', filename=content.hero_image) if content.hero_image else '' }}">
+        <i class="bi bi-cloud-arrow-up d-block {{ 'd-none' if content.hero_image }}"></i>
+        <span class="small {{ 'd-none' if content.hero_image }}">Clique para enviar uma imagem de destaque</span>
+        {{ form.hero_image() }}
       </label>
-      {% endfor %}
+      {% for error in form.hero_image.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+      {% if content.hero_image %}
+      <div class="form-check mt-2">
+        {{ form.remove_hero_image(class="form-check-input") }}
+        {{ form.remove_hero_image.label(class="form-check-label small text-muted-custom") }}
+      </div>
+      {% endif %}
+      <div class="drawer-actions mt-auto">{{ form.submit(class="btn btn-chili w-100") }}</div>
     </div>
   </div>
 
-  <div class="panel mb-3">
-    <div class="panel-title"><i class="bi bi-grid-3x3-gap"></i> Destaques (3 caixas)</div>
-    <p class="upload-meta mb-3">
-      Cada destaque usa uma imagem enviada aqui, se houver uma; senão cai no ícone do
-      <a href="https://icons.getbootstrap.com/" target="_blank" class="link-chili">Bootstrap Icons</a> (ex: <code>bi-phone-vibrate</code>).
-    </p>
-
-    {% for i in [1, 2, 3] %}
-    {% set feature = content.features[i - 1] if content.features|length >= i else {} %}
-    <div class="row g-2 mb-4 align-items-start {{ 'pb-4 border-bottom' if i < 3 }}" style="{{ 'border-color: var(--card-border) !important;' if i < 3 }}">
-      <div class="col-md-3">
-        {{ (form['feature%d_icon' % i]).label(class="form-label small fw-semibold") }}
-        {{ (form['feature%d_icon' % i])(class="form-control", placeholder="bi-star") }}
-      </div>
-      <div class="col-md-4">
-        {{ (form['feature%d_title' % i]).label(class="form-label small fw-semibold") }}
-        {{ (form['feature%d_title' % i])(class="form-control") }}
-      </div>
-      <div class="col-md-5">
-        {{ (form['feature%d_description' % i]).label(class="form-label small fw-semibold") }}
-        {{ (form['feature%d_description' % i])(class="form-control", rows=2) }}
-      </div>
-      <div class="col-12">
-        {{ (form['feature%d_image' % i]).label(class="form-label small fw-semibold") }}
-        <label class="dropzone d-block" style="padding: 12px;" onclick="this.querySelector('input[type=file]').click()">
-          <img class="dropzone-preview {{ '' if feature.image else 'd-none' }}" alt="" style="max-height: 70px;"
-               src="{{ url_for('static', filename=feature.image) if feature.image else '' }}">
-          <i class="bi bi-cloud-arrow-up d-block {{ 'd-none' if feature.image }}" style="font-size: 1.2rem; margin-bottom: 0;"></i>
-          <span class="small {{ 'd-none' if feature.image }}">Clique para enviar uma imagem (opcional)</span>
-          {{ (form['feature%d_image' % i])() }}
-        </label>
-        {% for error in (form['feature%d_image' % i]).errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
-      </div>
+  <div class="offcanvas offcanvas-end drawer-narrow" tabindex="-1" id="editVideo">
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title"><i class="bi bi-camera-reels me-2"></i>Vídeo de fundo do hero</h5>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
     </div>
-    {% endfor %}
+    <div class="offcanvas-body d-flex flex-column">
+      <p class="upload-meta mb-3">
+        Opcional — toca em loop automático atrás do texto do hero (tem prioridade sobre a arte de destaque).
+        MP4 ou WEBM, até 25MB. O vídeo é otimizado automaticamente ao enviar (recomprimido e limitado a 1080p).
+      </p>
+      <label class="dropzone d-block" onclick="this.querySelector('input[type=file]').click()">
+        {% if content.hero_video %}
+        <video src="{{ url_for('static', filename=content.hero_video) }}" muted loop autoplay playsinline class="dropzone-preview"></video>
+        {% else %}
+        <i class="bi bi-cloud-arrow-up d-block"></i>
+        <span class="small">Clique para enviar um vídeo de fundo</span>
+        {% endif %}
+        {{ form.hero_video() }}
+      </label>
+      {% for error in form.hero_video.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+      {% if content.hero_video %}
+      <div class="form-check mt-2">
+        {{ form.remove_hero_video(class="form-check-input") }}
+        {{ form.remove_hero_video.label(class="form-check-label small text-muted-custom") }}
+      </div>
+      {% endif %}
+      <div class="drawer-actions mt-auto">{{ form.submit(class="btn btn-chili w-100") }}</div>
+    </div>
+  </div>
 
-    {{ form.submit(class="btn btn-chili mt-2") }}
+  <div class="offcanvas offcanvas-end drawer-narrow" tabindex="-1" id="editTema">
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title"><i class="bi bi-palette2 me-2"></i>Tema da landing page</h5>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+    </div>
+    <div class="offcanvas-body d-flex flex-column">
+      <div class="theme-swatch-group">
+        {% for value, label in form.theme.choices %}
+        <label class="theme-swatch">
+          <input type="radio" name="theme" value="{{ value }}" {{ "checked" if form.theme.data == value }}>
+          <div class="theme-swatch-card">
+            <div class="theme-swatch-preview" style="background: {{ {'chili': 'linear-gradient(135deg,#1A1612,#E54A36)', 'blue': 'linear-gradient(135deg,#0F111A,#4361EE)', 'light': 'linear-gradient(135deg,#F7F1E4,#E54A36)'}[value] }};"></div>
+            <span class="theme-swatch-label">{{ label }}</span>
+          </div>
+        </label>
+        {% endfor %}
+      </div>
+      <div class="drawer-actions mt-auto">{{ form.submit(class="btn btn-chili w-100") }}</div>
+    </div>
+  </div>
+
+  <div class="offcanvas offcanvas-end drawer-wide" tabindex="-1" id="editDestaques">
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title"><i class="bi bi-grid-3x3-gap me-2"></i>Destaques (3 caixas)</h5>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+    </div>
+    <div class="offcanvas-body d-flex flex-column">
+      <p class="upload-meta mb-3">
+        Cada destaque usa uma imagem enviada aqui, se houver uma; senão cai no ícone do
+        <a href="https://icons.getbootstrap.com/" target="_blank" class="link-chili">Bootstrap Icons</a> (ex: <code>bi-phone-vibrate</code>).
+      </p>
+
+      {% for i in [1, 2, 3] %}
+      {% set feature = content.features[i - 1] if content.features|length >= i else {} %}
+      <div class="row g-2 mb-4 align-items-start {{ 'pb-4 border-bottom' if i < 3 }}" style="{{ 'border-color: var(--card-border) !important;' if i < 3 }}">
+        <div class="col-md-3">
+          {{ (form['feature%d_icon' % i]).label(class="form-label small fw-semibold") }}
+          {{ (form['feature%d_icon' % i])(class="form-control", placeholder="bi-star") }}
+        </div>
+        <div class="col-md-4">
+          {{ (form['feature%d_title' % i]).label(class="form-label small fw-semibold") }}
+          {{ (form['feature%d_title' % i])(class="form-control") }}
+        </div>
+        <div class="col-md-5">
+          {{ (form['feature%d_description' % i]).label(class="form-label small fw-semibold") }}
+          {{ (form['feature%d_description' % i])(class="form-control", rows=2) }}
+        </div>
+        <div class="col-12">
+          {{ (form['feature%d_image' % i]).label(class="form-label small fw-semibold") }}
+          <label class="dropzone d-block" style="padding: 12px;" onclick="this.querySelector('input[type=file]').click()">
+            <img class="dropzone-preview {{ '' if feature.image else 'd-none' }}" alt="" style="max-height: 70px;"
+                 src="{{ url_for('static', filename=feature.image) if feature.image else '' }}">
+            <i class="bi bi-cloud-arrow-up d-block {{ 'd-none' if feature.image }}" style="font-size: 1.2rem; margin-bottom: 0;"></i>
+            <span class="small {{ 'd-none' if feature.image }}">Clique para enviar uma imagem (opcional)</span>
+            {{ (form['feature%d_image' % i])() }}
+          </label>
+          {% for error in (form['feature%d_image' % i]).errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+          {% if feature.image %}
+          <div class="form-check mt-2">
+            {{ (form['remove_feature%d_image' % i])(class="form-check-input") }}
+            {{ (form['remove_feature%d_image' % i]).label(class="form-check-label small text-muted-custom") }}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+
+      <div class="drawer-actions mt-auto">{{ form.submit(class="btn btn-chili w-100") }}</div>
+    </div>
   </div>
 </form>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  // Se o envio anterior voltou com erro de validação em algum campo, a
+  // gaveta correspondente abre sozinha — senão a mensagem de erro
+  // ficaria escondida atrás de uma gaveta fechada por padrão (o card de
+  // opção também ganha um selo "Erro" acima, pro caso de o usuário
+  // fechar a gaveta antes de corrigir).
+  (function () {
+    const errorDrawerId = {{ (
+      'editHero' if hero_errors else
+      'editArte' if arte_errors else
+      'editVideo' if video_errors else
+      'editDestaques' if destaques_errors else
+      none
+    )|tojson }};
+    if (!errorDrawerId) return;
+    const el = document.getElementById(errorDrawerId);
+    if (el) bootstrap.Offcanvas.getOrCreateInstance(el).show();
+  })();
+</script>
 {% endblock %}

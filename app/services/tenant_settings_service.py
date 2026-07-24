@@ -22,6 +22,7 @@ class TenantSettingsService:
 
     def update_store_info(
         self, *, name: str, whatsapp_number: str, phone: str, logo_file_storage=None,
+        remove_logo: bool = False,
         address_street: str | None = None, address_number: str | None = None,
         address_neighborhood: str | None = None, address_city: str | None = None,
     ):
@@ -42,6 +43,9 @@ class TenantSettingsService:
             else:
                 if old_logo:
                     delete_product_image_file(old_logo)
+        elif remove_logo and self.tenant.logo_path:
+            delete_product_image_file(self.tenant.logo_path)
+            self.tenant.logo_path = None
 
         db.session.commit()
         return self.tenant
