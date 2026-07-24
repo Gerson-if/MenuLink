@@ -1,6 +1,5 @@
 from flask import flash, redirect, render_template, request, url_for
 
-from app.models import OrderStatus
 from app.services.order_service import OrderService, OrderValidationError
 from app.utils.decorators import lojista_required
 from app.utils.tenant_context import get_current_tenant
@@ -17,6 +16,14 @@ STATUS_LABELS = {
     "canceled": "Cancelado",
 }
 
+# Pedidos "em andamento" (ainda exigem atenção do lojista) vs. pedidos
+# encerrados (concluídos ou cancelados). A tela de Pedidos mostra só os
+# ativos por padrão — assim que um pedido é concluído ou cancelado, ele
+# "sai" dali e passa a viver só no Histórico, mantendo a área de controle
+# de pedidos enxuta e focada no que ainda precisa de ação.
+ACTIVE_STATUSES = ["pending", "confirmed", "preparing", "out_for_delivery", "ready_for_pickup"]
+HISTORY_STATUSES = ["completed", "canceled"]
+
 
 @lojista_bp.route("/pedidos")
 @lojista_required
@@ -26,7 +33,9 @@ def orders_list():
     page = request.args.get("page", 1, type=int)
 
     service = OrderService(tenant)
-    pagination = service.order_repo.paginated(page=page, per_page=15, status=status or None)
+    pagination = service.order_repo.paginated(
+        page=page, per_page=15, status=status or None, statuses=None if status else ACTIVE_STATUSES
+    )
 
     return render_template(
         "lojista/orders/list.html",
@@ -34,7 +43,31 @@ def orders_list():
         pagination=pagination,
         selected_status=status,
         status_labels=STATUS_LABELS,
-        all_statuses=[s.value for s in OrderStatus],
+        all_statuses=ACTIVE_STATUSES,
+    )
+
+
+@lojista_bp.route("/pedidos/historico")
+@lojista_required
+def orders_history():
+    tenant = get_current_tenant()
+    status = request.args.get("status", "").strip()
+    if status and status not in HISTORY_STATUSES:
+        status = ""
+    page = request.args.get("page", 1, type=int)
+
+    service = OrderService(tenant)
+    pagination = service.order_repo.paginated(
+        page=page, per_page=15, status=status or None, statuses=None if status else HISTORY_STATUSES
+    )
+
+    return render_template(
+        "lojista/orders/history.html",
+        orders=pagination.items,
+        pagination=pagination,
+        selected_status=status,
+        status_labels=STATUS_LABELS,
+        all_statuses=HISTORY_STATUSES,
     )
 
 

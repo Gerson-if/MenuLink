@@ -146,6 +146,51 @@ class TestOrdersManagement:
         resp = client.get(f"/painel/pedidos/{data['order_id']}")
         assert resp.status_code == 404
 
+    def test_completed_order_moves_to_history_and_out_of_active_list(self, app, client, login_as):
+        product_id, _ = _create_product(app)
+        data = _create_order_via_checkout(client, product_id)
+        order_id = data["order_id"]
+
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        for status in ["confirmed", "preparing", "ready_for_pickup", "completed"]:
+            client.post(f"/painel/pedidos/{order_id}/status", data={"new_status": status})
+
+        # Consome eventuais flash messages da última transição de status antes
+        # de checar o conteúdo — senão "Pedido #1 atualizado..." (flash) dá
+        # falso positivo na checagem de que o card #1 sumiu da lista ativa.
+        client.get("/painel/pedidos")
+        active_body = client.get("/painel/pedidos").get_data(as_text=True)
+        assert f'ticket-num">#{data["order_number"]}<' not in active_body
+
+        history_body = client.get("/painel/pedidos/historico").get_data(as_text=True)
+        assert f'ticket-num">#{data["order_number"]}<' in history_body
+
+    def test_canceled_order_moves_to_history_and_out_of_active_list(self, app, client, login_as):
+        product_id, _ = _create_product(app)
+        data = _create_order_via_checkout(client, product_id)
+        order_id = data["order_id"]
+
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        client.post(f"/painel/pedidos/{order_id}/rejeitar")
+
+        client.get("/painel/pedidos")  # consome o flash de "Pedido #N rejeitado."
+        active_body = client.get("/painel/pedidos").get_data(as_text=True)
+        assert f'ticket-num">#{data["order_number"]}<' not in active_body
+
+        history_body = client.get("/painel/pedidos/historico").get_data(as_text=True)
+        assert f'ticket-num">#{data["order_number"]}<' in history_body
+
+    def test_pending_order_stays_out_of_history(self, app, client, login_as):
+        product_id, _ = _create_product(app)
+        data = _create_order_via_checkout(client, product_id)
+
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        history_body = client.get("/painel/pedidos/historico").get_data(as_text=True)
+        assert f'ticket-num">#{data["order_number"]}<' not in history_body
+
+        active_body = client.get("/painel/pedidos").get_data(as_text=True)
+        assert f'ticket-num">#{data["order_number"]}<' in active_body
+
 
 class TestReports:
     def test_summary_reflects_created_orders(self, app, client, login_as):

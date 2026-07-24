@@ -3,6 +3,10 @@
 {% block page_title %}{{ "Novos Pedidos" if selected_status == "pending" else "Pedidos" }}{% endblock %}
 
 {% block panel_content %}
+<p class="text-muted-custom small mb-3">
+  Pedidos em andamento. Assim que um pedido é concluído ou cancelado, ele sai
+  daqui e vai para o <a href="{{ url_for('lojista.orders_history') }}" class="link-chili">Histórico</a>.
+</p>
 <div class="mb-4 d-flex gap-2 flex-wrap">
   <a href="{{ url_for('lojista.orders_list') }}"
      class="btn btn-sm {{ 'btn-chili' if not selected_status else 'btn-outline-secondary' }}">Todos</a>
@@ -15,25 +19,7 @@
 {% if orders %}
 <div class="row g-3">
   {% for order in orders %}
-  <div class="col-md-6 col-lg-4">
-    <a href="{{ url_for('lojista.orders_detail', order_id=order.id) }}" class="text-decoration-none">
-      <div class="ticket">
-        <div class="ticket-head">
-          <span class="ticket-num">#{{ order.order_number }}</span>
-          {% include "lojista/orders/_status_badge.html" %}
-        </div>
-        <div class="text-white small mb-1">{{ order.customer_name }}</div>
-        <div class="ticket-items">
-          {% for item in order.items[:2] %}{{ item.quantity }}x {{ item.product_name }}<br>{% endfor %}
-          {% if order.items|length > 2 %}+ {{ order.items|length - 2 }} item(ns)<br>{% endif %}
-        </div>
-        <div class="d-flex justify-content-between align-items-center mt-2">
-          <span class="badge-order">{{ "Entrega" if order.delivery_type.value == "delivery" else "Retirada" }}</span>
-          <strong class="text-white">R$ {{ "%.2f"|format(order.total_cents / 100) }}</strong>
-        </div>
-      </div>
-    </a>
-  </div>
+  {% include "lojista/orders/_order_card.html" %}
   {% endfor %}
 </div>
 {% else %}

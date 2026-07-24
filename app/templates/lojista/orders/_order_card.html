@@ -1,0 +1,22 @@
+{# Espera `order` no contexto — usado tanto em orders/list.html (pedidos
+   ativos) quanto em orders/history.html (concluídos/cancelados), pra não
+   duplicar o markup do card entre as duas telas. #}
+<div class="col-md-6 col-lg-4">
+  <a href="{{ url_for('lojista.orders_detail', order_id=order.id) }}" class="text-decoration-none">
+    <div class="ticket">
+      <div class="ticket-head">
+        <span class="ticket-num">#{{ order.order_number }}</span>
+        {% include "lojista/orders/_status_badge.html" %}
+      </div>
+      <div class="text-white small mb-1">{{ order.customer_name }}</div>
+      <div class="ticket-items">
+        {% for item in order.items[:2] %}{{ item.quantity }}x {{ item.product_name }}<br>{% endfor %}
+        {% if order.items|length > 2 %}+ {{ order.items|length - 2 }} item(ns)<br>{% endif %}
+      </div>
+      <div class="d-flex justify-content-between align-items-center mt-2">
+        <span class="badge-order">{{ "Entrega" if order.delivery_type.value == "delivery" else "Retirada" }}</span>
+        <strong class="text-white">R$ {{ "%.2f"|format(order.total_cents / 100) }}</strong>
+      </div>
+    </div>
+  </a>
+</div>
