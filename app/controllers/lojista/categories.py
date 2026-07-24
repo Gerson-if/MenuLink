@@ -10,6 +10,21 @@ from app.utils.uploads import InvalidImageError
 from app.controllers.lojista import lojista_bp
 
 
+def _rerender_category_fragment(category, *, trigger=None):
+    """Ver _rerender_banner_fragment em banners.py — mesmo padrão pro
+    drawer de categorias: devolve só o fragmento, com HX-Trigger opcional
+    pra avisar a listagem de fundo."""
+    form = CategoryForm(obj=category)
+    html = render_template(
+        "lojista/categories/_form_fragment.html", form=form, category=category,
+        form_action=url_for("lojista.categories_edit", category_id=category.id), hide_back_link=True,
+    )
+    response = make_response(html)
+    if trigger:
+        response.headers["HX-Trigger"] = trigger
+    return response
+
+
 @lojista_bp.route("/categorias")
 @lojista_required
 def categories_list():
@@ -26,11 +41,12 @@ def categories_list():
 def categories_create():
     tenant = get_current_tenant()
     form = CategoryForm()
+    is_hx = bool(request.headers.get("HX-Request"))
 
     if form.validate_on_submit():
         service = CategoryService(tenant)
         try:
-            service.create(
+            category = service.create(
                 name=form.name.data, is_active=form.is_active.data, icon=form.icon.data,
                 icon_image_file=form.icon_image.data,
             )
@@ -39,9 +55,16 @@ def categories_create():
         except InvalidImageError as exc:
             flash(str(exc), "danger")
         else:
+            if is_hx:
+                return _rerender_category_fragment(category, trigger="categorySaved")
             flash("Categoria criada com sucesso.", "success")
             return redirect(url_for("lojista.categories_list"))
 
+    if is_hx:
+        return render_template(
+            "lojista/categories/_form_fragment.html", form=form, category=None,
+            form_action=url_for("lojista.categories_create"), hide_back_link=True,
+        )
     return render_template("lojista/categories/form.html", form=form, category=None)
 
 
@@ -51,6 +74,7 @@ def categories_edit(category_id):
     tenant = get_current_tenant()
     service = CategoryService(tenant)
     category = service.get_or_404(category_id)
+    is_hx = bool(request.headers.get("HX-Request"))
 
     form = CategoryForm(obj=category)
 
@@ -63,9 +87,16 @@ def categories_edit(category_id):
         except InvalidImageError as exc:
             flash(str(exc), "danger")
         else:
+            if is_hx:
+                return _rerender_category_fragment(category, trigger="categorySaved")
             flash("Categoria atualizada com sucesso.", "success")
             return redirect(url_for("lojista.categories_list"))
 
+    if is_hx:
+        return render_template(
+            "lojista/categories/_form_fragment.html", form=form, category=category,
+            form_action=url_for("lojista.categories_edit", category_id=category.id), hide_back_link=True,
+        )
     return render_template("lojista/categories/form.html", form=form, category=category)
 
 

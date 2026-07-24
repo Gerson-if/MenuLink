@@ -8,10 +8,14 @@
   <li class="nav-item"><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('lojista.products_list') }}">Produtos</a></li>
 </ul>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
   <h2 class="font-display h6 text-white m-0">Categorias</h2>
-  <a href="{{ url_for('lojista.categories_create') }}" class="btn btn-chili btn-sm">+ Nova categoria</a>
+  <button type="button" class="btn btn-chili btn-sm"
+          hx-get="{{ url_for('lojista.categories_create') }}" hx-target="#category-drawer-body" hx-swap="innerHTML"
+          data-bs-toggle="offcanvas" data-bs-target="#categoryDrawer">+ Nova categoria</button>
 </div>
+
+<div id="categories-list-wrap" hx-trigger="categorySaved from:body" hx-get="{{ request.full_path }}" hx-select="#categories-list-wrap" hx-swap="outerHTML" hx-disinherit="hx-select hx-trigger hx-get hx-swap">
 
 {% if categories %}
 <div class="panel p-0" style="overflow: hidden;">
@@ -26,7 +30,7 @@
     </thead>
     <tbody>
       {% for category in categories %}
-      <tr style="border-top: 1px solid var(--card-border);">
+      <tr style="border-top: 1px solid var(--card-border);" id="category-row-{{ category.id }}">
         <td class="px-3 py-3">{{ category.name }}</td>
         <td class="px-3 py-3 small text-muted-custom">
           {% if category.icon_image_path %}
@@ -37,13 +41,17 @@
         </td>
         <td class="px-3 py-3">{% include "lojista/categories/_status_badge.html" %}</td>
         <td class="px-3 py-3 text-end">
-          <a href="{{ url_for('lojista.categories_edit', category_id=category.id) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
-          <button type="button" class="btn btn-sm btn-outline-danger"
-                  hx-post="{{ url_for('lojista.categories_delete', category_id=category.id) }}"
-                  hx-target="closest tr" hx-swap="outerHTML swap:0.15s"
-                  hx-confirm="Excluir esta categoria? Os produtos dela ficarão sem categoria.">
-            Excluir
-          </button>
+          <div class="d-inline-flex gap-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary"
+                    hx-get="{{ url_for('lojista.categories_edit', category_id=category.id) }}" hx-target="#category-drawer-body" hx-swap="innerHTML"
+                    data-bs-toggle="offcanvas" data-bs-target="#categoryDrawer">Editar</button>
+            <button type="button" class="btn btn-sm btn-outline-danger"
+                    hx-post="{{ url_for('lojista.categories_delete', category_id=category.id) }}"
+                    hx-target="closest tr" hx-swap="outerHTML swap:0.15s"
+                    hx-confirm="Excluir esta categoria? Os produtos dela ficarão sem categoria.">
+              Excluir
+            </button>
+          </div>
         </td>
       </tr>
       {% endfor %}
@@ -57,4 +65,16 @@
 </div>
 {% endif %}
 {% include "_pagination.html" %}
+
+</div>
+
+<div class="offcanvas offcanvas-end drawer-narrow" tabindex="-1" id="categoryDrawer" aria-labelledby="categoryDrawerLabel">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="categoryDrawerLabel">Categoria</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+  </div>
+  <div class="offcanvas-body" id="category-drawer-body">
+    <div class="text-center text-muted-custom py-5"><span class="spinner-border spinner-border-sm"></span></div>
+  </div>
+</div>
 {% endblock %}

@@ -2,58 +2,6 @@
 {% block title %}{{ 'Editar' if category else 'Nova' }} categoria — Comanda{% endblock %}
 {% block page_title %}{{ 'Editar categoria' if category else 'Nova categoria' }}{% endblock %}
 
-{% block extra_head %}
-<style>
-  .icon-swatch-group { display: flex; flex-wrap: wrap; gap: 10px; }
-  .icon-swatch { cursor: pointer; }
-  .icon-swatch input { position: absolute; opacity: 0; pointer-events: none; }
-  .icon-swatch-card {
-    width: 64px; height: 64px; border: 2px solid var(--card-border); border-radius: 10px;
-    display: flex; align-items: center; justify-content: center; font-size: 1.5rem;
-    transition: border-color .2s, transform .2s;
-  }
-  .icon-swatch input:checked + .icon-swatch-card { border-color: var(--accent); transform: translateY(-2px); }
-</style>
-{% endblock %}
-
 {% block panel_content %}
-<a href="{{ url_for('lojista.categories_list') }}" class="link-chili small d-inline-block mb-3">&larr; Voltar para categorias</a>
-
-<div class="panel" style="max-width: 480px;">
-  <form method="POST" enctype="multipart/form-data" novalidate>
-    {{ form.hidden_tag() }}
-
-    <div class="mb-3">
-      {{ form.name.label(class="form-label small fw-semibold") }}
-      {{ form.name(class="form-control", maxlength=100) }}
-      {% for error in form.name.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
-    </div>
-
-    <div class="mb-3">
-      {{ form.icon.label(class="form-label small fw-semibold") }}
-      <div class="icon-swatch-group mb-2">
-        {% set emoji_by_icon = {"other": "🍽️", "burger": "🍔", "pizza": "🍕", "drink": "🥤", "dessert": "🍰", "combo": "🍟"} %}
-        {% for value, label in form.icon.choices %}
-        <label class="icon-swatch" title="{{ label }}">
-          <input type="radio" name="icon" value="{{ value }}" {{ "checked" if form.icon.data == value }}>
-          <div class="icon-swatch-card">{{ emoji_by_icon.get(value, "🍽️") }}</div>
-        </label>
-        {% endfor %}
-      </div>
-      <div class="form-text">Ícone exibido ao lado do nome da categoria no menu do cardápio público (ignorado se um ícone próprio for enviado abaixo).</div>
-    </div>
-
-    <div class="mb-4">
-      {{ form.icon_image.label(class="form-label small fw-semibold") }}
-      {% include "lojista/categories/_icon_dropzone.html" %}
-    </div>
-
-    <div class="d-flex align-items-center gap-2 mb-4">
-      {{ form.is_active() }}
-      {{ form.is_active.label(class="small text-muted-custom") }}
-    </div>
-
-    {{ form.submit(class="btn btn-chili") }}
-  </form>
-</div>
+{% include "lojista/categories/_form_fragment.html" %}
 {% endblock %}
