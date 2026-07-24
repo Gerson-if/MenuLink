@@ -17,7 +17,6 @@ class StoreInfoForm(FlaskForm):
     whatsapp_number = StringField("WhatsApp (com DDI+DDD)", validators=[Optional(), Length(max=20), phone_number()])
     phone = StringField("Telefone (opcional)", validators=[Optional(), Length(max=20), phone_number()])
     logo = FileField("Logo da loja", validators=[FileAllowed(["png", "jpg", "jpeg", "webp"], message="Formato não suportado.")])
-    remove_logo = BooleanField("Remover logo atual")
 
     address_street = StringField("Rua", validators=[Optional(), Length(max=180)])
     address_number = StringField("Número", validators=[Optional(), Length(max=20)])

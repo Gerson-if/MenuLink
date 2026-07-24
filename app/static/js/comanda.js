@@ -99,11 +99,22 @@ function sidebarShell() {
 })();
 
 /*
- * Preview local (antes do envio) de imagens escolhidas em qualquer
- * ".dropzone" (banner, logo da loja, fotos de produto) — lê o arquivo
- * com FileReader e mostra no lugar do ícone/texto instrutivo. Reaplica
- * depois de qualquer swap HTMX, porque o dropzone de fotos de produto é
- * recriado a cada upload (hx-target="#image-gallery").
+ * Preview local (antes do envio) de imagens/vídeos escolhidos em
+ * qualquer ".dropzone" (banner, logo da loja, ícone de categoria,
+ * fotos de produto, mídia da landing) — usa URL.createObjectURL (mais
+ * rápido e mais leve que FileReader/data:, importante pros vídeos de
+ * até 25MB) e mostra no lugar do ícone/texto instrutivo. Reaplica
+ * depois de qualquer swap HTMX, porque tanto o dropzone de fotos de
+ * produto quanto os fragmentos de remoção de mídia recriam o DOM
+ * (hx-target="#image-gallery" / "closest .dropzone-wrap").
+ *
+ * Cada dropzone que permite remover um arquivo já salvo é envolvida
+ * num ".dropzone-wrap" com dois botões-ícone irmãos do <label>:
+ * ".dropzone-remove-existing" (chama o servidor via hx-post, some
+ * enquanto um arquivo novo está só selecionado localmente) e
+ * ".dropzone-clear-local" (só client-side, cancela a seleção e
+ * restaura o preview pro estado original salvo em data-original-src /
+ * data-has-original do wrap).
  */
 function initDropzonePreviews(root) {
   (root || document).querySelectorAll('.dropzone input[type=file]').forEach((input) => {
@@ -112,15 +123,53 @@ function initDropzonePreviews(root) {
     input.addEventListener('change', () => {
       const file = input.files && input.files[0];
       const label = input.closest('.dropzone');
-      const img = label && label.querySelector('.dropzone-preview');
-      if (!file || !img) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        img.src = reader.result;
-        img.classList.remove('d-none');
-        label.querySelectorAll(':scope > i, :scope > span.small').forEach((el) => el.classList.add('d-none'));
-      };
-      reader.readAsDataURL(file);
+      const wrap = input.closest('.dropzone-wrap');
+      const preview = label && label.querySelector('.dropzone-preview');
+      if (!file || !preview) return;
+
+      if (wrap && wrap.dataset.objectUrl) URL.revokeObjectURL(wrap.dataset.objectUrl);
+      const objectUrl = URL.createObjectURL(file);
+      if (wrap) wrap.dataset.objectUrl = objectUrl;
+
+      preview.src = objectUrl;
+      preview.classList.remove('d-none');
+      label.querySelectorAll(':scope > i, :scope > span.small').forEach((el) => el.classList.add('d-none'));
+
+      if (wrap) {
+        const removeBtn = wrap.querySelector('.dropzone-remove-existing');
+        const clearBtn = wrap.querySelector('.dropzone-clear-local');
+        if (removeBtn) removeBtn.classList.add('d-none');
+        if (clearBtn) clearBtn.classList.remove('d-none');
+      }
+    });
+  });
+
+  (root || document).querySelectorAll('.dropzone-clear-local').forEach((btn) => {
+    if (btn.dataset.clearBound) return;
+    btn.dataset.clearBound = '1';
+    btn.addEventListener('click', () => {
+      const wrap = btn.closest('.dropzone-wrap');
+      if (!wrap) return;
+      const input = wrap.querySelector('input[type=file]');
+      const label = wrap.querySelector('.dropzone');
+      const preview = wrap.querySelector('.dropzone-preview');
+      const removeBtn = wrap.querySelector('.dropzone-remove-existing');
+      if (input) input.value = '';
+      if (wrap.dataset.objectUrl) {
+        URL.revokeObjectURL(wrap.dataset.objectUrl);
+        delete wrap.dataset.objectUrl;
+      }
+
+      const hasOriginal = wrap.dataset.hasOriginal === 'true';
+      if (preview) {
+        preview.src = hasOriginal ? wrap.dataset.originalSrc : '';
+        preview.classList.toggle('d-none', !hasOriginal);
+      }
+      if (label) {
+        label.querySelectorAll(':scope > i, :scope > span.small').forEach((el) => el.classList.toggle('d-none', hasOriginal));
+      }
+      btn.classList.add('d-none');
+      if (removeBtn) removeBtn.classList.toggle('d-none', !hasOriginal);
     });
   });
 }

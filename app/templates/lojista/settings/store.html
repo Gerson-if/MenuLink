@@ -8,10 +8,6 @@
 <div class="panel" style="max-width: 520px;">
   <div class="panel-title"><i class="bi bi-shop"></i> Dados da loja</div>
 
-  {% if tenant.logo_path %}
-  <img src="{{ url_for('static', filename=tenant.logo_path) }}" class="rounded mb-3" style="height: 72px; width: 72px; object-fit: cover;">
-  {% endif %}
-
   <form method="POST" enctype="multipart/form-data" novalidate>
     {{ form.hidden_tag() }}
 
@@ -33,19 +29,7 @@
     </div>
 
     <div class="mb-4">
-      <label class="dropzone d-block" onclick="this.querySelector('input[type=file]').click()">
-        <img class="dropzone-preview d-none" alt="">
-        <i class="bi bi-cloud-arrow-up d-block"></i>
-        <span class="small">Clique para enviar/trocar a logo</span>
-        {{ form.logo() }}
-      </label>
-      {% for error in form.logo.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
-      {% if tenant.logo_path %}
-      <div class="form-check mt-2">
-        {{ form.remove_logo(class="form-check-input") }}
-        {{ form.remove_logo.label(class="form-check-label small text-muted-custom") }}
-      </div>
-      {% endif %}
+      {% include "lojista/settings/_logo_dropzone.html" %}
     </div>
 
     <hr class="my-4">

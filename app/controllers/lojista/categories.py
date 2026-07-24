@@ -1,4 +1,4 @@
-from flask import flash, redirect, render_template, request, url_for
+from flask import flash, make_response, redirect, render_template, request, url_for
 
 from app.forms.category_forms import CategoryForm
 from app.models.category import CATEGORY_ICON_CHOICES
@@ -58,7 +58,7 @@ def categories_edit(category_id):
         try:
             service.update(
                 category, name=form.name.data, is_active=form.is_active.data, icon=form.icon.data,
-                icon_image_file=form.icon_image.data, remove_icon_image=form.remove_icon_image.data,
+                icon_image_file=form.icon_image.data,
             )
         except InvalidImageError as exc:
             flash(str(exc), "danger")
@@ -67,6 +67,25 @@ def categories_edit(category_id):
             return redirect(url_for("lojista.categories_list"))
 
     return render_template("lojista/categories/form.html", form=form, category=category)
+
+
+@lojista_bp.route("/categorias/<int:category_id>/icone/remover", methods=["POST"])
+@lojista_required
+def categories_remove_icon(category_id):
+    """Ação isolada do ícone de remover no dropzone — some com o ícone
+    próprio na hora, sem depender do resto do formulário da categoria
+    (ver CategoryForm/categories_edit)."""
+    if not request.headers.get("HX-Request"):
+        return "", 400
+
+    tenant = get_current_tenant()
+    service = CategoryService(tenant)
+    category = service.get_or_404(category_id)
+    service.remove_icon_image(category)
+
+    form = CategoryForm(obj=category)
+    html = render_template("lojista/categories/_icon_dropzone.html", form=form, category=category)
+    return make_response(html)
 
 
 @lojista_bp.route("/categorias/<int:category_id>/alternar", methods=["POST"])

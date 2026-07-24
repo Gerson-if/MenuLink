@@ -204,6 +204,24 @@ body {
    ícone tem `d-block` (`!important` do Bootstrap), que ganharia de
    qualquer regra deste arquivo por especificidade. */
 .dropzone-preview { max-height: 140px; max-width: 100%; border-radius: 8px; margin: 0 auto 8px; object-fit: cover; }
+.dropzone-compact { padding: 12px; }
+.dropzone-compact .dropzone-preview { max-height: 70px; }
+.dropzone-compact i { font-size: 1.2rem; margin-bottom: 0; }
+
+/* Wrapper com posição relativa pra ancorar os botões-ícone de remover
+   (ver comanda.js `initDropzonePreviews`) — ficam fora do <label> de
+   propósito, como irmãos, pra não precisar de stopPropagation contra o
+   onclick que abre o seletor de arquivo. */
+.dropzone-wrap { position: relative; }
+.dropzone-remove-btn {
+  position: absolute; top: 8px; right: 8px; z-index: 2;
+  width: 30px; height: 30px; border-radius: 50%; border: none;
+  background: rgba(0,0,0,.55); color: #fff; display: flex;
+  align-items: center; justify-content: center; cursor: pointer;
+  transition: background .15s ease;
+}
+.dropzone-remove-btn:hover { background: rgba(229,74,54,.85); }
+
 .upload-meta { font-size: .75rem; color: var(--muted-text); margin-top: 4px; }
 .upload-error { font-size: .8rem; color: #FF8A7A; background: rgba(229,74,54,0.1); border: 1px solid rgba(229,74,54,0.2); border-radius: 8px; padding: 8px 12px; margin-top: 8px; }
 

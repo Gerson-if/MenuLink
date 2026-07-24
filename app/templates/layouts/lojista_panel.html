@@ -47,7 +47,7 @@
       })();
     </script>
     <div class="sidebar-brand">
-      <div class="mark">
+      <div class="mark" id="sidebar-brand-mark">
         {% if current_tenant and current_tenant.logo_path %}
         <img src="{{ url_for('static', filename=current_tenant.logo_path) }}" alt="">
         {% else %}

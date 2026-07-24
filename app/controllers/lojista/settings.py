@@ -1,4 +1,4 @@
-from flask import flash, redirect, render_template, url_for, Response
+from flask import flash, make_response, redirect, render_template, request, url_for, Response
 
 from app.forms.tenant_settings_forms import (
     AppearanceSettingsForm, CheckoutSettingsForm, MenuSettingsForm, OpeningHoursForm, StoreInfoForm,
@@ -24,7 +24,6 @@ def settings_store():
             service.update_store_info(
                 name=form.name.data, whatsapp_number=form.whatsapp_number.data,
                 phone=form.phone.data, logo_file_storage=form.logo.data,
-                remove_logo=form.remove_logo.data,
                 address_street=form.address_street.data, address_number=form.address_number.data,
                 address_neighborhood=form.address_neighborhood.data, address_city=form.address_city.data,
             )
@@ -35,6 +34,30 @@ def settings_store():
             return redirect(url_for("lojista.settings_store"))
 
     return render_template("lojista/settings/store.html", form=form, tenant=tenant)
+
+
+@lojista_bp.route("/configuracoes/loja/logo/remover", methods=["POST"])
+@lojista_required
+def settings_store_remove_logo():
+    """Ação isolada do ícone de remover no dropzone — some com a logo
+    na hora, sem depender do restante do formulário de dados da loja
+    (ver StoreInfoForm/settings_store)."""
+    if not request.headers.get("HX-Request"):
+        return "", 400
+
+    tenant = get_current_tenant()
+    TenantSettingsService(tenant).remove_logo()
+
+    form = StoreInfoForm(obj=tenant)
+    html = render_template("lojista/settings/_logo_dropzone.html", form=form, tenant=tenant)
+    # A marca no topo da sidebar (layouts/lojista_panel.html) também
+    # mostra a logo e não faz parte do fragmento acima — atualiza via
+    # out-of-band swap pra não ficar com a logo antiga até recarregar.
+    html += (
+        '<div id="sidebar-brand-mark" class="mark" hx-swap-oob="true">'
+        '<i class="bi bi-egg-fried text-white"></i></div>'
+    )
+    return make_response(html)
 
 
 @lojista_bp.route("/configuracoes/horario", methods=["GET", "POST"])

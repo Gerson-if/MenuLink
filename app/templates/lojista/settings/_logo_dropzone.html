@@ -1,0 +1,23 @@
+<div class="dropzone-wrap"
+     data-has-original="{{ 'true' if tenant.logo_path else 'false' }}"
+     data-original-src="{{ url_for('static', filename=tenant.logo_path) if tenant.logo_path else '' }}">
+  <label class="dropzone d-block" onclick="this.querySelector('input[type=file]').click()">
+    <img class="dropzone-preview {{ '' if tenant.logo_path else 'd-none' }}" alt=""
+         src="{{ url_for('static', filename=tenant.logo_path) if tenant.logo_path else '' }}">
+    <i class="bi bi-cloud-arrow-up d-block {{ 'd-none' if tenant.logo_path }}"></i>
+    <span class="small {{ 'd-none' if tenant.logo_path }}">Clique para enviar/trocar a logo</span>
+    {{ form.logo() }}
+  </label>
+  {% if tenant.logo_path %}
+  <button type="button" class="dropzone-remove-btn dropzone-remove-existing"
+          hx-post="{{ url_for('lojista.settings_store_remove_logo') }}"
+          hx-target="closest .dropzone-wrap" hx-swap="outerHTML" hx-params="none"
+          hx-confirm="Remover a logo atual?" title="Remover logo">
+    <i class="bi bi-trash3"></i>
+  </button>
+  {% endif %}
+  <button type="button" class="dropzone-remove-btn dropzone-clear-local d-none" title="Cancelar seleção">
+    <i class="bi bi-x-lg"></i>
+  </button>
+</div>
+{% for error in form.logo.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}

@@ -1,4 +1,4 @@
-from flask import flash, redirect, render_template, url_for
+from flask import abort, flash, make_response, redirect, render_template, request, url_for
 
 from app.forms.admin_forms import AdminAppearanceForm, AsaasSettingsForm, LandingContentForm
 from app.services.payment_gateway.base import PaymentGatewayError
@@ -119,9 +119,7 @@ def settings_landing():
                 hero_title=form.hero_title.data,
                 hero_subtitle=form.hero_subtitle.data,
                 hero_image_file=form.hero_image.data,
-                remove_hero_image=form.remove_hero_image.data,
                 hero_video_file=form.hero_video.data,
-                remove_hero_video=form.remove_hero_video.data,
                 theme=form.theme.data,
                 features=[
                     {
@@ -132,7 +130,6 @@ def settings_landing():
                     for i in range(3)
                 ],
                 feature_image_files=[getattr(form, f"feature{i + 1}_image").data for i in range(3)],
-                remove_feature_images=[getattr(form, f"remove_feature{i + 1}_image").data for i in range(3)],
             )
         except (InvalidImageError, InvalidVideoError) as exc:
             flash(str(exc), "danger")
@@ -141,3 +138,23 @@ def settings_landing():
             return redirect(url_for("admin.settings_landing"))
 
     return render_template("admin/settings/landing.html", form=form, settings=settings)
+
+
+@admin_bp.route("/configuracoes/landing/midia/<field>/remover", methods=["POST"])
+@super_admin_required
+def settings_landing_remove_media(field):
+    """Ação isolada do ícone de remover no dropzone — apaga o arquivo e
+    limpa o campo na hora, sem depender do envio do resto do formulário
+    da landing page (ver LandingContentForm/settings_landing)."""
+    if not request.headers.get("HX-Request"):
+        return "", 400
+    if field not in PlatformSettingsService.LANDING_MEDIA_FIELDS:
+        abort(404)
+
+    service = PlatformSettingsService()
+    service.remove_landing_media(field)
+    content = service.settings.landing_content_or_default
+
+    form = LandingContentForm()
+    html = render_template("admin/settings/_media_dropzone_fragment.html", field=field, form=form, content=content)
+    return make_response(html)

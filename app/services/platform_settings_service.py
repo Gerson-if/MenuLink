@@ -72,8 +72,6 @@ class PlatformSettingsService:
         self, *, hero_title: str, hero_subtitle: str, features: list[dict],
         hero_image_file=None, feature_image_files: list = None,
         hero_video_file=None, theme: str = "chili",
-        remove_hero_image: bool = False, remove_hero_video: bool = False,
-        remove_feature_images: list = None,
     ) -> PlatformSettings:
         """
         `hero_image_file`, `hero_video_file` e cada item de
@@ -83,10 +81,9 @@ class PlatformSettingsService:
         pra logo da loja); o arquivo antigo é apagado depois do novo ser
         salvo com sucesso, pra não acumular lixo em static/uploads/platform/.
 
-        `remove_hero_image`/`remove_hero_video`/`remove_feature_images`
-        (lista de bool, mesma ordem de `features`) apagam o arquivo atual
-        e voltam o campo pra vazio — só têm efeito quando NENHUM arquivo
-        novo foi enviado no mesmo campo (um upload novo sempre vence).
+        Remover um arquivo (sem substituir) é uma ação separada — ver
+        `remove_landing_media()`, chamada pelo ícone de remover no
+        dropzone, com efeito imediato (não depende deste método).
         """
         from app.utils.uploads import (
             InvalidImageError,
@@ -98,7 +95,6 @@ class PlatformSettingsService:
 
         current = self.settings.landing_content_or_default
         feature_image_files = feature_image_files or [None, None, None]
-        remove_feature_images = remove_feature_images or [False, False, False]
 
         hero_image = current.get("hero_image")
         if hero_image_file and hero_image_file.filename:
@@ -110,9 +106,6 @@ class PlatformSettingsService:
                 if hero_image:
                     delete_product_image_file(hero_image)
                 hero_image = new_hero_image
-        elif remove_hero_image and hero_image:
-            delete_product_image_file(hero_image)
-            hero_image = None
 
         hero_video = current.get("hero_video")
         if hero_video_file and hero_video_file.filename:
@@ -124,16 +117,12 @@ class PlatformSettingsService:
                 if hero_video:
                     delete_product_image_file(hero_video)
                 hero_video = new_hero_video
-        elif remove_hero_video and hero_video:
-            delete_product_image_file(hero_video)
-            hero_video = None
 
         new_features = []
         for i, f in enumerate(features):
             current_feature = current["features"][i] if i < len(current.get("features", [])) else {}
             image = current_feature.get("image")
             image_file = feature_image_files[i] if i < len(feature_image_files) else None
-            remove_this_image = remove_feature_images[i] if i < len(remove_feature_images) else False
             if image_file and image_file.filename:
                 try:
                     new_image = save_platform_image("landing", image_file)
@@ -143,9 +132,6 @@ class PlatformSettingsService:
                     if image:
                         delete_product_image_file(image)
                     image = new_image
-            elif remove_this_image and image:
-                delete_product_image_file(image)
-                image = None
             new_features.append({
                 "icon": (f.get("icon") or "").strip(),
                 "image": image,
@@ -161,5 +147,38 @@ class PlatformSettingsService:
             "theme": theme if theme in ("chili", "blue", "light") else "chili",
             "features": new_features,
         }
+        db.session.commit()
+        return self.settings
+
+    LANDING_MEDIA_FIELDS = ("hero_image", "hero_video", "feature1_image", "feature2_image", "feature3_image")
+
+    def remove_landing_media(self, field: str) -> PlatformSettings:
+        """Ação isolada do ícone de remover no dropzone — apaga o
+        arquivo e limpa o campo na hora, sem depender do envio do resto
+        do formulário da landing page (ver update_landing_content).
+        `field` é um dos LANDING_MEDIA_FIELDS."""
+        from app.utils.uploads import delete_product_image_file
+
+        if field not in self.LANDING_MEDIA_FIELDS:
+            raise ValueError(f"Campo de mídia inválido: {field!r}")
+
+        current = self.settings.landing_content_or_default
+        content = dict(current)
+        content["features"] = [dict(f) for f in current.get("features", [])]
+
+        if field.startswith("feature"):
+            index = int(field[len("feature")]) - 1
+            if index < len(content["features"]):
+                path = content["features"][index].get("image")
+                if path:
+                    delete_product_image_file(path)
+                    content["features"][index]["image"] = None
+        else:
+            path = content.get(field)
+            if path:
+                delete_product_image_file(path)
+                content[field] = None
+
+        self.settings.landing_content = content
         db.session.commit()
         return self.settings

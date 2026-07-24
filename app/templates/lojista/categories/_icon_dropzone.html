@@ -1,0 +1,23 @@
+<div class="dropzone-wrap"
+     data-has-original="{{ 'true' if category and category.icon_image_path else 'false' }}"
+     data-original-src="{{ url_for('static', filename=category.icon_image_path) if category and category.icon_image_path else '' }}">
+  <label class="dropzone d-block" style="padding: 16px;" onclick="this.querySelector('input[type=file]').click()">
+    <img class="dropzone-preview {{ '' if category and category.icon_image_path else 'd-none' }}" alt="" style="max-height: 64px;"
+         src="{{ url_for('static', filename=category.icon_image_path) if category and category.icon_image_path else '' }}">
+    <i class="bi bi-cloud-arrow-up d-block {{ 'd-none' if category and category.icon_image_path }}" style="font-size: 1.4rem; margin-bottom: 0;"></i>
+    <span class="small {{ 'd-none' if category and category.icon_image_path }}">Clique para enviar um ícone próprio (PNG com fundo transparente fica melhor)</span>
+    {{ form.icon_image() }}
+  </label>
+  {% if category and category.icon_image_path %}
+  <button type="button" class="dropzone-remove-btn dropzone-remove-existing"
+          hx-post="{{ url_for('lojista.categories_remove_icon', category_id=category.id) }}"
+          hx-target="closest .dropzone-wrap" hx-swap="outerHTML" hx-params="none"
+          hx-confirm="Remover o ícone próprio? A categoria volta a usar o ícone da biblioteca." title="Remover ícone">
+    <i class="bi bi-trash3"></i>
+  </button>
+  {% endif %}
+  <button type="button" class="dropzone-remove-btn dropzone-clear-local d-none" title="Cancelar seleção">
+    <i class="bi bi-x-lg"></i>
+  </button>
+</div>
+{% for error in form.icon_image.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}

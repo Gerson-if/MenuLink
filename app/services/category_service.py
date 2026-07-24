@@ -61,7 +61,7 @@ class CategoryService:
 
     def update(
         self, category: Category, name: str, is_active: bool, icon: str = "other",
-        icon_image_file=None, remove_icon_image: bool = False,
+        icon_image_file=None,
     ) -> Category:
         if name.strip() != category.name:
             category.slug = generate_unique_slug(name, self.repo.get_by_slug, current_id=category.id)
@@ -78,11 +78,18 @@ class CategoryService:
                 if category.icon_image_path:
                     delete_product_image_file(category.icon_image_path)
                 category.icon_image_path = new_path
-        elif remove_icon_image and category.icon_image_path:
-            delete_product_image_file(category.icon_image_path)
-            category.icon_image_path = None
 
         db.session.commit()
+        return category
+
+    def remove_icon_image(self, category: Category) -> Category:
+        """Ação isolada do ícone de remover no dropzone — some com o
+        ícone próprio na hora (a categoria volta a usar o ícone da
+        biblioteca), sem depender do envio do resto do formulário."""
+        if category.icon_image_path:
+            delete_product_image_file(category.icon_image_path)
+            category.icon_image_path = None
+            db.session.commit()
         return category
 
     def toggle_active(self, category: Category) -> Category:

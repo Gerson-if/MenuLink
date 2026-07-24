@@ -1,0 +1,55 @@
+{# Dropzones reutilizáveis da landing page (arte de destaque, vídeo de
+   fundo, imagens dos 3 destaques) — usados tanto pela página principal
+   (admin/settings/landing.html) quanto pela rota de remoção instantânea
+   (admin.settings_landing_remove_media), que renderiza só o fragmento
+   do campo removido via o mesmo macro. #}
+
+{% macro image_dropzone(field, current_path, remove_url, empty_text, compact=False) %}
+<div class="dropzone-wrap"
+     data-has-original="{{ 'true' if current_path else 'false' }}"
+     data-original-src="{{ url_for('static', filename=current_path) if current_path else '' }}">
+  <label class="dropzone d-block{{ ' dropzone-compact' if compact }}" onclick="this.querySelector('input[type=file]').click()">
+    <img class="dropzone-preview {{ '' if current_path else 'd-none' }}" alt=""
+         src="{{ url_for('static', filename=current_path) if current_path else '' }}">
+    <i class="bi bi-cloud-arrow-up d-block {{ 'd-none' if current_path }}"></i>
+    <span class="small {{ 'd-none' if current_path }}">{{ empty_text }}</span>
+    {{ field() }}
+  </label>
+  {% if current_path %}
+  <button type="button" class="dropzone-remove-btn dropzone-remove-existing"
+          hx-post="{{ remove_url }}" hx-target="closest .dropzone-wrap" hx-swap="outerHTML" hx-params="none"
+          hx-confirm="Remover esta imagem?" title="Remover imagem">
+    <i class="bi bi-trash3"></i>
+  </button>
+  {% endif %}
+  <button type="button" class="dropzone-remove-btn dropzone-clear-local d-none" title="Cancelar seleção">
+    <i class="bi bi-x-lg"></i>
+  </button>
+</div>
+{% for error in field.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+{% endmacro %}
+
+{% macro video_dropzone(field, current_path, remove_url) %}
+<div class="dropzone-wrap"
+     data-has-original="{{ 'true' if current_path else 'false' }}"
+     data-original-src="{{ url_for('static', filename=current_path) if current_path else '' }}">
+  <label class="dropzone d-block" onclick="this.querySelector('input[type=file]').click()">
+    <video class="dropzone-preview {{ '' if current_path else 'd-none' }}" muted loop autoplay playsinline
+           src="{{ url_for('static', filename=current_path) if current_path else '' }}"></video>
+    <i class="bi bi-cloud-arrow-up d-block {{ 'd-none' if current_path }}"></i>
+    <span class="small {{ 'd-none' if current_path }}">Clique para enviar um vídeo de fundo</span>
+    {{ field() }}
+  </label>
+  {% if current_path %}
+  <button type="button" class="dropzone-remove-btn dropzone-remove-existing"
+          hx-post="{{ remove_url }}" hx-target="closest .dropzone-wrap" hx-swap="outerHTML" hx-params="none"
+          hx-confirm="Remover o vídeo atual?" title="Remover vídeo">
+    <i class="bi bi-trash3"></i>
+  </button>
+  {% endif %}
+  <button type="button" class="dropzone-remove-btn dropzone-clear-local d-none" title="Cancelar seleção">
+    <i class="bi bi-x-lg"></i>
+  </button>
+</div>
+{% for error in field.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+{% endmacro %}

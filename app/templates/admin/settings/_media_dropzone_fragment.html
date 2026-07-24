@@ -1,0 +1,10 @@
+{% import "admin/settings/_media_dropzone.html" as media %}
+{% if field == "hero_image" %}
+{{ media.image_dropzone(form.hero_image, content.hero_image, url_for('admin.settings_landing_remove_media', field='hero_image'), 'Clique para enviar uma imagem de destaque') }}
+{% elif field == "hero_video" %}
+{{ media.video_dropzone(form.hero_video, content.hero_video, url_for('admin.settings_landing_remove_media', field='hero_video')) }}
+{% elif field in ("feature1_image", "feature2_image", "feature3_image") %}
+{% set index = field[7]|int - 1 %}
+{% set feature = content.features[index] if content.features|length > index else {} %}
+{{ media.image_dropzone(form[field], feature.image, url_for('admin.settings_landing_remove_media', field=field), 'Clique para enviar uma imagem (opcional)', compact=True) }}
+{% endif %}

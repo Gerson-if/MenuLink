@@ -16,6 +16,7 @@
     or form.feature2_icon.errors or form.feature2_title.errors or form.feature2_description.errors or form.feature2_image.errors
     or form.feature3_icon.errors or form.feature3_title.errors or form.feature3_description.errors or form.feature3_image.errors %}
 {% set theme_label = dict(form.theme.choices).get(content.theme, content.theme) %}
+{% import "admin/settings/_media_dropzone.html" as media %}
 
 {% block extra_head %}
 <style>
@@ -126,20 +127,7 @@
     </div>
     <div class="offcanvas-body d-flex flex-column">
       <p class="upload-meta mb-3">Imagem estática exibida ao lado do texto do hero (ignorada se um vídeo de fundo for enviado abaixo).</p>
-      <label class="dropzone d-block" onclick="this.querySelector('input[type=file]').click()">
-        <img class="dropzone-preview {{ '' if content.hero_image else 'd-none' }}" alt=""
-             src="{{ url_for('static', filename=content.hero_image) if content.hero_image else '' }}">
-        <i class="bi bi-cloud-arrow-up d-block {{ 'd-none' if content.hero_image }}"></i>
-        <span class="small {{ 'd-none' if content.hero_image }}">Clique para enviar uma imagem de destaque</span>
-        {{ form.hero_image() }}
-      </label>
-      {% for error in form.hero_image.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
-      {% if content.hero_image %}
-      <div class="form-check mt-2">
-        {{ form.remove_hero_image(class="form-check-input") }}
-        {{ form.remove_hero_image.label(class="form-check-label small text-muted-custom") }}
-      </div>
-      {% endif %}
+      {{ media.image_dropzone(form.hero_image, content.hero_image, url_for('admin.settings_landing_remove_media', field='hero_image'), 'Clique para enviar uma imagem de destaque') }}
       <div class="drawer-actions mt-auto">{{ form.submit(class="btn btn-chili w-100") }}</div>
     </div>
   </div>
@@ -154,22 +142,7 @@
         Opcional — toca em loop automático atrás do texto do hero (tem prioridade sobre a arte de destaque).
         MP4 ou WEBM, até 25MB. O vídeo é otimizado automaticamente ao enviar (recomprimido e limitado a 1080p).
       </p>
-      <label class="dropzone d-block" onclick="this.querySelector('input[type=file]').click()">
-        {% if content.hero_video %}
-        <video src="{{ url_for('static', filename=content.hero_video) }}" muted loop autoplay playsinline class="dropzone-preview"></video>
-        {% else %}
-        <i class="bi bi-cloud-arrow-up d-block"></i>
-        <span class="small">Clique para enviar um vídeo de fundo</span>
-        {% endif %}
-        {{ form.hero_video() }}
-      </label>
-      {% for error in form.hero_video.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
-      {% if content.hero_video %}
-      <div class="form-check mt-2">
-        {{ form.remove_hero_video(class="form-check-input") }}
-        {{ form.remove_hero_video.label(class="form-check-label small text-muted-custom") }}
-      </div>
-      {% endif %}
+      {{ media.video_dropzone(form.hero_video, content.hero_video, url_for('admin.settings_landing_remove_media', field='hero_video')) }}
       <div class="drawer-actions mt-auto">{{ form.submit(class="btn btn-chili w-100") }}</div>
     </div>
   </div>
@@ -223,20 +196,7 @@
         </div>
         <div class="col-12">
           {{ (form['feature%d_image' % i]).label(class="form-label small fw-semibold") }}
-          <label class="dropzone d-block" style="padding: 12px;" onclick="this.querySelector('input[type=file]').click()">
-            <img class="dropzone-preview {{ '' if feature.image else 'd-none' }}" alt="" style="max-height: 70px;"
-                 src="{{ url_for('static', filename=feature.image) if feature.image else '' }}">
-            <i class="bi bi-cloud-arrow-up d-block {{ 'd-none' if feature.image }}" style="font-size: 1.2rem; margin-bottom: 0;"></i>
-            <span class="small {{ 'd-none' if feature.image }}">Clique para enviar uma imagem (opcional)</span>
-            {{ (form['feature%d_image' % i])() }}
-          </label>
-          {% for error in (form['feature%d_image' % i]).errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
-          {% if feature.image %}
-          <div class="form-check mt-2">
-            {{ (form['remove_feature%d_image' % i])(class="form-check-input") }}
-            {{ (form['remove_feature%d_image' % i]).label(class="form-check-label small text-muted-custom") }}
-          </div>
-          {% endif %}
+          {{ media.image_dropzone(form['feature%d_image' % i], feature.image, url_for('admin.settings_landing_remove_media', field='feature%d_image' % i), 'Clique para enviar uma imagem (opcional)', compact=True) }}
         </div>
       </div>
       {% endfor %}

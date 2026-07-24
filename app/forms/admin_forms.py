@@ -117,30 +117,25 @@ class LandingContentForm(FlaskForm):
     hero_title = StringField("Título principal", validators=[DataRequired(), Length(max=200), not_blank])
     hero_subtitle = TextAreaField("Subtítulo", validators=[DataRequired(), Length(max=500), not_blank])
     hero_image = FileField("Arte de destaque (opcional)", validators=[FileAllowed(["png", "jpg", "jpeg", "webp"], message="Formato não suportado.")])
-    remove_hero_image = BooleanField("Remover arte de destaque atual")
     hero_video = FileField(
         "Vídeo de fundo do hero (opcional — substitui a arte de destaque)",
         validators=[FileAllowed(["mp4", "webm"], message="Formato não suportado. Use MP4 ou WEBM.")],
     )
-    remove_hero_video = BooleanField("Remover vídeo atual")
     theme = SelectField("Tema da landing page", choices=LANDING_THEME_CHOICES, default="chili")
 
     feature1_icon = StringField("Ícone 1 (Bootstrap Icons)", validators=[DataRequired(), Length(max=40)])
     feature1_title = StringField("Título 1", validators=[DataRequired(), Length(max=100), not_blank])
     feature1_description = TextAreaField("Descrição 1", validators=[DataRequired(), Length(max=300), not_blank])
     feature1_image = FileField("Imagem 1 (opcional — substitui o ícone)", validators=[FileAllowed(["png", "jpg", "jpeg", "webp"], message="Formato não suportado.")])
-    remove_feature1_image = BooleanField("Remover imagem 1 atual")
 
     feature2_icon = StringField("Ícone 2 (Bootstrap Icons)", validators=[DataRequired(), Length(max=40)])
     feature2_title = StringField("Título 2", validators=[DataRequired(), Length(max=100), not_blank])
     feature2_description = TextAreaField("Descrição 2", validators=[DataRequired(), Length(max=300), not_blank])
     feature2_image = FileField("Imagem 2 (opcional — substitui o ícone)", validators=[FileAllowed(["png", "jpg", "jpeg", "webp"], message="Formato não suportado.")])
-    remove_feature2_image = BooleanField("Remover imagem 2 atual")
 
     feature3_icon = StringField("Ícone 3 (Bootstrap Icons)", validators=[DataRequired(), Length(max=40)])
     feature3_title = StringField("Título 3", validators=[DataRequired(), Length(max=100), not_blank])
     feature3_description = TextAreaField("Descrição 3", validators=[DataRequired(), Length(max=300), not_blank])
     feature3_image = FileField("Imagem 3 (opcional — substitui o ícone)", validators=[FileAllowed(["png", "jpg", "jpeg", "webp"], message="Formato não suportado.")])
-    remove_feature3_image = BooleanField("Remover imagem 3 atual")
 
     submit = SubmitField("Salvar landing page")
