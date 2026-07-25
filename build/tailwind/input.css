@@ -1,0 +1,34 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* fontes já vêm de app/static/vendor/fonts/fonts.css (carregado antes
+     deste arquivo no <head>) — aqui só declaramos a fonte padrão do
+     body pra combinar com o resto do site (Inter). */
+  body { font-family: "Inter", sans-serif; }
+}
+
+@layer components {
+  /* Painel "vidro fosco" — reaproveita os tokens de tema já existentes
+     (--card-bg / --card-border) em vez de preto fixo, então continua
+     coerente nos 3 temas hoje suportados (chili, blue, claro). */
+  .glass-card {
+    background: color-mix(in srgb, var(--card-bg) 70%, transparent);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid color-mix(in srgb, var(--card-border) 70%, transparent);
+  }
+  .gradient-text {
+    background-image: linear-gradient(to right, var(--accent), var(--accent-dark));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .btn-pill-solid {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-accent px-8 py-4 font-bold text-white transition-all hover:brightness-110;
+  }
+  .btn-pill-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-full glass-card px-8 py-4 font-medium text-paper transition-all hover:bg-white/5;
+  }
+}
