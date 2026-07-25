@@ -39,7 +39,9 @@
 # É seguro rodar de novo (ex: para reconfigurar): o script avisa antes de
 # sobrescrever o que já existe e nunca apaga dados do banco.
 
-set -euo pipefail
+set -Eeuo pipefail  # -E (errtrace): sem isso, o "trap ... ERR" abaixo não
+                    # dispara para erros dentro de funções (run_as_app_user,
+                    # render_template etc.) — ou seja, para quase todo o script.
 umask 077
 
 # --------------------------------------------------------------------------
@@ -58,6 +60,25 @@ info() { echo -e "    $*"; }
 warn() { echo -e "${C_YELLOW}==> AVISO:${C_RESET} $*"; }
 err()  { echo -e "${C_RED}==> ERRO:${C_RESET} $*" >&2; }
 die()  { err "$*"; exit 1; }
+
+# Nome da etapa em andamento (atualizado no início de cada seção numerada
+# abaixo) — usado só pelo trap de erro, pra dizer EM QUAL PARTE da
+# instalação algo quebrou. Sem isso, uma falha inesperada (rede caindo no
+# meio de um apt-get, disco cheio, um pacote com problema etc.) simplesmente
+# parava o script com o erro cru do comando que falhou, sem contexto — dava
+# a impressão de "a instalação não fez nada" mesmo quando várias etapas
+# antes já tinham funcionado.
+STEP="início"
+on_error() {
+    local exit_code=$? line=$1
+    err "Falha inesperada na etapa '${STEP}' (linha ${line} do script, código ${exit_code})."
+    err "Confira a mensagem de erro do comando logo acima — geralmente ela já diz o motivo"
+    err "(pacote faltando, rede, permissão, disco cheio...). Depois de corrigir, é seguro"
+    err "rodar 'sudo bash deploy/install.sh' de novo: ele detecta o que já está pronto"
+    err "(usuário de sistema, ambiente virtual, banco de dados) e não refaz do zero."
+    exit 1
+}
+trap 'on_error $LINENO' ERR
 
 ask() {
     # ask "pergunta" "valor_padrao" -> imprime a resposta em REPLY_VALUE
@@ -329,7 +350,13 @@ fi
 
 echo
 log "Firewall (ufw)"
-FW_SSH_PORT="$(awk '$1=="Port"{print $2}' /etc/ssh/sshd_config 2>/dev/null | tail -n1)"
+# A detecção é só um "melhor palpite" (o fallback pra 22 na linha seguinte
+# já cobre qualquer caso) — mas sem o "|| true", se /etc/ssh/sshd_config
+# não existir (VPS sem openssh-server instalado pelo pacote padrão,
+# container mínimo etc.), o `awk` falha ao abrir o arquivo (exit 2) e, com
+# `set -o pipefail`, derruba o script inteiro bem no meio das perguntas —
+# antes mesmo de instalar qualquer coisa.
+FW_SSH_PORT="$(awk '$1=="Port"{print $2}' /etc/ssh/sshd_config 2>/dev/null | tail -n1)" || true
 [ -n "$FW_SSH_PORT" ] || FW_SSH_PORT=22
 info "Um firewall básico libera só SSH, HTTP e HTTPS e bloqueia o resto —"
 info "reduz o risco de outro serviço acabar exposto numa porta que não devia."
@@ -370,20 +397,28 @@ confirm "Confirma e inicia a instalação?" "S" || die "Instalação cancelada p
 # 2. Pacotes de sistema
 # --------------------------------------------------------------------------
 
+STEP="Pacotes de sistema"
 log "Atualizando pacotes e instalando dependências de sistema..."
 export DEBIAN_FRONTEND=noninteractive
-apt-get update -qq
-apt-get install -y -qq \
+if ! apt-get update -qq; then
+    die "'apt-get update' falhou — confira a conexão deste servidor com a internet (ou o mirror configurado em /etc/apt/sources.list) e tente de novo."
+fi
+if ! apt-get install -y -qq \
     python3 python3-venv python3-pip python3-dev \
     build-essential libjpeg-dev zlib1g-dev \
-    git curl nginx ca-certificates ffmpeg
+    git curl nginx ca-certificates ffmpeg; then
+    die "Falha instalando os pacotes de sistema básicos (veja o erro do apt-get acima)."
+fi
 
 if [ "$DB_ENGINE" = "postgres_local" ]; then
-    apt-get install -y -qq postgresql postgresql-contrib libpq-dev
-    systemctl enable --now postgresql
+    apt-get install -y -qq postgresql postgresql-contrib libpq-dev \
+        || die "Falha instalando o PostgreSQL (veja o erro do apt-get acima)."
+    systemctl enable --now postgresql \
+        || die "PostgreSQL foi instalado mas não consegui ativar o serviço. Rode 'systemctl status postgresql' e 'journalctl -u postgresql -n 50' para diagnosticar."
 elif [ "$DB_ENGINE" = "external" ]; then
     case "$DATABASE_URL" in
-        postgres*) apt-get install -y -qq postgresql-client libpq-dev ;;
+        postgres*) apt-get install -y -qq postgresql-client libpq-dev \
+            || die "Falha instalando o cliente PostgreSQL (veja o erro do apt-get acima)." ;;
     esac
 fi
 
@@ -405,6 +440,7 @@ fi
 # 3. Usuário de sistema e diretório
 # --------------------------------------------------------------------------
 
+STEP="Usuário de sistema e diretório"
 log "Configurando o usuário de sistema '${SERVICE_USER}'..."
 if ! id "${SERVICE_USER}" &>/dev/null; then
     useradd --system --create-home --home-dir "/home/${SERVICE_USER}" --shell /usr/sbin/nologin "${SERVICE_USER}"
@@ -422,22 +458,42 @@ chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "${APP_DIR}/instance" "${APP_DIR}/ap
 # 4. Ambiente virtual e dependências Python
 # --------------------------------------------------------------------------
 
+STEP="Ambiente virtual e dependências Python"
 log "Criando ambiente virtual e instalando dependências Python (pode levar alguns minutos)..."
-run_as_app_user "cd '${APP_DIR}' && python3 -m venv venv"
-run_as_app_user "cd '${APP_DIR}' && venv/bin/pip install --quiet --upgrade pip"
-run_as_app_user "cd '${APP_DIR}' && venv/bin/pip install --quiet -r requirements.txt"
+run_as_app_user "cd '${APP_DIR}' && python3 -m venv venv" \
+    || die "Falha ao criar o ambiente virtual Python em ${APP_DIR}/venv. Confira se 'python3-venv' está instalado e se há espaço em disco (df -h)."
+run_as_app_user "cd '${APP_DIR}' && venv/bin/pip install --quiet --upgrade pip" \
+    || die "Falha ao atualizar o pip dentro do ambiente virtual. Confira a conexão com a internet."
+run_as_app_user "cd '${APP_DIR}' && venv/bin/pip install --quiet -r requirements.txt" \
+    || die "Falha instalando as dependências Python do projeto (requirements.txt). Veja o erro do pip acima — costuma ser rede, ou uma lib do sistema faltando pra compilar algum pacote."
 
 # --------------------------------------------------------------------------
 # 5. Banco de dados
 # --------------------------------------------------------------------------
 
+STEP="Banco de dados"
 if [ "$DB_ENGINE" = "postgres_local" ]; then
     log "Criando o banco de dados PostgreSQL local (${DB_NAME}) e o usuário (${DB_USER})..."
+
+    # Logo depois de instalar/ativar o pacote, o Postgres pode levar um
+    # instante pra aceitar conexões (primeira inicialização de cluster,
+    # servidor mais lento) — sem esperar, o psql abaixo falhava de vez em
+    # quando com "connection refused" num servidor recém-provisionado.
+    PG_READY=0
+    for _ in $(seq 1 15); do
+        if sudo -u postgres psql -tAc 'SELECT 1' >/dev/null 2>&1; then
+            PG_READY=1
+            break
+        fi
+        sleep 1
+    done
+    [ "$PG_READY" = "1" ] || die "O PostgreSQL não respondeu depois de instalado/ativado. Rode 'systemctl status postgresql' e 'journalctl -u postgresql -n 50' para diagnosticar."
+
     # Dobra aspas simples para inserir a senha com segurança dentro do SQL
     # (a senha pode ter sido digitada manualmente e conter qualquer caractere).
     DB_PASSWORD_SQL="${DB_PASSWORD//\'/\'\'}"
 
-    sudo -u postgres psql -v ON_ERROR_STOP=1 <<-SQL
+    if ! sudo -u postgres psql -v ON_ERROR_STOP=1 <<-SQL
         DO \$\$
         BEGIN
             IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '${DB_USER}') THEN
@@ -450,6 +506,9 @@ if [ "$DB_ENGINE" = "postgres_local" ]; then
         SELECT 'CREATE DATABASE ${DB_NAME} OWNER ${DB_USER}'
         WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '${DB_NAME}')\gexec
 SQL
+    then
+        die "Falha ao criar/atualizar o usuário ou o banco de dados PostgreSQL (veja o erro do psql acima)."
+    fi
 
     # Codifica a senha para a URL (ela pode conter caracteres como @ : / % que
     # quebrariam o formato da URL se fossem colocados sem escapar).
@@ -462,6 +521,7 @@ fi
 # 6. Arquivo .env
 # --------------------------------------------------------------------------
 
+STEP="Arquivo .env"
 log "Gerando o arquivo .env de produção..."
 if [ -f "${APP_DIR}/.env" ]; then
     cp "${APP_DIR}/.env" "${APP_DIR}/.env.bak.$(date +%Y%m%d%H%M%S)"
@@ -497,12 +557,27 @@ chmod 600 "${APP_DIR}/.env"
 # 7. Migrations e dados iniciais
 # --------------------------------------------------------------------------
 
+STEP="Migrations e dados iniciais"
 log "Rodando as migrations do banco de dados..."
-run_as_app_user "cd '${APP_DIR}' && venv/bin/flask db upgrade"
+run_as_app_user "cd '${APP_DIR}' && venv/bin/flask db upgrade" \
+    || die "Falha ao rodar as migrations do banco de dados (veja o erro acima). O restante da instalação (systemd, Nginx, SSL) não é seguro rodar sem o schema do banco em dia — corrija o erro e rode o instalador de novo."
 
+# A criação do Super Admin é interativa (pede nome/e-mail/senha) e,
+# diferente das migrations, uma falha ou cancelamento aqui (ex: Ctrl+C,
+# confirmação de senha digitada errado duas vezes) NÃO deve derrubar o
+# resto da instalação — sem isso, um deslize no prompt interativo fazia o
+# script morrer antes de configurar systemd/Nginx/SSL/firewall, dando a
+# impressão de que "a instalação não funciona", quando só faltou esse
+# passo (que pode ser feito manualmente depois, a qualquer momento).
+SUPERADMIN_CRIADO=1
 if confirm "Criar um usuário Super Admin agora?" "S"; then
-    run_as_app_user "cd '${APP_DIR}' && venv/bin/flask create-admin"
+    if ! run_as_app_user "cd '${APP_DIR}' && venv/bin/flask create-admin"; then
+        SUPERADMIN_CRIADO=0
+        warn "Não consegui criar o Super Admin agora — isso NÃO impede o resto da instalação."
+        warn "Crie depois com: sudo -u ${SERVICE_USER} bash -lc \"cd ${APP_DIR} && venv/bin/flask create-admin\""
+    fi
 else
+    SUPERADMIN_CRIADO=0
     info "Você pode criar depois com: sudo -u ${SERVICE_USER} bash -lc \"cd ${APP_DIR} && venv/bin/flask create-admin\""
 fi
 
@@ -510,6 +585,7 @@ fi
 # 8. Serviço systemd (Gunicorn)
 # --------------------------------------------------------------------------
 
+STEP="Serviço systemd (Gunicorn)"
 log "Configurando o serviço systemd..."
 render_template "${TEMPLATES_DIR}/comanda.service.tmpl" "/etc/systemd/system/comanda.service"
 systemctl daemon-reload
@@ -527,16 +603,19 @@ info "Serviço 'comanda' ativo (systemctl status comanda / journalctl -u comanda
 # 9. Nginx
 # --------------------------------------------------------------------------
 
+STEP="Nginx"
 log "Configurando o Nginx..."
 render_template "${TEMPLATES_DIR}/nginx.conf.tmpl" "/etc/nginx/sites-available/comanda"
 ln -sf /etc/nginx/sites-available/comanda /etc/nginx/sites-enabled/comanda
 rm -f /etc/nginx/sites-enabled/default
-nginx -t
-systemctl reload nginx || systemctl restart nginx
+nginx -t || die "O Nginx recusou a configuração gerada (/etc/nginx/sites-available/comanda) — veja o erro acima. Isso não deveria acontecer com um domínio/IP válido; se persistir, é um bug no template (deploy/templates/nginx.conf.tmpl)."
+systemctl reload nginx || systemctl restart nginx || die "O Nginx não recarregou nem reiniciou. Rode 'systemctl status nginx' e 'journalctl -u nginx -n 50' para diagnosticar."
 
 # --------------------------------------------------------------------------
 # 10. SSL
 # --------------------------------------------------------------------------
+
+STEP="SSL"
 
 # Emite (ou reemite) o certificado via Let's Encrypt/certbot — usado tanto
 # quando o provedor escolhido é o Let's Encrypt quanto como fallback
@@ -546,6 +625,11 @@ issue_letsencrypt_cert() {
     certbot --nginx --non-interactive --agree-tos -m "${SSL_EMAIL}" "${CERT_DOMAINS[@]}" --redirect
 }
 
+# Controla se o "Acesse:" do resumo final oferece https:// — sem isso, o
+# resumo prometia HTTPS mesmo quando a emissão do certificado falhava (nos
+# dois provedores), levando a pessoa a testar uma URL que ainda não existe.
+SSL_OK=0
+
 if [ "$WANT_SSL" = "s" ]; then
     CERT_DOMAINS=("-d" "${DOMAIN}")
     [ -n "$WWW_ALIAS" ] && CERT_DOMAINS+=("-d" "${WWW_ALIAS}")
@@ -553,6 +637,7 @@ if [ "$WANT_SSL" = "s" ]; then
     if [ "$SSL_PROVIDER" = "letsencrypt" ]; then
         log "Emitindo certificado com Let's Encrypt (certbot)..."
         if issue_letsencrypt_cert; then
+            SSL_OK=1
             info "Certificado emitido para ${SSL_NAMES}. A renovação automática já está agendada (certbot.timer)."
         else
             warn "A emissão do certificado falhou. Isso quase sempre significa que o DNS de ${SSL_NAMES} ainda não aponta para ${PUBLIC_IP:-este servidor} (o certbot usa esse endereço pra validar que o domínio é seu). Confira com 'getent hosts ${DOMAIN}' e, quando resolver certo, rode:"
@@ -583,6 +668,7 @@ if [ "$WANT_SSL" = "s" ]; then
                 --reloadcmd      "systemctl reload nginx"
             render_template "${TEMPLATES_DIR}/nginx-ssl.conf.tmpl" "/etc/nginx/sites-available/comanda"
             nginx -t && systemctl reload nginx
+            SSL_OK=1
             info "Certificado ZeroSSL emitido para ${SSL_NAMES} e instalado. acme.sh já agenda a renovação automática via cron."
         else
             if [ "$ZEROSSL_OK" = "1" ]; then
@@ -590,6 +676,7 @@ if [ "$WANT_SSL" = "s" ]; then
             fi
             log "Tentando emitir com Let's Encrypt como alternativa (não depende da ZeroSSL)..."
             if issue_letsencrypt_cert; then
+                SSL_OK=1
                 info "Certificado emitido para ${SSL_NAMES} via Let's Encrypt (a ZeroSSL falhou, mas o site já está com HTTPS). A renovação automática já está agendada (certbot.timer)."
             else
                 warn "A emissão automática também falhou pelo Let's Encrypt. Confira se o DNS de ${SSL_NAMES} já aponta para ${PUBLIC_IP:-este servidor} ('getent hosts ${DOMAIN}') e, quando resolver certo, rode um destes:"
@@ -600,10 +687,38 @@ if [ "$WANT_SSL" = "s" ]; then
     fi
 fi
 
+# O .env foi escrito na seção 6 com FORCE_HTTPS baseado na INTENÇÃO de usar
+# SSL (WANT_SSL), antes de sabermos se a emissão do certificado realmente
+# funcionou — e o serviço systemd já foi iniciado na seção 8, antes desta
+# seção rodar. Se o certificado não saiu, deixar FORCE_HTTPS=true faz o
+# Flask marcar o cookie de sessão como Secure (SESSION_COOKIE_SECURE), que
+# o navegador simplesmente não envia de volta em HTTP puro — o login para
+# de funcionar sem nenhum erro visível. Aqui corrigimos o .env para refletir
+# o resultado real (SSL_OK) e reiniciamos o serviço só se o valor mudou.
+STEP="Ajuste final do .env conforme o resultado do SSL"
+
+DESIRED_FORCE_HTTPS="false"
+[ "$SSL_OK" = "1" ] && DESIRED_FORCE_HTTPS="true"
+
+if [ "$DESIRED_FORCE_HTTPS" != "$FORCE_HTTPS" ]; then
+    if ! sed -i "s/^FORCE_HTTPS=.*/FORCE_HTTPS=${DESIRED_FORCE_HTTPS}/" "${APP_DIR}/.env"; then
+        warn "Não consegui atualizar FORCE_HTTPS em ${APP_DIR}/.env (valor atual pode estar incorreto). Ajuste manualmente para FORCE_HTTPS=${DESIRED_FORCE_HTTPS} e rode: systemctl restart comanda"
+    else
+        FORCE_HTTPS="$DESIRED_FORCE_HTTPS"
+        systemctl restart comanda || warn "FORCE_HTTPS foi atualizado no .env, mas não consegui reiniciar o serviço 'comanda'. Rode manualmente: systemctl restart comanda"
+        if [ "$DESIRED_FORCE_HTTPS" = "false" ]; then
+            warn "FORCE_HTTPS foi desligado em ${APP_DIR}/.env porque o certificado SSL não pôde ser emitido — sem isso, o login ficaria quebrado em HTTP (cookie de sessão marcado como só-HTTPS). Depois de resolver o SSL, rode o instalador de novo (ou emita o certificado manualmente e ajuste FORCE_HTTPS=true) para religar."
+        else
+            info "FORCE_HTTPS foi ativado em ${APP_DIR}/.env (HTTPS confirmado) e o serviço 'comanda' foi reiniciado."
+        fi
+    fi
+fi
+
 # --------------------------------------------------------------------------
 # 11. Firewall (ufw)
 # --------------------------------------------------------------------------
 
+STEP="Firewall (ufw)"
 if [ "$FW_ENABLE" = "s" ]; then
     log "Configurando o firewall (ufw)..."
     ufw allow "${FW_SSH_PORT}/tcp" comment "SSH" >/dev/null
@@ -620,6 +735,7 @@ fi
 # 12. Salva a configuração para o deploy/update.sh
 # --------------------------------------------------------------------------
 
+STEP="Salvando configuração"
 cat > "${CONF_FILE}" <<CONFEOF
 APP_DIR="${APP_DIR}"
 SERVICE_USER="${SERVICE_USER}"
@@ -635,18 +751,22 @@ chmod 600 "${CONF_FILE}"
 
 echo
 log "Instalação concluída!"
-if [ "$WANT_SSL" = "s" ]; then
+if [ "$SSL_OK" = "1" ]; then
     echo "  Acesse: https://${DOMAIN}/"
     [ -n "$WWW_ALIAS" ] && echo "          https://${WWW_ALIAS}/"
 elif [ -n "$DOMAIN" ]; then
     echo "  Acesse: http://${DOMAIN}/"
     [ -n "$WWW_ALIAS" ] && echo "          http://${WWW_ALIAS}/"
+    [ "$WANT_SSL" = "s" ] && warn "SSL foi solicitado mas a emissão do certificado falhou (veja os avisos acima) — o site está no ar só em HTTP por enquanto."
 else
     echo "  Acesse: http://${SERVER_NAME}/"
 fi
 echo "  Logs da aplicação : journalctl -u comanda -f"
 echo "  Reiniciar         : systemctl restart comanda"
 echo "  Atualizar         : sudo bash ${APP_DIR}/deploy/update.sh"
+if [ "$SUPERADMIN_CRIADO" = "0" ]; then
+    echo "  Criar Super Admin : sudo -u ${SERVICE_USER} bash -lc \"cd ${APP_DIR} && venv/bin/flask create-admin\""
+fi
 echo
 
 if [ "$DB_ENGINE" = "postgres_local" ]; then
