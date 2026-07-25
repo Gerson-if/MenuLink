@@ -406,6 +406,101 @@ renew_ssl_cert() {
     pause_menu
 }
 
+run_backup_now() {
+    section "Fazer backup agora"
+    info "Isso cria um arquivo .tar.gz (criptografado, se o gpg estiver disponível) em deploy/backups/"
+    info "com o banco de dados, os uploads e o .env — útil para migrar para outra VPS."
+    if bash "${SCRIPT_DIR}/backup.sh"; then
+        ok "Backup concluído — veja o caminho do arquivo nas mensagens acima."
+    else
+        fail "backup.sh terminou com erro (veja as mensagens acima)."
+    fi
+    pause_menu
+}
+
+list_backups() {
+    section "Backups existentes"
+    local dir="${APP_DIR}/deploy/backups"
+    if [ -d "$dir" ] && ls "${dir}"/comanda_backup_*.tar.gz* >/dev/null 2>&1; then
+        for f in "${dir}"/comanda_backup_*.tar.gz*; do
+            [[ "$f" == *.sha256 ]] && continue
+            ls -lh "$f"
+        done
+    else
+        warn "Nenhum backup encontrado ainda em ${dir}."
+    fi
+    pause_menu
+}
+
+run_restore_flow() {
+    section "Restaurar um backup"
+    warn "Isso PARA o serviço e SOBRESCREVE o banco de dados e os uploads atuais."
+    info "Um snapshot de segurança do estado atual é feito automaticamente antes, mas ainda assim é uma operação de risco."
+    local dir="${APP_DIR}/deploy/backups"
+    local files=()
+    if [ -d "$dir" ]; then
+        while IFS= read -r -d '' f; do
+            files+=("$f")
+        done < <(find "$dir" -maxdepth 1 -type f \( -name "*.tar.gz" -o -name "*.tar.gz.gpg" \) -print0 2>/dev/null | sort -z)
+    fi
+    echo
+    if [ "${#files[@]}" -eq 0 ]; then
+        warn "Nenhum backup encontrado em ${dir}."
+        info "Você pode informar o caminho completo de um arquivo de backup (por exemplo, um que você copiou de outro servidor)."
+    else
+        echo "Backups encontrados em ${dir}:"
+        local i=1
+        for f in "${files[@]}"; do
+            echo "  ${i}) $(basename "$f")"
+            i=$((i + 1))
+        done
+        echo "  0) Informar outro caminho manualmente"
+    fi
+    echo
+    ask "Digite o número do backup acima, ou o caminho completo do arquivo" ""
+    local choice="$REPLY_VALUE"
+    local backup_file=""
+    if [ "${#files[@]}" -gt 0 ] && [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#files[@]}" ]; then
+        backup_file="${files[$((choice - 1))]}"
+    else
+        backup_file="$choice"
+    fi
+    if [ -z "$backup_file" ] || [ ! -f "$backup_file" ]; then
+        fail "Arquivo de backup não encontrado: '${backup_file}'."
+        pause_menu
+        return
+    fi
+    if ! confirm "Confirma que quer restaurar '$(basename "$backup_file")' agora? Isso sobrescreve os dados atuais." "n"; then
+        info "Cancelado."
+        pause_menu
+        return
+    fi
+    log "Rodando deploy/restore.sh (ele vai pedir uma confirmação extra digitando 'restaurar')..."
+    if bash "${SCRIPT_DIR}/restore.sh" "$backup_file"; then
+        ok "Restauração concluída — veja o resumo acima."
+    else
+        fail "restore.sh terminou com erro (veja as mensagens acima, inclusive sobre o snapshot de segurança pré-restauração)."
+    fi
+    pause_menu
+}
+
+backup_restore_menu() {
+    while true; do
+        section "Backup e restauração (migração entre servidores)"
+        item 1 "Fazer backup agora" "gera um arquivo em deploy/backups/, pronto para copiar para outro servidor"
+        item 2 "Listar backups existentes"
+        item 3 "Restaurar um backup" "sobrescreve os dados atuais — use com cuidado"
+        item 4 "Voltar ao menu principal"
+        ask "Escolha uma opção [1-4]" "4"
+        case "$REPLY_VALUE" in
+            1) run_backup_now ;;
+            2) list_backups ;;
+            3) run_restore_flow ;;
+            4|*) return 0 ;;
+        esac
+    done
+}
+
 system_commands_menu() {
     while true; do
         section "Comandos do sistema"
@@ -438,16 +533,18 @@ main_menu() {
             item 2 "Verificações do sistema" "serviço, Nginx, banco, SSL..."
             item 3 "Comandos do sistema" "reiniciar, logs, status, renovar SSL..."
             item 4 "Gerenciar Super Admin" "criar, redefinir, trocar e-mail, remover"
-            item 5 "Reconfigurar esta instalação" "domínio, SSL, banco, systemd, Nginx..."
-            item 6 "Sair"
-            ask "Escolha uma opção [1-6]" "6"
+            item 5 "Backup e restauração" "migração entre servidores, backup e restore"
+            item 6 "Reconfigurar esta instalação" "domínio, SSL, banco, systemd, Nginx..."
+            item 7 "Sair"
+            ask "Escolha uma opção [1-7]" "7"
             case "$REPLY_VALUE" in
                 1) run_update_script ;;
                 2) run_verificacoes ;;
                 3) system_commands_menu ;;
                 4) manage_super_admin_menu ;;
-                5) return 0 ;;
-                6) echo "Até mais!"; exit 0 ;;
+                5) backup_restore_menu ;;
+                6) return 0 ;;
+                7) echo "Até mais!"; exit 0 ;;
                 *) warn "Opção inválida." ;;
             esac
         else
