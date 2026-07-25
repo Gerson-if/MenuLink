@@ -114,6 +114,14 @@ def seed_db():
 def create_admin(name, email, password):
     """Cria (ou reseta a senha de) um super administrador específico."""
 
+    # bcrypt só aceita até 72 bytes de senha (ver app/models/user.py) —
+    # sem esta checagem, um `--password` grande demais faz set_password
+    # levantar ValueError e o comando quebrar com traceback do Python na
+    # tela de quem estiver usando o menu do install.sh.
+    if len(password.encode("utf-8")) > User._MAX_PASSWORD_BYTES:
+        click.echo(f"✘ Senha muito longa (máximo {User._MAX_PASSWORD_BYTES} bytes). Escolha uma senha mais curta.")
+        raise SystemExit(1)
+
     admin = User.query.filter_by(email=email).first()
     if admin:
         admin.set_password(password)

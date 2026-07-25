@@ -2,7 +2,7 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired, Email, Length, EqualTo
 
-from app.utils.validators import bounded_length
+from app.utils.validators import bounded_length, password_max_bytes
 
 
 class ForgotPasswordForm(FlaskForm):
@@ -22,6 +22,7 @@ class ResetPasswordForm(FlaskForm):
         "Nova senha",
         validators=[
             DataRequired(message="Informe a nova senha."),
+            password_max_bytes(),
             Length(min=6, max=128, message="A senha deve ter entre 6 e 128 caracteres."),
         ],
     )

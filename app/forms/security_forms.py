@@ -8,14 +8,28 @@ from flask_wtf import FlaskForm
 from wtforms import PasswordField, StringField, SubmitField
 from wtforms.validators import DataRequired, Email, EqualTo, Length, ValidationError
 
-from app.utils.validators import bounded_length, not_blank
+from app.utils.validators import bounded_length, not_blank, password_max_bytes
 
 
 class ChangePasswordForm(FlaskForm):
-    current_password = PasswordField("Senha atual", validators=[DataRequired(message="Informe a senha atual.")])
+    current_password = PasswordField(
+        "Senha atual",
+        validators=[
+            DataRequired(message="Informe a senha atual."),
+            # current_password vai direto pro bcrypt.check_password_hash
+            # (ver app/services/*security*.py) — sem este limite, uma senha
+            # atual "errada" só que gigante já derrubava a tela com 500
+            # antes mesmo de comparar e dizer "senha atual incorreta".
+            password_max_bytes(),
+        ],
+    )
     new_password = PasswordField(
         "Nova senha",
-        validators=[DataRequired(message="Informe a nova senha."), Length(min=6, max=128, message="A senha deve ter entre 6 e 128 caracteres.")],
+        validators=[
+            DataRequired(message="Informe a nova senha."),
+            password_max_bytes(),
+            Length(min=6, max=128, message="A senha deve ter entre 6 e 128 caracteres."),
+        ],
     )
     confirm_password = PasswordField(
         "Confirme a nova senha",

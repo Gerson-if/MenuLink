@@ -2,7 +2,7 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired, Email, EqualTo, Length, Regexp
 
-from app.utils.validators import bounded_length, not_blank, phone_number
+from app.utils.validators import bounded_length, not_blank, password_max_bytes, phone_number
 
 
 class RegistrationForm(FlaskForm):
@@ -37,6 +37,7 @@ class RegistrationForm(FlaskForm):
         "Criar senha de acesso",
         validators=[
             DataRequired(message="Informe uma senha."),
+            password_max_bytes(),
             Length(min=6, max=128, message="A senha deve ter entre 6 e 128 caracteres."),
         ],
     )

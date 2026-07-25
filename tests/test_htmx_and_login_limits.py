@@ -108,7 +108,10 @@ class TestLoginFieldLimits:
 
         resp = client.post("/login", data=data, follow_redirects=True)
         assert resp.status_code == 200
-        assert "entre 6 e 128 caracteres" in resp.get_data(as_text=True)
+        # 200 bytes já estoura o limite de 72 bytes do bcrypt antes mesmo
+        # de chegar no Length(max=128) — ver password_max_bytes em
+        # app/utils/validators.py (StopValidation corta a cadeia aqui).
+        assert "muito longa" in resp.get_data(as_text=True)
 
     def test_email_field_has_maxlength_attribute_in_html(self, client):
         resp = client.get("/login")

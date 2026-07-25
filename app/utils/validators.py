@@ -52,6 +52,31 @@ def phone_number(min_digits: int = 10, max_digits: int = 15):
     return _validator
 
 
+def password_max_bytes(max_bytes: int = 72, message: str | None = None):
+    """bcrypt (usado em app/models/user.py via flask-bcrypt) só aceita até
+    72 BYTES de senha — acima disso, `bcrypt.hashpw`/`check_password_hash`
+    levanta `ValueError` e derruba a requisição com 500 (foi exatamente o
+    que aconteceu em produção: alguém digitou uma senha grande, e mesmo com
+    ~128 CARACTERES — dentro do limite de `Length(max=128)` — em UTF-8 isso
+    pode passar de 72 BYTES quando há acentos/emoji, já que cada um ocupa
+    até 4 bytes.
+
+    Por isso não dá pra confiar só em `Length(max=...)`, que conta
+    caracteres, não bytes. Este validador mede o tamanho já convertido pra
+    UTF-8, do jeito que o bcrypt vai receber, e deve vir ANTES de
+    `Length`/`DataRequired` na lista pra cortar a cadeia cedo com
+    `StopValidation`."""
+
+    def _validator(form, field):
+        value = field.data or ""
+        if len(value.encode("utf-8")) > max_bytes:
+            raise StopValidation(
+                message or f"A senha é muito longa (máximo {max_bytes} bytes; evite excesso de acentos/emojis)."
+            )
+
+    return _validator
+
+
 def not_blank(form, field):
     """Rejeita um texto que só tem espaços em branco (DataRequired sozinho
     deixa passar ' ' já que não está tecnicamente vazio)."""

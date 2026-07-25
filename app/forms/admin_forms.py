@@ -7,7 +7,7 @@ from wtforms.validators import DataRequired, Email, Length, NumberRange, Optiona
 
 from app.models.platform_settings import ASAAS_ENVIRONMENT_CHOICES, LANDING_THEME_CHOICES
 from app.utils.colors import normalize_hex
-from app.utils.validators import bounded_length, not_blank, phone_number
+from app.utils.validators import bounded_length, not_blank, password_max_bytes, phone_number
 
 
 class TenantCreateForm(FlaskForm):
@@ -19,7 +19,9 @@ class TenantCreateForm(FlaskForm):
 
     owner_name = StringField("Nome do responsável (lojista)", validators=[DataRequired(), Length(max=150), not_blank])
     owner_email = StringField("E-mail de login do lojista", validators=[DataRequired(), bounded_length(180), Email()])
-    owner_password = StringField("Senha inicial", validators=[DataRequired(), Length(min=6, max=128)])
+    owner_password = StringField(
+        "Senha inicial", validators=[DataRequired(), password_max_bytes(), Length(min=6, max=128)]
+    )
 
     submit = SubmitField("Criar lojista")
 

@@ -32,7 +32,7 @@ class UserSession(db.Model, TimestampMixin):
     last_seen_at = Column(DateTime(timezone=True), nullable=False, default=utcnow)
     revoked_at = Column(DateTime(timezone=True), nullable=True)
 
-    user = relationship("User", backref="sessions")
+    user = relationship("User", back_populates="sessions")
 
     @property
     def is_revoked(self) -> bool:

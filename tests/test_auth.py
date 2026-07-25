@@ -12,6 +12,23 @@ class TestLogin:
         assert resp.status_code == 200
         assert "inválidos" in resp.get_data(as_text=True)
 
+    def test_oversized_password_is_rejected_without_crashing(self, client, login_as):
+        """Regressão: bcrypt só aceita até 72 bytes de senha. Uma senha
+        gigante (ou uma com 128 caracteres cheios de acento/emoji, que já
+        passa dos 72 bytes em UTF-8) derrubava o login com 500 em vez de
+        mostrar "credenciais inválidas" — ver app/utils/validators.py
+        (password_max_bytes) e app/models/user.py."""
+        resp = login_as(client, "admin@cardapio.saas", "x" * 500)
+        assert resp.status_code == 200
+        assert "muito longa" in resp.get_data(as_text=True)
+
+        # 128 caracteres, mas em UTF-8 isso passa de 72 bytes por causa dos
+        # acentos — Length(max=128) sozinho deixaria passar e quebraria no
+        # bcrypt; password_max_bytes barra antes disso.
+        resp = login_as(client, "admin@cardapio.saas", "á" * 128)
+        assert resp.status_code == 200
+        assert "muito longa" in resp.get_data(as_text=True)
+
     def test_super_admin_login_redirects_to_admin_dashboard(self, client, login_as):
         resp = login_as(client, "admin@cardapio.saas", "admin123")
         assert resp.status_code == 200

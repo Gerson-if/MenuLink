@@ -53,6 +53,16 @@ class User(db.Model, UserMixin, TimestampMixin):
     last_login_at = Column(DateTime(timezone=True), nullable=True)
 
     tenant = relationship("Tenant", back_populates="users")
+    # cascade="all, delete-orphan" é necessário aqui: sem ele, ao apagar um
+    # User (direto ou em cascata pela remoção do Tenant), o SQLAlchemy só
+    # desassocia as UserSession filhas (tenta um UPDATE ... SET user_id =
+    # NULL) em vez de apagá-las — e como user_id é NOT NULL, isso quebra a
+    # remoção com IntegrityError. passive_deletes=True deixa o ON DELETE
+    # CASCADE do próprio Postgres (ver app/models/user_session.py) cuidar
+    # das linhas, sem o SQLAlchemy tentar carregá-las/atualizá-las à toa.
+    sessions = relationship(
+        "UserSession", back_populates="user", cascade="all, delete-orphan", passive_deletes=True,
+    )
 
     __table_args__ = (
         CheckConstraint(
@@ -63,10 +73,29 @@ class User(db.Model, UserMixin, TimestampMixin):
     )
 
     # --- Senha ---
+    # bcrypt (via flask-bcrypt) só aceita até 72 BYTES de senha — acima
+    # disso `generate_password_hash`/`check_password_hash` levantam
+    # ValueError e derrubam a requisição com 500 em vez de um erro
+    # tratado. Os formulários (app/forms/*.py, ver password_max_bytes em
+    # app/utils/validators.py) já bloqueiam isso antes de chegar aqui, mas
+    # esta é uma segunda camada de proteção — pra scripts de linha de
+    # comando, seeds ou qualquer outro caminho que crie/altere senha sem
+    # passar pelos forms — para nunca mais estourar um 500 em produção
+    # por causa disso (foi exatamente o que aconteceu: alguém digitou uma
+    # senha longa no login e o worker do gunicorn quebrou).
+    _MAX_PASSWORD_BYTES = 72
+
     def set_password(self, raw_password: str) -> None:
+        if len(raw_password.encode("utf-8")) > self._MAX_PASSWORD_BYTES:
+            raise ValueError(f"A senha não pode passar de {self._MAX_PASSWORD_BYTES} bytes.")
         self.password_hash = bcrypt.generate_password_hash(raw_password).decode("utf-8")
 
     def check_password(self, raw_password: str) -> bool:
+        if len(raw_password.encode("utf-8")) > self._MAX_PASSWORD_BYTES:
+            # Senha enviada não bate com nenhum hash válido de qualquer
+            # jeito — trata como "senha errada" em vez de deixar o bcrypt
+            # levantar ValueError e virar um 500.
+            return False
         return bcrypt.check_password_hash(self.password_hash, raw_password)
 
     # --- Flask-Login ---

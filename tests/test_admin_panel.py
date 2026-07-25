@@ -97,8 +97,6 @@ class TestTenantManagement:
             assert tenant.phone == "6733334444"
 
     def test_delete_tenant_cascades_related_data(self, app, client, login_as):
-        login_as(client, "admin@cardapio.saas", "admin123")
-
         # cria loja descartável via service diretamente para simplificar
         from app.services.admin_tenant_service import AdminTenantService
         with app.app_context():
@@ -108,6 +106,23 @@ class TestTenantManagement:
             )
             tenant_id = tenant.id
 
+        # Regressão: o lojista precisa ter feito login pelo menos uma vez
+        # (criando um UserSession, ver app/models/user_session.py) antes de
+        # a loja ser excluída — sem cascade="all, delete-orphan" +
+        # passive_deletes=True em User.sessions, apagar o User em cascata
+        # (pela exclusão do Tenant) fazia o SQLAlchemy tentar um
+        # UPDATE user_sessions SET user_id = NULL em vez de apagar a linha,
+        # o que quebrava com IntegrityError (user_id é NOT NULL). Login e
+        # logout no MESMO client (em vez de um segundo `app.test_client()`)
+        # porque o `current_user` do Flask-Login é cacheado em `g`, que é
+        # por CONTEXTO DE APLICAÇÃO — e a fixture `app` mantém um contexto
+        # de aplicação aberto por todo o teste, então um segundo test
+        # client "reaproveitaria" esse `g` e o login do admin logo depois
+        # pareceria estar autenticado como o dono da loja.
+        login_as(client, "dono@descartavel.com", "senha123")
+        client.get("/logout")
+
+        login_as(client, "admin@cardapio.saas", "admin123")
         resp = client.post(f"/admin/lojistas/{tenant_id}/excluir", follow_redirects=True)
         assert "excluídos permanentemente" in resp.get_data(as_text=True)
 
