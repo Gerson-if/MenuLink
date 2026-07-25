@@ -1085,6 +1085,8 @@ fi
 echo "  Logs da aplicação : journalctl -u comanda -f"
 echo "  Reiniciar         : systemctl restart comanda"
 echo "  Atualizar         : sudo bash ${APP_DIR}/deploy/update.sh"
+echo "  Backup (migração) : sudo bash ${APP_DIR}/deploy/backup.sh"
+echo "  Restaurar backup  : sudo bash ${APP_DIR}/deploy/restore.sh <arquivo>"
 if [ "$SUPERADMIN_CRIADO" = "0" ]; then
     echo "  Criar Super Admin : sudo -u ${SERVICE_USER} bash -lc \"cd ${APP_DIR} && venv/bin/flask create-admin\""
 fi
