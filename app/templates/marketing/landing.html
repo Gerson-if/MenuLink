@@ -4,358 +4,285 @@
 {% block html_attrs %}{% if landing.theme == 'light' %}data-theme="light"{% endif %}{% endblock %}
 
 {% block extra_head %}
-{# CSS compilado do Tailwind (build/tailwind/) — só esta página o
-   carrega, então o restante do site (painéis, auth) continua 100%
-   Bootstrap sem interferência do "preflight" do Tailwind (reset global
-   de margin/padding/tipografia). Ver build/tailwind/README caso exista,
-   ou o comentário no topo de build/tailwind/tailwind.config.js. #}
-<link rel="stylesheet" href="{{ static_versioned('css/tailwind-landing.css') }}">
 <style>
-  /* Pequenos ajustes que não fazem sentido como utilitário Tailwind
-     reutilizável (só usados aqui, uma vez cada). */
-  .landing-hero-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
-  .landing-hero-video-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, color-mix(in srgb, var(--ink) 60%, transparent), color-mix(in srgb, var(--ink) 88%, transparent)); z-index: 1; }
+  .hero-section { position: relative; overflow: hidden; padding: 140px 0 80px 0; background: radial-gradient(circle at 80% 20%, rgba(229,74,54,0.08) 0%, transparent 50%); }
+  .hero-section .container { position: relative; z-index: 2; }
+  .hero-video-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
+  .hero-video-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,8,6,.6), rgba(10,8,6,.85)); z-index: 1; }
+  .navbar-custom { background: color-mix(in srgb, var(--ink) 90%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--card-border); }
+  .feature-icon-box { width: 48px; height: 48px; border-radius: 10px; background: rgba(229,74,54,0.12); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; margin-bottom: 20px; }
+  .feature-panel { transition: transform .25s ease, box-shadow .25s ease; }
+  .feature-panel:hover { transform: translateY(-4px); box-shadow: 0 12px 28px rgba(0,0,0,0.2); }
+  .plan-card { border: 1px solid var(--card-border); transition: transform .2s, border-color .2s; }
+  .plan-card:hover { transform: translateY(-4px); }
+  .plan-card.featured { border-color: var(--accent); position: relative; }
+  .plan-card.featured::after {
+    content: 'MAIS VENDIDO'; position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+    background: var(--accent); color: #fff; font-family: 'Archivo Black'; font-size: .65rem;
+    padding: 4px 12px; border-radius: 20px; letter-spacing: .05em;
+  }
+  .final-cta { background: var(--ink); position: relative; overflow: hidden; }
+  .final-cta::before {
+    content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--accent) 18%, transparent) 0%, transparent 60%);
+  }
+  .landing-nav-toggle { background: transparent; border: 0; padding: 8px; display: inline-flex; align-items: center; justify-content: center; color: var(--card-text, #fff); cursor: pointer; }
+  .landing-nav-toggle .hamburger-icon span { background: currentColor; }
+  .landing-drawer { --bs-offcanvas-width: min(320px, 86vw); background: var(--charcoal); color: var(--paper); }
+  #landingDrawer .offcanvas-header { border-bottom: 1px solid var(--card-border); padding: 16px 18px; }
+  #landingDrawer .offcanvas-body { padding: 18px; }
+  #landingDrawer .btn-close { filter: invert(1) brightness(2); }
+  .landing-drawer-link { display: block; padding: 10px 4px; color: var(--card-text); text-decoration: none; font-weight: 500; border-radius: 8px; transition: background .15s ease; }
+  .landing-drawer-link:hover { background: color-mix(in srgb, var(--card-text) 8%, transparent); color: var(--card-text); }
+  .showcase-panel { transition: transform .25s ease, box-shadow .25s ease; }
+  .showcase-panel:hover { transform: translateY(-4px); box-shadow: 0 12px 28px rgba(0,0,0,0.2); }
+  .hero-cta-group { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 14px; }
+  .hero-cta-group > * { animation: heroCtaIn .5s ease both; }
+  .hero-cta-group > *:nth-child(2) { animation-delay: .12s; }
+  @keyframes heroCtaIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .hero-link-secondary {
+    color: var(--card-text); text-decoration: none; font-size: .95rem; font-weight: 500;
+    display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; border-radius: 8px;
+    background: color-mix(in srgb, var(--card-text) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--card-text) 18%, transparent);
+    backdrop-filter: blur(6px); transition: background .2s ease, border-color .2s ease, transform .2s ease;
+  }
+  .hero-link-secondary:hover {
+    color: var(--card-text); transform: translateY(-2px);
+    background: color-mix(in srgb, var(--card-text) 18%, transparent);
+    border-color: color-mix(in srgb, var(--card-text) 32%, transparent);
+  }
+  .btn-cta-glow { animation: ctaGlow 2.6s ease-in-out infinite, heroCtaIn .5s ease both; transition: transform .2s ease, box-shadow .2s ease; }
+  .btn-cta-glow:hover { transform: translateY(-2px); box-shadow: 0 10px 26px color-mix(in srgb, var(--accent) 55%, transparent); animation-play-state: paused; }
+  @keyframes ctaGlow {
+    0%, 100% { box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 35%, transparent); }
+    50% { box-shadow: 0 4px 22px color-mix(in srgb, var(--accent) 65%, transparent); }
+  }
   @media (prefers-reduced-motion: reduce) {
-    .animate-blob, .animate-ping { animation: none !important; }
+    .btn-cta-glow { animation: none; }
+    .hero-cta-group > * { animation: none; }
+  }
+  @media (max-width: 767.98px) {
+    .hero-section { padding: 110px 0 56px 0; text-align: center; }
+    .hero-section .display-4 { font-size: 2.1rem; }
+    .hero-section .d-flex.gap-3 { align-items: stretch; }
   }
 </style>
 {% endblock %}
 
 {% block content %}
-<div x-data="{ mobileMenuOpen: false }" @keydown.escape.window="mobileMenuOpen = false" class="bg-charcoal text-paper antialiased font-sans">
-
-  <!-- Fundo animado (blobs) -->
-  <div class="fixed inset-0 overflow-hidden pointer-events-none z-0">
-    <div class="absolute top-0 -left-4 w-72 h-72 bg-accent/10 rounded-full mix-blend-screen filter blur-3xl opacity-50 animate-blob"></div>
-    <div class="absolute top-0 -right-4 w-72 h-72 bg-accent-dark/10 rounded-full mix-blend-screen filter blur-3xl opacity-50 animate-blob" style="animation-delay: 2s;"></div>
-    <div class="absolute -bottom-8 left-20 w-72 h-72 bg-accent/10 rounded-full mix-blend-screen filter blur-3xl opacity-50 animate-blob" style="animation-delay: 4s;"></div>
+<nav class="navbar navbar-expand-lg fixed-top navbar-dark navbar-custom py-3">
+  <div class="container justify-content-between">
+    <a class="navbar-brand d-flex align-items-center gap-2 m-0" href="{{ url_for('index') }}">
+      {% if platform_settings and platform_settings.platform_logo %}
+      <div class="brand-mark overflow-hidden" style="width:36px;height:36px;">
+        <img src="{{ url_for('static', filename=platform_settings.platform_logo) }}" alt="" style="width:100%; height:100%; object-fit:cover;">
+      </div>
+      {% else %}
+      <div class="brand-mark" style="width:36px;height:36px;font-size:1.1rem;"><i class="bi bi-egg-fried text-white"></i></div>
+      {% endif %}
+      <span class="font-display" style="font-size:1.2rem; line-height:1;">COMANDA</span>
+    </a>
+    <button type="button" class="landing-nav-toggle" data-bs-toggle="offcanvas" data-bs-target="#landingDrawer" aria-controls="landingDrawer" aria-label="Abrir menu">
+      <span class="hamburger-icon"><span></span><span></span><span></span></span>
+    </button>
   </div>
+</nav>
 
-  <!-- Header -->
-  <header class="fixed w-full top-0 z-50 glass-card border-b-0">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-      <a href="{{ url_for('index') }}" class="flex items-center gap-2 group">
-        {% if platform_settings and platform_settings.platform_logo %}
-        <div class="w-10 h-10 rounded-xl overflow-hidden transition-transform group-hover:scale-105">
-          <img src="{{ url_for('static', filename=platform_settings.platform_logo) }}" alt="" class="w-full h-full object-cover">
-        </div>
-        {% else %}
-        <div class="w-10 h-10 rounded-xl bg-accent flex items-center justify-center transition-transform group-hover:scale-105">
-          <i class="bi bi-egg-fried text-white"></i>
-        </div>
-        {% endif %}
-        <span class="text-xl font-display font-bold tracking-tight text-paper">COMANDA</span>
-      </a>
-
-      <nav class="hidden md:flex items-center gap-8 text-sm font-medium">
-        <a href="#recursos" class="text-mute hover:text-paper transition-colors">Recursos</a>
-        <a href="#mostra" class="text-mute hover:text-paper transition-colors">Como Funciona</a>
-        <a href="#planos" class="text-mute hover:text-paper transition-colors">Planos</a>
-      </nav>
-
-      <div class="flex items-center gap-3">
-        <a href="{{ url_for('auth.login') }}" class="text-sm font-medium text-mute hover:text-paper transition-colors hidden sm:block">
-          Entrar
-        </a>
-        <a href="{{ url_for('auth.register') }}" class="hidden sm:inline-flex items-center justify-center px-5 sm:px-6 py-2.5 rounded-full bg-accent text-white font-semibold text-sm hover:brightness-110 transition-all shadow-[0_0_15px_rgba(0,0,0,0.15)] whitespace-nowrap">
-          Testar Grátis
-        </a>
-        <button type="button" id="landingMobileMenuBtn" @click="mobileMenuOpen = true" aria-label="Abrir menu" class="md:hidden inline-flex items-center justify-center w-10 h-10 rounded-full text-paper">
-          <i class="bi bi-list text-2xl"></i>
-        </button>
+<div class="offcanvas offcanvas-end landing-drawer" tabindex="-1" id="landingDrawer">
+  <div class="offcanvas-header">
+    <a class="navbar-brand d-flex align-items-center gap-2 m-0" href="{{ url_for('index') }}">
+      {% if platform_settings and platform_settings.platform_logo %}
+      <div class="brand-mark overflow-hidden" style="width:32px;height:32px;">
+        <img src="{{ url_for('static', filename=platform_settings.platform_logo) }}" alt="" style="width:100%; height:100%; object-fit:cover;">
       </div>
-    </div>
-  </header>
-
-  <!-- Menu mobile (drawer simples via Alpine, sem depender do JS do Bootstrap) -->
-  <div x-show="mobileMenuOpen" x-cloak class="fixed inset-0 z-[60] md:hidden" style="display: none;">
-    <div class="absolute inset-0 bg-black/70" x-transition.opacity @click="mobileMenuOpen = false"></div>
-    <div class="absolute right-0 top-0 h-full w-[min(320px,86vw)] bg-charcoal border-l border-card-border p-6 flex flex-col gap-1"
-         x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
-         x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full">
-      <div class="flex items-center justify-between mb-6">
-        <span class="text-lg font-display font-bold text-paper">COMANDA</span>
-        <button type="button" @click="mobileMenuOpen = false" aria-label="Fechar menu" class="w-9 h-9 inline-flex items-center justify-center rounded-full text-mute hover:text-paper">
-          <i class="bi bi-x-lg"></i>
-        </button>
-      </div>
-      <a href="#recursos" @click="mobileMenuOpen = false" class="py-3 px-2 rounded-lg text-paper hover:bg-white/5 font-medium">Recursos</a>
-      <a href="#mostra" @click="mobileMenuOpen = false" class="py-3 px-2 rounded-lg text-paper hover:bg-white/5 font-medium">Como Funciona</a>
-      <a href="#planos" @click="mobileMenuOpen = false" class="py-3 px-2 rounded-lg text-paper hover:bg-white/5 font-medium">Planos</a>
-      <hr class="border-card-border my-4">
-      <a href="{{ url_for('auth.login') }}" class="btn-pill-ghost mb-3"><i class="bi bi-box-arrow-in-right"></i> Entrar no Painel</a>
-      <a href="{{ url_for('auth.register') }}" class="btn-pill-solid"><i class="bi bi-rocket-takeoff"></i> Criar Minha Loja</a>
-    </div>
+      {% else %}
+      <div class="brand-mark" style="width:32px;height:32px;font-size:1rem;"><i class="bi bi-egg-fried text-white"></i></div>
+      {% endif %}
+      <span class="font-display" style="font-size:1.05rem; line-height:1;">COMANDA</span>
+    </a>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
   </div>
+  <div class="offcanvas-body d-flex flex-column">
+    <a href="#recursos" class="landing-drawer-link" onclick="bootstrap.Offcanvas.getInstance(document.getElementById('landingDrawer'))?.hide()">Recursos</a>
+    <a href="#planos" class="landing-drawer-link" onclick="bootstrap.Offcanvas.getInstance(document.getElementById('landingDrawer'))?.hide()">Planos</a>
+    <hr class="border-secondary-subtle my-3">
+    <a href="{{ url_for('auth.login') }}" class="btn-outline-custom text-center d-flex align-items-center justify-content-center gap-2 mb-2"><i class="bi bi-box-arrow-in-right"></i> Entrar no Painel</a>
+    <a href="{{ url_for('auth.register') }}" class="btn btn-chili d-flex align-items-center justify-content-center gap-2"><i class="bi bi-rocket-takeoff"></i> Criar Minha Loja</a>
+  </div>
+</div>
 
-  <!-- Hero -->
-  <section class="relative z-10 pt-32 pb-20 lg:pt-40 lg:pb-28 overflow-hidden">
-    {% if landing.hero_video %}
-    <video class="landing-hero-video" src="{{ url_for('static', filename=landing.hero_video) }}" autoplay muted loop playsinline preload="auto"></video>
-    <div class="landing-hero-video-overlay"></div>
-    {% endif %}
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-      <div class="grid grid-cols-1 {{ 'lg:grid-cols-2 items-center gap-12' if landing.hero_image else '' }}">
-        <div class="text-center {{ 'lg:text-left' if landing.hero_image else 'max-w-4xl mx-auto' }} space-y-8">
-
-          <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass-card text-xs font-medium text-accent">
-            <span class="relative flex h-2 w-2">
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
-              <span class="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
-            </span>
-            Livre-se das taxas de aplicativos de delivery
-          </div>
-
-          <h1 class="text-4xl sm:text-5xl md:text-6xl font-display font-extrabold text-paper tracking-tight leading-[1.15]">
-            {{ landing.hero_title }}
-          </h1>
-
-          <p class="text-lg sm:text-xl text-mute max-w-2xl {{ 'lg:mx-0' if landing.hero_image else 'mx-auto' }} font-light">
-            {{ landing.hero_subtitle }}
-          </p>
-
-          <div class="flex flex-col sm:flex-row items-center {{ 'lg:justify-start' if landing.hero_image else '' }} justify-center gap-4 pt-4">
-            <a href="{{ url_for('auth.register') }}" class="w-full sm:w-auto btn-pill-solid text-base">
-              Começar Agora — Grátis
-              <i class="bi bi-arrow-right"></i>
-            </a>
-            <a href="#planos" class="w-full sm:w-auto btn-pill-ghost text-base">
-              Ver planos
-              <i class="bi bi-arrow-down-short"></i>
-            </a>
-          </div>
+<section class="hero-section">
+  {% if landing.hero_video %}
+  <video class="hero-video-bg" src="{{ url_for('static', filename=landing.hero_video) }}" autoplay muted loop playsinline preload="auto"></video>
+  <div class="hero-video-overlay"></div>
+  {% endif %}
+  <div class="container">
+    <div class="row align-items-center pt-4 {{ '' if landing.hero_image else 'justify-content-center' }}">
+      <div class="{{ 'col-lg-6 mb-5 mb-lg-0 text-center text-lg-start' if landing.hero_image else 'col-lg-8 text-center' }}">
+        <h1 class="font-display display-4 mb-4" style="line-height:1.15;">{{ landing.hero_title }}</h1>
+        <p class="lead text-muted-custom mb-4" style="font-size:1.1rem; line-height:1.6;">{{ landing.hero_subtitle }}</p>
+        <div class="hero-cta-group {{ 'justify-content-lg-start' if landing.hero_image else '' }}">
+          <a href="{{ url_for('auth.register') }}" class="btn btn-chili btn-cta-glow fs-6 px-4">Começar Agora — Grátis</a>
+          <a href="#planos" class="hero-link-secondary">Ver planos de assinatura <i class="bi bi-arrow-down-short"></i></a>
         </div>
-
-        {% if landing.hero_image %}
-        <div class="text-center">
-          <img src="{{ url_for('static', filename=landing.hero_image) }}" alt="" decoding="async" fetchpriority="high"
-               class="rounded-3xl shadow-2xl mx-auto block max-h-[420px] object-cover"
-               style="opacity: {{ (landing.hero_image_opacity|default(100)) / 100 }}; filter: blur({{ landing.hero_image_blur|default(0) }}px);">
-        </div>
-        {% endif %}
       </div>
-
-      {% if not landing.hero_image %}
-      <!-- Preview do painel (mockup estático) -->
-      <div class="mt-20 relative mx-auto max-w-5xl">
-        <div class="absolute -inset-1 bg-gradient-to-r from-accent to-accent-dark rounded-[2rem] blur opacity-20"></div>
-        <div class="relative rounded-[2rem] glass-card p-2 overflow-hidden shadow-2xl">
-          <div class="bg-ink/60 rounded-3xl p-4 sm:p-6 border border-card-border">
-            <div class="flex items-center gap-2 mb-6">
-              <div class="w-3 h-3 rounded-full bg-mute/40"></div>
-              <div class="w-3 h-3 rounded-full bg-mute/40"></div>
-              <div class="w-3 h-3 rounded-full bg-mute/40"></div>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <div class="hidden md:flex flex-col gap-3 border-r border-card-border pr-6">
-                <div class="h-8 w-24 bg-white/10 rounded mb-2"></div>
-                <div class="h-6 w-full bg-accent/20 text-accent rounded px-2 flex items-center text-xs font-medium">Dashboard</div>
-                <div class="h-6 w-full bg-white/5 rounded"></div>
-                <div class="h-6 w-full bg-white/5 rounded"></div>
-              </div>
-              <div class="md:col-span-3 space-y-6">
-                <div>
-                  <h3 class="text-xl font-display font-bold text-paper">Resumo de Vendas</h3>
-                  <p class="text-sm text-mute">Hoje, {{ current_year }}</p>
-                </div>
-                <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  <div class="bg-white/5 border border-card-border rounded-2xl p-4">
-                    <p class="text-mute text-xs mb-1">Pedidos</p>
-                    <p class="text-2xl font-display font-bold text-paper">124</p>
-                  </div>
-                  <div class="bg-white/5 border border-card-border rounded-2xl p-4">
-                    <p class="text-mute text-xs mb-1">Faturamento</p>
-                    <p class="text-2xl font-display font-bold text-paper">R$ 3.840</p>
-                  </div>
-                  <div class="bg-white/5 border border-card-border rounded-2xl p-4 hidden sm:block">
-                    <p class="text-mute text-xs mb-1">Economia em taxas</p>
-                    <p class="text-2xl font-display font-bold text-accent">R$ 576</p>
-                  </div>
-                </div>
-                <div class="h-24 w-full bg-gradient-to-t from-white/5 to-transparent border-b border-card-border flex items-end justify-between px-2 pb-2">
-                  <div class="w-1/12 bg-white/20 h-1/3 rounded-t-sm"></div>
-                  <div class="w-1/12 bg-white/20 h-1/2 rounded-t-sm"></div>
-                  <div class="w-1/12 bg-white/20 h-2/3 rounded-t-sm"></div>
-                  <div class="w-1/12 bg-accent/60 h-full rounded-t-sm"></div>
-                  <div class="w-1/12 bg-white/20 h-3/4 rounded-t-sm"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      {% if landing.hero_image %}
+      <div class="col-lg-6 text-center">
+        <img src="{{ url_for('static', filename=landing.hero_image) }}" alt="" decoding="async" fetchpriority="high"
+             class="img-fluid rounded shadow-lg mx-auto d-block"
+             style="max-height: 420px; object-fit: cover; opacity: {{ (landing.hero_image_opacity|default(100)) / 100 }}; filter: blur({{ landing.hero_image_blur|default(0) }}px);">
       </div>
       {% endif %}
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- Recursos -->
-  <section id="recursos" class="py-24 relative z-10 border-t border-card-border/60 bg-ink/20">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center max-w-2xl mx-auto mb-16">
-        <h2 class="text-3xl md:text-4xl font-display font-bold text-paper mb-4">Criado para simplificar sua operação</h2>
-        <p class="text-mute">Substitua anotações confusas e PDFs estáticos por uma plataforma fluida.</p>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {% for feature in landing.features %}
-        <div class="glass-card p-8 rounded-3xl hover:border-accent/30 transition-colors group">
+<section id="recursos" class="py-5" style="background: var(--ink);">
+  <div class="container py-4">
+    <div class="text-center mb-5" data-reveal>
+      <h2 class="font-display text-white">Criado para simplificar sua operação</h2>
+      <p class="text-muted-custom">Substitua anotações confusas e PDFs estáticos por uma plataforma fluida.</p>
+    </div>
+    <div class="row g-4">
+      {% for feature in landing.features %}
+      <div class="col-md-4">
+        <div class="panel feature-panel h-100" data-reveal style="--reveal-delay: {{ loop.index0 * 90 }}ms;">
           {% if feature.image %}
-          <div class="w-14 h-14 rounded-2xl overflow-hidden mb-6">
-            <img src="{{ url_for('static', filename=feature.image) }}" alt="" loading="lazy" decoding="async" class="w-full h-full object-cover">
+          <div class="feature-icon-box p-0" style="background: transparent; overflow: hidden;">
+            <img src="{{ url_for('static', filename=feature.image) }}" alt="" loading="lazy" decoding="async" style="width: 100%; height: 100%; object-fit: cover; border-radius: 10px;">
           </div>
           {% else %}
-          <div class="w-14 h-14 rounded-2xl bg-white/5 border border-card-border flex items-center justify-center mb-6 group-hover:bg-accent/10 transition-colors">
-            <i class="bi {{ feature.icon }} text-2xl text-paper group-hover:text-accent"></i>
-          </div>
+          <div class="feature-icon-box"><i class="bi {{ feature.icon }}"></i></div>
           {% endif %}
-          <h3 class="text-xl font-display font-bold text-paper mb-3">{{ feature.title }}</h3>
-          <p class="text-sm text-mute leading-relaxed">{{ feature.description }}</p>
+          <h4 class="font-display h5 mb-2" style="color: var(--card-text);">{{ feature.title }}</h4>
+          <p class="text-muted-custom small m-0">{{ feature.description }}</p>
         </div>
-        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section id="mostra" class="py-5">
+  <div class="container py-4">
+    <div class="text-center mb-5" data-reveal>
+      <h2 class="font-display">Do cardápio ao pedido, tudo em um só lugar</h2>
+      <p class="text-muted-custom">Cardápio sempre atualizado e pedidos organizados, direto do seu bolso.</p>
+    </div>
+    <div class="row g-4 justify-content-center align-items-stretch">
+      <div class="col-md-6 col-lg-5" data-reveal>
+        <div class="panel showcase-panel text-start shadow-lg h-100" style="border-color:var(--line);">
+          <div class="d-flex justify-content-between align-items-center mb-4 border-bottom border-secondary-subtle pb-2">
+            <div class="d-flex align-items-center gap-2">
+              <span class="pulse-dot"></span>
+              <strong class="font-mono small" style="color: var(--card-text);">comanda.app/painel</strong>
+            </div>
+            <span class="badge bg-dark border border-secondary text-success small py-1" style="font-size:.7rem;">SISTEMA ONLINE</span>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <div class="p-3 rounded" style="background:var(--ink); border:1px solid var(--card-border);">
+                <div class="small text-muted-custom" style="font-size:.75rem;">FATURAMENTO HOJE</div>
+                <div class="font-display h4 text-white m-0 mt-1">R$ 1.420</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="p-3 rounded" style="background:var(--ink); border:1px solid var(--card-border);">
+                <div class="small text-muted-custom" style="font-size:.75rem;">EM PREPARO</div>
+                <div class="font-display h4 text-accent m-0 mt-1">04</div>
+              </div>
+            </div>
+          </div>
+          <p class="text-muted-custom small m-0">Acompanhe faturamento, pedidos em preparo e status da loja em tempo real, de onde estiver.</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-5" data-reveal style="--reveal-delay: 90ms;">
+        <div class="ticket showcase-panel h-100 d-flex flex-column">
+          <div class="ticket-head">
+            <span class="ticket-num">#1042 · Marina Souza</span>
+            <span class="status-pill status-pending">Novo</span>
+          </div>
+          <div class="ticket-items">1x X-Tudo Artesanal Super Recheado<br>1x Refrigerante Lata</div>
+          <p class="text-muted-custom small mt-3 mb-0">Cada pedido chega organizado no seu WhatsApp, pronto para confirmar em um clique.</p>
+        </div>
       </div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- Mostra (do cardápio ao pedido) -->
-  <section id="mostra" class="py-24 relative z-10">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center max-w-2xl mx-auto mb-16">
-        <h2 class="text-3xl md:text-4xl font-display font-bold text-paper mb-4">Do cardápio ao pedido, tudo em um só lugar</h2>
-        <p class="text-mute">Cardápio sempre atualizado e pedidos organizados, direto do seu bolso.</p>
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto items-stretch">
-        <div class="glass-card p-6 rounded-3xl text-left">
-          <div class="flex justify-between items-center mb-4 border-b border-card-border pb-3">
-            <div class="flex items-center gap-2">
-              <span class="relative flex h-2.5 w-2.5">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-              </span>
-              <strong class="font-mono text-sm text-paper">comanda.app/painel</strong>
-            </div>
-            <span class="text-xs py-1 px-2 rounded border border-emerald-800 text-emerald-400 bg-emerald-950/40">ONLINE</span>
-          </div>
-          <div class="grid grid-cols-2 gap-3 mb-4">
-            <div class="p-3 rounded-xl bg-ink/40 border border-card-border">
-              <div class="text-xs text-mute">FATURAMENTO HOJE</div>
-              <div class="font-display text-xl font-bold text-paper mt-1">R$ 1.420</div>
-            </div>
-            <div class="p-3 rounded-xl bg-ink/40 border border-card-border">
-              <div class="text-xs text-mute">EM PREPARO</div>
-              <div class="font-display text-xl font-bold text-accent mt-1">04</div>
-            </div>
-          </div>
-          <p class="text-sm text-mute m-0">Acompanhe faturamento, pedidos em preparo e status da loja em tempo real, de onde estiver.</p>
-        </div>
-        <div class="glass-card p-6 rounded-3xl text-left flex flex-col">
-          <div class="flex justify-between items-center mb-3">
-            <span class="font-mono text-sm text-paper">#1042 · Marina Souza</span>
-            <span class="text-xs font-semibold py-1 px-3 rounded-full bg-accent/15 text-accent">Novo</span>
-          </div>
-          <div class="text-sm text-mute border-t border-dashed border-card-border pt-3">1x X-Tudo Artesanal Super Recheado<br>1x Refrigerante Lata</div>
-          <p class="text-sm text-mute mt-4 mb-0">Cada pedido chega organizado no seu WhatsApp, pronto para confirmar em um clique.</p>
-        </div>
-      </div>
+<section id="planos" class="py-5">
+  <div class="container py-5">
+    <div class="text-center mb-5" data-reveal>
+      <h2 class="font-display">Planos que cabem no bolso da sua operação</h2>
+      <p class="text-muted-custom">Sem comissão por pedido. Você escolhe como quer pagar.</p>
     </div>
-  </section>
-
-  <!-- Planos -->
-  <section id="planos" class="py-24 relative z-10">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center max-w-2xl mx-auto mb-16">
-        <h2 class="text-3xl md:text-4xl font-display font-bold text-paper mb-4">Planos que cabem no bolso da sua operação</h2>
-        <p class="text-mute">Sem comissão por pedido. Você escolhe como quer pagar.</p>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto items-center">
-        {% for plan in plans %}
-        <div class="{{ 'relative bg-card-bg p-8 rounded-[2rem] border-2 border-accent shadow-[0_0_40px_rgba(245,158,11,0.15)] md:-translate-y-4' if plan.is_featured else 'glass-card p-8 rounded-[2rem]' }}">
-          {% if plan.is_featured %}
-          <div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-accent text-white text-xs font-bold uppercase tracking-wider py-1 px-4 rounded-full">
-            Mais Escolhido
-          </div>
-          {% endif %}
-          <h3 class="text-lg font-medium {{ 'text-accent' if plan.is_featured else 'text-mute' }}">{{ plan.name }}</h3>
-          <div class="mt-4 mb-6">
-            <span class="{{ 'text-5xl' if plan.is_featured else 'text-4xl' }} font-display font-bold text-paper">R$ {{ "%.2f"|format(plan.price_cents / 100) }}</span>
-            <span class="text-mute">/{{ "ano" if plan.billing_cycle.value == "yearly" else "mês" }}</span>
-          </div>
-          <ul class="space-y-3 text-sm {{ 'text-paper' if plan.is_featured else 'text-mute' }} mb-8 pt-6 border-t border-card-border text-left">
-            <li class="flex items-center gap-3"><i class="bi bi-check2 text-accent"></i> {{ plan.max_products if plan.max_products is not none else "Produtos ilimitados" }}{{ " produtos" if plan.max_products is not none else "" }}</li>
-            <li class="flex items-center gap-3"><i class="bi bi-check2 text-accent"></i> Pedidos via WhatsApp integrados</li>
-            <li class="flex items-center gap-3"><i class="bi bi-check2 text-accent"></i> Link do cardápio + QR Code</li>
-            {% if plan.description %}<li class="flex items-center gap-3"><i class="bi bi-check2 text-accent"></i> {{ plan.description }}</li>{% endif %}
+    <div class="row g-4 justify-content-center">
+      {% for plan in plans %}
+      <div class="col-md-5 col-lg-4">
+        <div class="panel plan-card h-100 text-center d-flex flex-column {{ 'featured' if plan.is_featured }}" data-reveal style="--reveal-delay: {{ loop.index0 * 90 }}ms;">
+          <div class="{{ 'text-accent' if plan.is_featured else 'text-muted-custom' }} small fw-bold text-uppercase">{{ plan.name }}</div>
+          <div class="font-display h2 my-3" style="color: var(--card-text);">R$ {{ "%.2f"|format(plan.price_cents / 100) }}<span style="font-size:.9rem; font-family:'Inter'; font-weight:normal; color:var(--muted-text);">/{{ "ano" if plan.billing_cycle.value == "yearly" else "mês" }}</span></div>
+          <hr class="border-secondary-subtle">
+          <ul class="list-unstyled text-start small text-muted-custom flex-grow-1 my-3">
+            <li class="mb-2"><i class="bi bi-check2 text-accent me-2"></i> {{ plan.max_products if plan.max_products is not none else "Produtos ilimitados" }}{{ " produtos" if plan.max_products is not none else "" }}</li>
+            <li class="mb-2"><i class="bi bi-check2 text-accent me-2"></i> Pedidos via WhatsApp integrados</li>
+            <li class="mb-2"><i class="bi bi-check2 text-accent me-2"></i> Link do cardápio + QR Code</li>
+            {% if plan.description %}<li class="mb-2"><i class="bi bi-check2 text-accent me-2"></i> {{ plan.description }}</li>{% endif %}
           </ul>
-          <a href="{{ url_for('auth.register') }}" class="block w-full py-3 px-4 rounded-full text-center font-semibold transition-colors {{ 'bg-accent hover:brightness-110 text-white' if plan.is_featured else 'bg-white/5 hover:bg-white/10 border border-card-border text-paper' }}">
-            Escolher {{ plan.name }}
-          </a>
+          <a href="{{ url_for('auth.register') }}" class="{{ 'btn btn-chili' if plan.is_featured else 'btn-outline-custom text-center' }} w-100 mt-auto">Escolher {{ plan.name }}</a>
         </div>
-        {% else %}
-        <div class="md:col-span-3 text-center text-mute">
-          Nenhum plano disponível no momento. <a href="{{ url_for('auth.register') }}" class="text-accent underline">Crie sua conta</a> mesmo assim — você começa no período de teste.
-        </div>
-        {% endfor %}
       </div>
+      {% else %}
+      <div class="col-md-8 text-center text-muted-custom">
+        Nenhum plano disponível no momento. <a href="{{ url_for('auth.register') }}" class="link-chili">Crie sua conta</a> mesmo assim — você começa no período de teste.
+      </div>
+      {% endfor %}
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- CTA final -->
-  <section class="py-24 relative z-10">
-    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="relative rounded-[3rem] bg-ink border border-card-border p-10 md:p-16 text-center overflow-hidden">
-        <div class="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-accent/20 blur-[100px] rounded-full"></div>
-        <h2 class="text-3xl md:text-5xl font-display font-bold text-paper mb-6 relative z-10">
-          Pronto para organizar o <span class="text-accent">delivery</span> da sua loja?
-        </h2>
-        <p class="text-mute mb-10 max-w-2xl mx-auto relative z-10">
-          Comece grátis, sem cartão de crédito — seu cardápio fica pronto em minutos.
-        </p>
-        <a href="{{ url_for('auth.register') }}" class="btn-pill-solid text-lg relative z-10">
-          Criar Minha Loja Agora
-        </a>
-      </div>
-    </div>
-  </section>
+<section class="final-cta py-5">
+  <div class="container py-4 text-center" style="position: relative; z-index: 1;" data-reveal>
+    <h2 class="font-display text-white mb-3">Pronto para organizar o delivery da sua loja?</h2>
+    <p class="text-muted-custom mb-4 mx-auto" style="max-width: 480px;">Comece grátis, sem cartão de crédito — seu cardápio fica pronto em minutos.</p>
+    <a href="{{ url_for('auth.register') }}" class="btn btn-chili fs-6 px-4">Criar Minha Loja Agora</a>
+  </div>
+</section>
 
-  <!-- Footer -->
-  <footer class="py-8 border-t border-card-border relative z-10">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
-      <div class="flex items-center gap-2">
-        <div class="w-6 h-6 rounded bg-accent flex items-center justify-center">
-          <i class="bi bi-egg-fried text-xs text-white"></i>
-        </div>
-        <span class="font-display font-bold text-paper">Comanda</span>
-      </div>
-      <p class="text-xs text-mute">© {{ current_year }} Comanda. Todos os direitos reservados.</p>
-      <div class="flex gap-4 text-xs text-mute">
-        <a href="{{ url_for('terms_of_use') }}" class="hover:text-paper transition-colors">Termos</a>
-        <a href="{{ url_for('privacy_policy') }}" class="hover:text-paper transition-colors">Privacidade</a>
-      </div>
-    </div>
-  </footer>
-</div>
+<footer class="py-4 text-center text-muted-custom small border-top" style="border-color: var(--card-border) !important;">
+  <div class="d-flex flex-column flex-sm-row justify-content-center align-items-center gap-2 gap-sm-3 mb-2">
+    <a href="{{ url_for('terms_of_use') }}" class="link-chili">Termos de Uso</a>
+    <span class="d-none d-sm-inline">·</span>
+    <a href="{{ url_for('privacy_policy') }}" class="link-chili">Política de Privacidade</a>
+  </div>
+  © {{ current_year }} Comanda. Todos os direitos reservados.
+</footer>
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
-  // Fecha o menu mobile com o gesto/botão "voltar" do navegador em vez
-  // de sair da página — mesma ideia usada no carrinho do cardápio
-  // público, só que agora sobre o estado do Alpine (mobileMenuOpen) em
-  // vez de um evento do Bootstrap Offcanvas.
+  // Faz o botão/gesto "voltar" do navegador fechar a gaveta de navegação
+  // em vez de sair da landing page — mesmo princípio do guard de
+  // histórico já usado no carrinho do cardápio público (ver
+  // pushHistoryGuard em public/store_menu.html): empilha UM estado de
+  // histórico "de proteção" na primeira vez que a gaveta abre, e só o
+  // consome quando o usuário realmente aperta voltar (popstate real).
+  // Nunca chamamos history.back() por conta própria ao fechar a gaveta
+  // "normalmente" (X, clique fora, link) — isso consumiria o passo do
+  // histórico sem o usuário pedir.
   (function () {
+    const drawerEl = document.getElementById('landingDrawer');
+    if (!drawerEl) return;
     let historyGuardPushed = false;
-    const btn = document.getElementById('landingMobileMenuBtn');
-    const root = document.querySelector('[x-data]');
-    if (!btn || !root) return;
-    btn.addEventListener('click', () => {
+    drawerEl.addEventListener('show.bs.offcanvas', () => {
       if (!historyGuardPushed) {
         historyGuardPushed = true;
-        history.pushState({ landingMobileMenu: true }, '');
+        history.pushState({ landingDrawer: true }, '');
       }
     });
     window.addEventListener('popstate', () => {
       historyGuardPushed = false;
-      if (root.__x) root.__x.$data.mobileMenuOpen = false;
+      bootstrap.Offcanvas.getInstance(drawerEl)?.hide();
     });
   })();
 </script>

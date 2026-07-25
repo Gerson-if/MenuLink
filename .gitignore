@@ -12,12 +12,6 @@ app/static/uploads/*
 .pytest_cache/
 *.log
 
-# Build do Tailwind (build/tailwind/) — só o CSS compilado
-# (app/static/css/tailwind-*.css) é versionado; node_modules é
-# reconstruído localmente com `npm install` antes de rodar
-# `npm run build`.
-build/tailwind/node_modules/
-
 # Estado local gerado pelo instalador de deploy (específico de cada servidor)
 deploy/.deploy.conf
 deploy/.update.lock
