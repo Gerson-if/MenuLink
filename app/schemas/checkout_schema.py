@@ -23,6 +23,19 @@ def _validate_not_blank(value: str) -> None:
         raise ValidationError("Este campo não pode ficar em branco.")
 
 
+class CheckoutOptionSchema(Schema):
+    class Meta:
+        unknown = EXCLUDE
+
+    option_id = fields.Integer(required=True, validate=validate.Range(min=1))
+    # Só tem efeito > 1 em grupos com ComplementGroup.allow_quantity — o
+    # OrderService rejeita quantidade > 1 em grupos que não permitem
+    # (nunca confia nisso vindo só do cliente). Teto de 20 é só um
+    # limite de sanidade, mesma ordem de grandeza do limite de
+    # `quantity` do item logo abaixo.
+    quantity = fields.Integer(required=False, load_default=1, validate=validate.Range(min=1, max=20))
+
+
 class CheckoutItemSchema(Schema):
     class Meta:
         # Ignora silenciosamente qualquer campo extra (ex: um "price" que o
@@ -33,8 +46,8 @@ class CheckoutItemSchema(Schema):
 
     product_id = fields.Integer(required=True, validate=validate.Range(min=1))
     quantity = fields.Integer(required=True, validate=validate.Range(min=1, max=50))
-    option_ids = fields.List(
-        fields.Integer(validate=validate.Range(min=1)),
+    options = fields.List(
+        fields.Nested(CheckoutOptionSchema),
         required=False,
         load_default=list,
     )

@@ -15,6 +15,11 @@ class Banner(db.Model, TenantScopedMixin, TimestampMixin):
     subtitle = Column(String(200), nullable=True)
     link_url = Column(String(255), nullable=True)
     image_path = Column(String(255), nullable=False)
+    # Cor média extraída das bordas da imagem no upload (ver
+    # `_dominant_edge_color` em app/utils/uploads.py) — usada como fundo
+    # sólido atrás da imagem no carrossel público quando a proporção da
+    # caixa não bate com a da foto, no lugar de um fundo desfocado.
+    dominant_color = Column(String(7), nullable=True)
     display_order = Column(Integer, nullable=False, default=0)
     is_active = Column(Boolean, nullable=False, default=True)
 

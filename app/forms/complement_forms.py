@@ -10,6 +10,7 @@ class ComplementGroupForm(FlaskForm):
     is_variation = BooleanField("É uma variação do produto (ex: Tamanho — muda o próprio item)")
     is_required = BooleanField("Obrigatório escolher")
     single_choice = BooleanField("Escolha única (não múltipla)")
+    allow_quantity = BooleanField("Cliente escolhe a quantidade de cada opção (ex: 2 latas de refrigerante)")
     submit = SubmitField("Adicionar grupo")
 
 

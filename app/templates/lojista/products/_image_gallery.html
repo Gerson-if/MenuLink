@@ -39,6 +39,11 @@
   <p class="text-muted-custom small mb-3">Nenhuma foto enviada ainda.</p>
   {% endif %}
 
+  <p class="upload-meta mb-2">
+    Fotos na horizontal ou quadradas costumam encaixar melhor no
+    cardápio. Fora desse formato a foto continua aparecendo inteira,
+    sem cortes — só sobra um fundo desfocado preenchendo o resto.
+  </p>
   <form hx-post="{{ url_for('lojista.images_upload', product_id=product.id) }}"
         hx-target="#image-gallery" hx-swap="outerHTML"
         hx-encoding="multipart/form-data">

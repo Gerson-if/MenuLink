@@ -12,6 +12,7 @@
             {{ "Variação" if group.is_variation else "Complemento" }}
             · {{ "Obrigatório" if group.is_required else "Opcional" }}
             · {{ "Escolha única" if group.single_choice else "Múltipla escolha" }}
+            {% if group.allow_quantity %}· Cliente escolhe a quantidade{% endif %}
           </div>
         </div>
         <button type="button" class="btn btn-sm btn-outline-danger"
@@ -67,10 +68,24 @@
     <label class="form-label small fw-semibold">Novo grupo</label>
     {{ group_form.name(class="form-control form-control-sm mb-2", placeholder="Ex: Tamanho, Molhos", maxlength=100) }}
     <div class="d-flex flex-wrap gap-3 mb-2 small">
-      <label class="d-flex align-items-center gap-1">{{ group_form.is_variation() }} É variação do produto</label>
+      <label class="d-flex align-items-center gap-1">
+        {{ group_form.is_variation(id="new-group-is-variation", onchange="
+          document.getElementById('new-group-allow-quantity').disabled = this.checked || document.getElementById('new-group-single-choice').checked;
+          if (this.checked) document.getElementById('new-group-allow-quantity').checked = false;
+        ") }} É variação do produto
+      </label>
       <label class="d-flex align-items-center gap-1">{{ group_form.is_required() }} Obrigatório</label>
-      <label class="d-flex align-items-center gap-1">{{ group_form.single_choice() }} Escolha única</label>
+      <label class="d-flex align-items-center gap-1">
+        {{ group_form.single_choice(id="new-group-single-choice", onchange="
+          document.getElementById('new-group-allow-quantity').disabled = this.checked || document.getElementById('new-group-is-variation').checked;
+          if (this.checked) document.getElementById('new-group-allow-quantity').checked = false;
+        ") }} Escolha única
+      </label>
+      <label class="d-flex align-items-center gap-1">
+        {{ group_form.allow_quantity(id="new-group-allow-quantity") }} Cliente escolhe a quantidade
+      </label>
     </div>
+    <div class="form-text mb-2">"Cliente escolhe a quantidade" só está disponível pra grupos de múltipla escolha que não sejam variação (ex: Bebidas, não Tamanho).</div>
     <button type="submit" class="btn btn-sm btn-outline-chili">+ Adicionar grupo</button>
   </form>
 </div>

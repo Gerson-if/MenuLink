@@ -87,7 +87,7 @@ class ProductService:
     # --- Imagens ---
     def add_image(self, product: Product, file_storage) -> ProductImage:
         try:
-            relative_path = save_product_image(self.tenant.id, product.id, file_storage)
+            relative_path, dominant_color = save_product_image(self.tenant.id, product.id, file_storage)
         except InvalidImageError as exc:
             raise
 
@@ -98,6 +98,7 @@ class ProductService:
             tenant_id=self.tenant.id,
             product_id=product.id,
             file_path=relative_path,
+            dominant_color=dominant_color,
             is_primary=is_first_image,  # a primeira imagem vira principal automaticamente
             display_order=max_order + 1,
         )

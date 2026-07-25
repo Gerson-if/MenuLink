@@ -28,8 +28,9 @@ def build_order_message(order) -> str:
         line = f"{item.quantity}x {item.product_name} — R$ {item.subtotal_cents / 100:.2f}"
         lines.append(line)
         for choice in item.choices:
-            extra = f" (+R$ {choice.extra_price_cents / 100:.2f})" if choice.extra_price_cents else ""
-            lines.append(f"   • {choice.group_name}: {choice.option_name}{extra}")
+            extra = f" (+R$ {choice.extra_price_cents * choice.quantity / 100:.2f})" if choice.extra_price_cents else ""
+            prefix = f"{choice.quantity}x " if choice.quantity > 1 else ""
+            lines.append(f"   • {choice.group_name}: {prefix}{choice.option_name}{extra}")
 
     lines.append("")
     lines.append(f"Subtotal: R$ {order.subtotal_cents / 100:.2f}")

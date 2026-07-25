@@ -22,7 +22,7 @@ class BannerService:
 
     def create(self, *, title: str, subtitle: str, link_url: str, file_storage, is_active: bool) -> Banner:
         try:
-            relative_path = save_banner_image(self.tenant.id, file_storage)
+            relative_path, dominant_color = save_banner_image(self.tenant.id, file_storage)
         except InvalidImageError:
             raise
 
@@ -34,6 +34,7 @@ class BannerService:
             subtitle=(subtitle or "").strip() or None,
             link_url=(link_url or "").strip() or None,
             image_path=relative_path,
+            dominant_color=dominant_color,
             display_order=max_order + 1,
             is_active=is_active,
         )
@@ -49,7 +50,7 @@ class BannerService:
 
         if file_storage and file_storage.filename:
             old_path = banner.image_path
-            banner.image_path = save_banner_image(self.tenant.id, file_storage)
+            banner.image_path, banner.dominant_color = save_banner_image(self.tenant.id, file_storage)
             delete_product_image_file(old_path)
 
         db.session.commit()

@@ -7,7 +7,11 @@ class ComplementService:
         self.tenant = tenant
 
     # --- Grupos ---
-    def create_group(self, product, *, name: str, is_variation: bool, is_required: bool, single_choice: bool) -> ComplementGroup:
+    def create_group(
+        self, product, *, name: str, is_variation: bool, is_required: bool, single_choice: bool,
+        allow_quantity: bool = False,
+    ) -> ComplementGroup:
+        single_choice = single_choice or is_variation
         max_order = max([g.display_order for g in product.complement_groups], default=-1)
         group = ComplementGroup(
             tenant_id=self.tenant.id,
@@ -15,7 +19,12 @@ class ComplementService:
             name=name.strip(),
             is_variation=is_variation,
             is_required=is_required,
-            single_choice=single_choice or is_variation,
+            single_choice=single_choice,
+            # Só faz sentido escolher quantidade num grupo de múltipla
+            # escolha que não seja variação (ex: Tamanho não "some" —
+            # o próprio ComplementGroupForm já esconde isso via JS, mas
+            # o servidor é quem garante de verdade).
+            allow_quantity=allow_quantity and not is_variation and not single_choice,
             display_order=max_order + 1,
         )
         db.session.add(group)

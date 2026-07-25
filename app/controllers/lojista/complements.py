@@ -37,6 +37,7 @@ def complement_groups_create(product_id):
         ComplementService(tenant).create_group(
             product, name=form.name.data, is_variation=form.is_variation.data,
             is_required=form.is_required.data, single_choice=form.single_choice.data,
+            allow_quantity=form.allow_quantity.data,
         )
 
     return _render_panel(product)

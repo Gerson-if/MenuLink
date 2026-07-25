@@ -168,10 +168,20 @@
     .menu-topbar { margin-left: var(--sidebar-w); width: calc(100% - var(--sidebar-w)); }
   }
 
-  /* ===== BANNER ===== */
-  .banner-carousel { border-radius: 22px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 10px 30px -12px rgba(0,0,0,.55); margin-bottom: 1.75rem; position: relative; }
-  .banner-slide { min-height: 150px; display: block; }
-  .banner-slide img { width: 100%; height: 190px; object-fit: cover; display: block; }
+  /* ===== BANNER =====
+     A imagem enviada pelo lojista NÃO é recortada no upload (ver
+     save_banner_image) — pode vir em qualquer proporção. Mostrar ela
+     inteira aqui (object-fit: contain) em vez de cortar (cover) evita
+     perder parte da foto; a faixa vazia dos lados é preenchida com a
+     cor média da borda da própria imagem (calculada no upload, ver
+     `_dominant_edge_color` em app/utils/uploads.py e `b.dominant_color`
+     abaixo) em vez de um fundo desfocado — sólida e nítida, sem "tarja
+     borrada", mas sem cortar nem esticar a foto. */
+  .banner-carousel { height: 190px; border-radius: 22px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 10px 30px -12px rgba(0,0,0,.55); margin-bottom: 1.75rem; position: relative; background: var(--surface-2); }
+  .banner-carousel > .d-flex { height: 100%; }
+  .banner-slide { height: 100%; display: block; position: relative; overflow: hidden; }
+  .banner-slide a { display: block; height: 100%; }
+  .banner-slide-fg { position: relative; width: 100%; height: 100%; object-fit: contain; display: block; }
   .banner-controls { position: absolute; top: 50%; transform: translateY(-50%); width: 100%; display: flex; justify-content: space-between; pointer-events: none; padding: 0 8px; }
   .banner-controls button { pointer-events: auto; background: rgba(0,0,0,.35); border: none; border-radius: 50%; width: 32px; height: 32px; color: #fff; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background .2s; }
   .banner-controls button:hover { background: rgba(0,0,0,.55); }
@@ -271,8 +281,15 @@
   .cart-fab .cart-fab-info .price { font-family: var(--font-mono); font-weight: 800; font-size: .86rem; }
 
   /* ===== MODAL PRODUTO ===== */
-  .product-modal-media { text-align: center; font-size: 3.4rem; background: var(--surface-2); border-radius: 12px; padding: 10px; overflow: hidden; }
-  .product-modal-media img { width: 100%; max-height: 220px; object-fit: cover; border-radius: 12px; }
+  /* Mesma ideia do carrossel de banners: a foto do produto não é
+     recortada em nenhuma etapa, então mostra ela inteira (contain);
+     a moldura ao redor usa a cor média da borda da própria foto
+     (img.color, calculada no upload) em vez de fundo desfocado. */
+  .product-modal-media { position: relative; display: flex; align-items: center; justify-content: center; font-size: 3.4rem; background: var(--surface-2); border-radius: 12px; overflow: hidden; height: 220px; }
+  .product-modal-carousel { position: absolute; inset: 0; }
+  .product-modal-fade { position: absolute; inset: 0; }
+  .product-modal-media img.product-modal-fg { position: relative; width: 100%; height: 100%; object-fit: contain; display: block; }
+  .product-modal-media .banner-dots { bottom: 12px; }
   .opt-group { margin-bottom: 1rem; }
   .opt-group .label-group { font-weight: 700; font-size: .9rem; margin-bottom: 6px; display: flex; justify-content: space-between; }
   .opt-group .label-group .req { color: var(--rust); font-size: .68rem; font-family: var(--font-mono); }
@@ -284,6 +301,9 @@
   .opt-option.checked .extra { color: var(--accent); }
   .qty-selector { display: inline-flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; padding: 4px 10px; }
   .qty-selector button { width: 28px; height: 28px; border-radius: 6px; border: none; background: var(--surface-2); color: var(--text); font-weight: 700; }
+  .opt-option-qty { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 2px; border-bottom: 1px dashed var(--line); }
+  .opt-option-qty:last-child { border-bottom: none; }
+  .opt-option-qty .extra { font-family: var(--font-mono); font-size: .7rem; margin-left: 6px; color: var(--text-faint); }
 
   /* ===== CHECKOUT ===== */
   .checkout-form .form-control, .checkout-form .form-select { background: var(--surface); color: var(--text); border-color: var(--line-strong); }
@@ -383,9 +403,9 @@
       <div class="banner-carousel">
         <div class="d-flex" :style="'transform: translateX(-'+bannerIndex*100+'%); transition: transform .5s ease;'">
           <template x-for="b in banners" :key="b.id">
-            <div class="banner-slide w-100 flex-shrink-0">
-              <template x-if="b.link_url"><a :href="b.link_url" target="_blank" rel="noopener"><img :src="b.image_url" :alt="b.title"></a></template>
-              <template x-if="!b.link_url"><img :src="b.image_url" :alt="b.title"></template>
+            <div class="banner-slide w-100 flex-shrink-0" :style="'background-color:' + (b.dominant_color || 'var(--surface-2)')">
+              <template x-if="b.link_url"><a :href="b.link_url" target="_blank" rel="noopener"><img class="banner-slide-fg" :src="b.image_url" :alt="b.title"></a></template>
+              <template x-if="!b.link_url"><img class="banner-slide-fg" :src="b.image_url" :alt="b.title"></template>
             </div>
           </template>
         </div>
@@ -473,9 +493,31 @@
         <div class="modal-body">
           <template x-if="selectedProduct">
             <div>
-              <div class="product-modal-media" :style="!selectedProduct.image_url ? ('background:' + categoryMediaBg(selectedProductCategoryIcon())) : ''">
-                <template x-if="selectedProduct.image_url"><img :src="selectedProduct.image_url" :alt="selectedProduct.name"></template>
-                <template x-if="!selectedProduct.image_url"><span x-text="categoryEmoji(selectedProductCategoryIcon())"></span></template>
+              <div class="product-modal-media" :style="(!selectedProduct.images || !selectedProduct.images.length) ? ('background:' + categoryMediaBg(selectedProductCategoryIcon())) : ''">
+                <template x-if="selectedProduct.images && selectedProduct.images.length">
+                  <div class="product-modal-carousel">
+                    <template x-for="i in [productImageIndex]" :key="productImageIndex">
+                      <div class="product-modal-fade" x-transition.opacity.duration.500ms
+                           :style="'background-color:' + (selectedProduct.images[productImageIndex].color || 'var(--surface-2)')">
+                        <img class="product-modal-fg" :src="selectedProduct.images[productImageIndex].url" :alt="selectedProduct.name">
+                      </div>
+                    </template>
+                    <template x-if="selectedProduct.images.length > 1">
+                      <div>
+                        <div class="banner-controls">
+                          <button type="button" @click="prevProductImage()">‹</button>
+                          <button type="button" @click="nextProductImage()">›</button>
+                        </div>
+                        <div class="banner-dots">
+                          <template x-for="(img, i) in selectedProduct.images" :key="i">
+                            <span :class="{ active: i === productImageIndex }" @click="productImageIndex = i; startProductImageTimer();"></span>
+                          </template>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+                </template>
+                <template x-if="!selectedProduct.images || !selectedProduct.images.length"><span x-text="categoryEmoji(selectedProductCategoryIcon())"></span></template>
               </div>
 
               <p class="mt-3" style="color: var(--text-dim);" x-show="selectedProduct.description" x-text="selectedProduct.description"></p>
@@ -517,12 +559,27 @@
                         <span class="req" x-show="group.is_required">*obrigatório</span>
                         <span class="optional-tag" x-show="!group.is_required">opcional</span>
                       </div>
-                      <div>
+                      <div x-show="!group.allow_quantity">
                         <template x-for="opt in group.options" :key="opt.id">
                           <span class="opt-option" :class="{ checked: isOptionSelected(group, opt) }" @click="toggleOption(group, opt)">
                             <span x-text="opt.name"></span>
                             <span class="extra" x-text="opt.extra_price_cents > 0 ? '+R$ ' + formatCents(opt.extra_price_cents) : 'sem custo'"></span>
                           </span>
+                        </template>
+                      </div>
+                      <div x-show="group.allow_quantity">
+                        <template x-for="opt in group.options" :key="opt.id">
+                          <div class="opt-option-qty">
+                            <div>
+                              <span x-text="opt.name"></span>
+                              <span class="extra" x-text="opt.extra_price_cents > 0 ? '+R$ ' + formatCents(opt.extra_price_cents) : 'sem custo'"></span>
+                            </div>
+                            <div class="qty-selector">
+                              <button type="button" @click="changeOptionQuantity(group, opt, -1)">−</button>
+                              <span x-text="optionQuantity(group, opt)"></span>
+                              <button type="button" @click="changeOptionQuantity(group, opt, 1)">+</button>
+                            </div>
+                          </div>
                         </template>
                       </div>
                     </div>
@@ -544,7 +601,7 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-ghost-menu" data-bs-dismiss="modal">Fechar</button>
           <button type="button" class="btn btn-accent flex-grow-1" @click="addSelectedProductToCart()">
-            Adicionar · <span x-text="'R$ ' + formatCents(modalUnitPriceCents() * modalQty)"></span>
+            Adicionar · <span x-text="'R$ ' + formatCents(modalTotalCents())"></span>
           </button>
         </div>
       </div>
@@ -574,10 +631,10 @@
               <div class="line-item">
                 <div class="line-header">
                   <span class="name" x-text="item.quantity + 'x ' + item.name"></span>
-                  <span x-text="'R$ ' + formatCents(item.unit_price_cents * item.quantity)"></span>
+                  <span x-text="'R$ ' + formatCents(cartLineTotalCents(item))"></span>
                 </div>
                 <div class="line-details" x-show="item.choices.length">
-                  <span x-text="item.choices.map(c => c.group_name + ': ' + c.option_name).join(' · ')"></span>
+                  <span x-text="item.choices.map(c => (c.quantity > 1 ? c.quantity + 'x ' : '') + c.group_name + ': ' + c.option_name).join(' · ')"></span>
                 </div>
                 <div class="line-actions">
                   <div class="qty-control">
@@ -900,7 +957,9 @@ function menuApp() {
 
     // Modal de produto
     selectedProduct: null,
-    modalSelections: {},   // { groupId: Set(optionId) }
+    productImageIndex: 0,
+    productImageTimer: null,
+    modalSelections: {},   // { groupId: { optionId: quantity } } — quantity 0/1 em grupos normais, 0..20 em grupos allow_quantity
     modalQty: 1,
     modalValidationError: null,
 
@@ -946,7 +1005,11 @@ function menuApp() {
 
       const productModalEl = document.getElementById('productModal');
       productModalEl.addEventListener('show.bs.modal', () => { this.productModalOpen = true; this.pushHistoryGuard(); });
-      productModalEl.addEventListener('hidden.bs.modal', () => { this.productModalOpen = false; this.selectedProduct = null; });
+      productModalEl.addEventListener('hidden.bs.modal', () => {
+        this.productModalOpen = false;
+        this.selectedProduct = null;
+        clearInterval(this.productImageTimer);
+      });
 
       const checkoutModalEl = document.getElementById('checkoutModal');
       checkoutModalEl.addEventListener('show.bs.modal', () => { this.checkoutModalOpen = true; this.pushHistoryGuard(); });
@@ -1074,71 +1137,114 @@ function menuApp() {
       if (!product) return;
       this.selectedProduct = product;
       this.modalQty = 1;
+      this.productImageIndex = 0;
       this.modalValidationError = null;
       this.modalSelections = {};
-      (product.complement_groups || []).forEach(group => { this.modalSelections[group.id] = new Set(); });
+      (product.complement_groups || []).forEach(group => { this.modalSelections[group.id] = {}; });
       bootstrap.Modal.getOrCreateInstance(document.getElementById('productModal')).show();
+      this.startProductImageTimer();
     },
     closeProductModal() {
       bootstrap.Modal.getOrCreateInstance(document.getElementById('productModal')).hide();
     },
 
-    isOptionSelected(group, option) {
-      const set = this.modalSelections[group.id];
-      return set ? set.has(option.id) : false;
+    optionQuantity(group, option) {
+      const sel = this.modalSelections[group.id];
+      return sel ? (sel[option.id] || 0) : 0;
     },
+    isOptionSelected(group, option) { return this.optionQuantity(group, option) > 0; },
     toggleOption(group, option) {
-      const set = this.modalSelections[group.id] || new Set();
+      const current = this.modalSelections[group.id] || {};
+      let next;
       if (group.single_choice) {
-        set.clear();
-        set.add(option.id);
-      } else if (set.has(option.id)) {
-        set.delete(option.id);
+        next = { [option.id]: 1 };
+      } else if (current[option.id] > 0) {
+        next = { ...current };
+        delete next[option.id];
       } else {
-        set.add(option.id);
+        next = { ...current, [option.id]: 1 };
       }
-      this.modalSelections[group.id] = new Set(set);
+      this.modalSelections[group.id] = next;
       this.modalValidationError = null;
     },
-    modalSelectedOptionIds() {
-      const ids = [];
-      Object.values(this.modalSelections).forEach(set => set.forEach(id => ids.push(id)));
-      return ids;
+    // Só usado em grupos com allow_quantity — stepper −/+ por opção
+    // (ver .opt-option-qty), em vez do chip clicável de toggleOption.
+    changeOptionQuantity(group, option, delta) {
+      const current = this.modalSelections[group.id] || {};
+      const next = Math.max(0, Math.min(20, (current[option.id] || 0) + delta));
+      const updated = { ...current };
+      if (next === 0) delete updated[option.id];
+      else updated[option.id] = next;
+      this.modalSelections[group.id] = updated;
+      this.modalValidationError = null;
+    },
+    modalSelectedOptions() {
+      const options = [];
+      Object.entries(this.modalSelections).forEach(([groupId, sel]) => {
+        Object.entries(sel).forEach(([optionId, qty]) => {
+          if (qty > 0) options.push({ option_id: Number(optionId), quantity: qty });
+        });
+      });
+      return options;
+    },
+    // Extras por unidade do produto (grupos normais) — entram no preço
+    // unitário e escalam com modalQty, ex: molho barbecue em 5 lanches
+    // cobra o molho 5 vezes.
+    modalPerUnitExtraCents() {
+      if (!this.selectedProduct) return 0;
+      let cents = 0;
+      (this.selectedProduct.complement_groups || []).forEach(group => {
+        if (group.allow_quantity) return;
+        const sel = this.modalSelections[group.id] || {};
+        group.options.forEach(opt => { if (sel[opt.id] > 0) cents += opt.extra_price_cents; });
+      });
+      return cents;
+    },
+    // Extras com quantidade própria (grupos allow_quantity, ex:
+    // Bebidas) — NÃO escalam com modalQty: "5 lanches + 1 Coca 2L" é
+    // 1 Coca só, não 5, mesmo que o cliente peça 5 lanches na mesma linha.
+    modalFlatExtraCents() {
+      if (!this.selectedProduct) return 0;
+      let cents = 0;
+      (this.selectedProduct.complement_groups || []).forEach(group => {
+        if (!group.allow_quantity) return;
+        const sel = this.modalSelections[group.id] || {};
+        group.options.forEach(opt => { cents += opt.extra_price_cents * (sel[opt.id] || 0); });
+      });
+      return cents;
     },
     modalUnitPriceCents() {
       if (!this.selectedProduct) return 0;
-      let price = this.selectedProduct.price_cents;
-      (this.selectedProduct.complement_groups || []).forEach(group => {
-        const set = this.modalSelections[group.id];
-        if (!set) return;
-        group.options.forEach(opt => { if (set.has(opt.id)) price += opt.extra_price_cents; });
-      });
-      return price;
+      return this.selectedProduct.price_cents + this.modalPerUnitExtraCents();
     },
+    modalTotalCents() { return this.modalUnitPriceCents() * this.modalQty + this.modalFlatExtraCents(); },
     modalSelectedChoices() {
       const choices = [];
       (this.selectedProduct.complement_groups || []).forEach(group => {
-        const set = this.modalSelections[group.id];
-        if (!set) return;
+        const sel = this.modalSelections[group.id] || {};
         group.options.forEach(opt => {
-          if (set.has(opt.id)) choices.push({ group_name: group.name, option_name: opt.name, extra_price_cents: opt.extra_price_cents });
+          const qty = sel[opt.id] || 0;
+          if (qty > 0) choices.push({ group_name: group.name, option_name: opt.name, extra_price_cents: opt.extra_price_cents, quantity: qty });
         });
       });
       return choices;
     },
 
     addSelectedProductToCart() {
-      const missing = (this.selectedProduct.complement_groups || []).filter(
-        g => g.is_required && (!this.modalSelections[g.id] || this.modalSelections[g.id].size === 0)
-      );
+      const missing = (this.selectedProduct.complement_groups || []).filter(g => {
+        const sel = this.modalSelections[g.id] || {};
+        const total = Object.values(sel).reduce((sum, qty) => sum + qty, 0);
+        return g.is_required && total === 0;
+      });
       if (missing.length > 0) {
         this.modalValidationError = `Escolha uma opção para "${missing[0].name}" antes de continuar.`;
         return;
       }
 
-      const optionIds = this.modalSelectedOptionIds().sort((a, b) => a - b);
-      const cartKey = this.selectedProduct.id + '::' + optionIds.join(',');
+      const options = this.modalSelectedOptions().sort((a, b) => a.option_id - b.option_id);
+      const cartKey = this.selectedProduct.id + '::' + options.map(o => o.option_id + 'x' + o.quantity).join(',');
       const unitPrice = this.modalUnitPriceCents();
+      const flatExtra = this.modalFlatExtraCents();
 
       if (this.cart[cartKey]) {
         this.cart[cartKey].quantity += this.modalQty;
@@ -1148,7 +1254,8 @@ function menuApp() {
           name: this.selectedProduct.name,
           unit_price_cents: unitPrice,
           quantity: this.modalQty,
-          option_ids: optionIds,
+          flat_extra_cents: flatExtra,
+          options: options,
           choices: this.modalSelectedChoices(),
         };
       }
@@ -1168,7 +1275,11 @@ function menuApp() {
     },
     removeCartItem(cartKey) { delete this.cart[cartKey]; },
     itemCount() { return Object.values(this.cart).reduce((sum, item) => sum + item.quantity, 0); },
-    subtotalCents() { return Object.values(this.cart).reduce((sum, item) => sum + item.unit_price_cents * item.quantity, 0); },
+    // unit_price_cents já inclui os extras por unidade; flat_extra_cents
+    // (grupos allow_quantity, ex: Bebidas) soma uma vez só, não escala
+    // com item.quantity — ver comentário em modalFlatExtraCents().
+    cartLineTotalCents(item) { return item.unit_price_cents * item.quantity + (item.flat_extra_cents || 0); },
+    subtotalCents() { return Object.values(this.cart).reduce((sum, item) => sum + this.cartLineTotalCents(item), 0); },
     totalWithDeliveryCents() {
       let fee = this.checkout.delivery_type === 'delivery' ? (this.tenant.delivery_fee_cents || 0) : 0;
       if (this.tenant.free_delivery_above_cents && this.subtotalCents() >= this.tenant.free_delivery_above_cents) fee = 0;
@@ -1209,6 +1320,31 @@ function menuApp() {
     nextBanner() { this.bannerIndex = (this.bannerIndex + 1) % this.banners.length; this.startBannerTimer(); },
     prevBanner() { this.bannerIndex = (this.bannerIndex - 1 + this.banners.length) % this.banners.length; this.startBannerTimer(); },
 
+    // --- Carrossel de fotos no modal de produto ---
+    // Roda sozinho (como o carrossel de banners) enquanto o cliente
+    // olha o produto — inclusive enquanto ele mexe em quantidade/
+    // complementos, já que é só um setInterval independente disso.
+    startProductImageTimer() {
+      clearInterval(this.productImageTimer);
+      const n = (this.selectedProduct && this.selectedProduct.images || []).length;
+      if (n < 2) return;
+      this.productImageTimer = setInterval(() => {
+        this.productImageIndex = (this.productImageIndex + 1) % n;
+      }, 3500);
+    },
+    nextProductImage() {
+      const n = (this.selectedProduct && this.selectedProduct.images || []).length;
+      if (!n) return;
+      this.productImageIndex = (this.productImageIndex + 1) % n;
+      this.startProductImageTimer();
+    },
+    prevProductImage() {
+      const n = (this.selectedProduct && this.selectedProduct.images || []).length;
+      if (!n) return;
+      this.productImageIndex = (this.productImageIndex - 1 + n) % n;
+      this.startProductImageTimer();
+    },
+
     // --- Checkout ---
     async submitOrder() {
       this.errorMessage = null;
@@ -1222,7 +1358,7 @@ function menuApp() {
 
       this.submitting = true;
       const items = Object.values(this.cart).map(item => ({
-        product_id: item.product_id, quantity: item.quantity, option_ids: item.option_ids,
+        product_id: item.product_id, quantity: item.quantity, options: item.options,
       }));
       const payload = { ...this.checkout, items };
 

@@ -86,6 +86,8 @@ class PlatformSettingsService:
         dropzone, com efeito imediato (não depende deste método).
         """
         from app.utils.uploads import (
+            LANDING_FEATURE_IMAGE_DIMENSION,
+            LANDING_HERO_IMAGE_DIMENSION,
             InvalidImageError,
             InvalidVideoError,
             delete_product_image_file,
@@ -99,7 +101,7 @@ class PlatformSettingsService:
         hero_image = current.get("hero_image")
         if hero_image_file and hero_image_file.filename:
             try:
-                new_hero_image = save_platform_image("landing", hero_image_file)
+                new_hero_image = save_platform_image("landing", hero_image_file, max_dimension=LANDING_HERO_IMAGE_DIMENSION)
             except InvalidImageError:
                 raise
             else:
@@ -125,7 +127,7 @@ class PlatformSettingsService:
             image_file = feature_image_files[i] if i < len(feature_image_files) else None
             if image_file and image_file.filename:
                 try:
-                    new_image = save_platform_image("landing", image_file)
+                    new_image = save_platform_image("landing", image_file, max_dimension=LANDING_FEATURE_IMAGE_DIMENSION)
                 except InvalidImageError:
                     raise
                 else:

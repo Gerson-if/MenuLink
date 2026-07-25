@@ -108,6 +108,10 @@ class ProductImage(db.Model, TenantScopedMixin, TimestampMixin):
     product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False, index=True)
 
     file_path = Column(String(255), nullable=False)  # caminho relativo em static/uploads/<tenant>/...
+    # Cor média das bordas da foto (ver `_dominant_edge_color` em
+    # app/utils/uploads.py) — fundo sólido atrás da imagem no carrossel
+    # do modal de produto quando a caixa não bate com a proporção da foto.
+    dominant_color = Column(String(7), nullable=True)
     is_primary = Column(Boolean, nullable=False, default=False)
     display_order = Column(Integer, nullable=False, default=0)
 
@@ -137,6 +141,11 @@ class ComplementGroup(db.Model, TenantScopedMixin, TimestampMixin):
     is_variation = Column(Boolean, nullable=False, default=False)
     is_required = Column(Boolean, nullable=False, default=False)
     single_choice = Column(Boolean, nullable=False, default=False)
+    # Cliente escolhe quantas unidades de cada opção quer (ex: "2x Coca-
+    # Cola 200ml"), em vez de só marcar/desmarcar. Só faz sentido em
+    # grupos de múltipla escolha que não sejam variação — forçado pelo
+    # service na criação (ver ComplementService.create_group).
+    allow_quantity = Column(Boolean, nullable=False, default=False)
     max_choices = Column(Integer, nullable=True)  # limite de escolhas (null = sem limite)
     display_order = Column(Integer, nullable=False, default=0)
 

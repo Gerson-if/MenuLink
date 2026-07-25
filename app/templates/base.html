@@ -1,9 +1,14 @@
 <!DOCTYPE html>
-<html lang="pt-BR" {% block html_attrs %}{% endblock %}>
+<html lang="pt-BR" translate="no" {% block html_attrs %}{% endblock %}>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="csrf-token" content="{{ csrf_token() }}">
+{# `lang="pt-BR"` já diz que a página é em português — os dois abaixo
+   evitam a barra/prompt de tradução automática do navegador em cima
+   disso (o app é nativo em PT-BR, "traduzir" só atrapalha). #}
+<meta name="google" content="notranslate">
+<meta http-equiv="Content-Language" content="pt-BR">
 <script>
   /* Aplica o modo claro/escuro salvo ANTES do CSS/primeiro paint —
      evita o "flash" de um tema errado ao carregar a página (mesma ideia

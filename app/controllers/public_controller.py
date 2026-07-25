@@ -38,6 +38,17 @@ def _serialize_product(product):
             if product.primary_image
             else None
         ),
+        # Todas as fotos do produto, na ordem cadastrada — alimenta o
+        # carrossel do modal de produto (ver "productImageIndex" em
+        # store_menu.html). Cards/listagens continuam usando só
+        # "image_url" (a principal), sem mudança de comportamento ali.
+        # "color" é a cor média da borda da foto (ver _dominant_edge_color
+        # em app/utils/uploads.py), usada como fundo sólido no carrossel
+        # quando a caixa não bate com a proporção da imagem.
+        "images": [
+            {"url": f"/static/{img.file_path}", "color": img.dominant_color}
+            for img in product.images
+        ],
         "complement_groups": [
             {
                 "id": group.id,
@@ -45,6 +56,7 @@ def _serialize_product(product):
                 "is_variation": group.is_variation,
                 "is_required": group.is_required,
                 "single_choice": group.single_choice,
+                "allow_quantity": group.allow_quantity,
                 "options": [
                     {
                         "id": option.id,
@@ -171,6 +183,7 @@ def store_home(slug):
             "subtitle": banner.subtitle or "",
             "link_url": banner.link_url,
             "image_url": f"/static/{banner.image_path}",
+            "dominant_color": banner.dominant_color,
         }
         for banner in banners
     ]
@@ -342,7 +355,11 @@ def customer_orders(slug):
                             "quantity": item.quantity,
                             "unit_price_cents": item.unit_price_cents,
                             "subtotal_cents": item.subtotal_cents,
-                            "choices": [f"{c.group_name}: {c.option_name}" for c in item.choices],
+                            "choices": [
+                                f"{c.group_name}: {c.quantity}x {c.option_name}" if c.quantity > 1
+                                else f"{c.group_name}: {c.option_name}"
+                                for c in item.choices
+                            ],
                         }
                         for item in o.items
                     ],

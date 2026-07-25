@@ -29,7 +29,7 @@
               {% if item.choices %}
               <div class="text-muted-custom" style="font-size: .78rem;">
                 {% for choice in item.choices %}
-                  {{ choice.group_name }}: {{ choice.option_name }}{% if choice.extra_price_cents %} (+R$ {{ "%.2f"|format(choice.extra_price_cents / 100) }}){% endif %}{% if not loop.last %} · {% endif %}
+                  {{ choice.group_name }}: {% if choice.quantity > 1 %}{{ choice.quantity }}x {% endif %}{{ choice.option_name }}{% if choice.extra_price_cents %} (+R$ {{ "%.2f"|format(choice.extra_price_cents * choice.quantity / 100) }}){% endif %}{% if not loop.last %} · {% endif %}
                 {% endfor %}
               </div>
               {% endif %}

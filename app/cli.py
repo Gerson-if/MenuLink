@@ -2,20 +2,27 @@
 Comandos de linha de comando customizados.
 
 Uso:
-    flask seed-db      -> cria super admin + plano + loja demo (idempotente)
-    flask create-admin -> cria (ou atualiza) um super admin específico
+    flask seed-db              -> cria super admin + plano + loja demo (idempotente)
+    flask create-admin         -> cria (ou atualiza) um super admin específico
+    flask backfill-image-colors -> recalcula cor dominante e recomprime pra WEBP
+                                    banners/fotos de produto enviados antes dessa
+                                    mudança (idempotente, ver app/utils/uploads.py)
 """
 
+import os
+import uuid
+
 import click
-from flask import Flask
+from flask import Flask, current_app
 
 from app.extensions import db
-from app.models import Plan, BillingCycle, Tenant, TenantStatus, User, UserRole
+from app.models import Banner, BillingCycle, Plan, ProductImage, Tenant, TenantStatus, User, UserRole
 
 
 def register_cli(app: Flask) -> None:
     app.cli.add_command(seed_db)
     app.cli.add_command(create_admin)
+    app.cli.add_command(backfill_image_colors)
 
 
 @click.command("seed-db")
@@ -108,3 +115,46 @@ def create_admin(name, email, password):
         click.echo(f"✔ Super admin criado: {email}")
 
     db.session.commit()
+
+
+@click.command("backfill-image-colors")
+def backfill_image_colors():
+    """Reprocessa banners/fotos de produto enviados antes da mudança de
+    cor dominante + WEBP (ver app/utils/uploads.py): calcula a cor média
+    da borda e recomprime pra WEBP quem ainda estiver em outro formato.
+    Idempotente — pula quem já tem `dominant_color` preenchido."""
+    from PIL import Image
+
+    from app.utils.uploads import dominant_edge_color
+
+    def _reprocess(obj, path_attr: str) -> bool:
+        relative_path = getattr(obj, path_attr)
+        absolute_path = os.path.join(current_app.static_folder, relative_path)
+        if not os.path.isfile(absolute_path):
+            click.echo(f"  ! arquivo não encontrado, pulando: {relative_path}")
+            return False
+
+        image = Image.open(absolute_path).convert("RGB")
+        obj.dominant_color = dominant_edge_color(image)
+
+        if not relative_path.lower().endswith(".webp"):
+            new_relative = os.path.join(
+                os.path.dirname(relative_path), f"{uuid.uuid4().hex}.webp"
+            ).replace(os.sep, "/")
+            new_absolute = os.path.join(current_app.static_folder, new_relative)
+            image.save(new_absolute, format="WEBP", quality=82, method=6)
+            os.remove(absolute_path)
+            setattr(obj, path_attr, new_relative)
+
+        return True
+
+    count = 0
+    for banner in Banner.query.filter(Banner.dominant_color.is_(None)).all():
+        if _reprocess(banner, "image_path"):
+            count += 1
+    for product_image in ProductImage.query.filter(ProductImage.dominant_color.is_(None)).all():
+        if _reprocess(product_image, "file_path"):
+            count += 1
+
+    db.session.commit()
+    click.echo(f"OK: {count} imagem(ns) reprocessada(s).")

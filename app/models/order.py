@@ -136,6 +136,7 @@ class OrderItemChoice(db.Model, TenantScopedMixin, TimestampMixin):
 
     group_name = Column(String(100), nullable=False)   # snapshot, ex: "Tamanho"
     option_name = Column(String(100), nullable=False)   # snapshot, ex: "Grande"
-    extra_price_cents = Column(Integer, nullable=False, default=0)
+    extra_price_cents = Column(Integer, nullable=False, default=0)  # preço unitário — multiplicar por `quantity` pro total
+    quantity = Column(Integer, nullable=False, default=1)  # ex: 2x Coca-Cola — ver ComplementGroup.allow_quantity
 
     item = relationship("OrderItem", back_populates="choices")

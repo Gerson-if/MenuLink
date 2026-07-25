@@ -116,7 +116,7 @@
       </div>
       {% if landing.hero_image %}
       <div class="col-lg-6 text-center">
-        <img src="{{ url_for('static', filename=landing.hero_image) }}" alt=""
+        <img src="{{ url_for('static', filename=landing.hero_image) }}" alt="" decoding="async" fetchpriority="high"
              class="img-fluid rounded shadow-lg mx-auto d-block" style="max-height: 420px; object-fit: cover;">
       </div>
       {% endif %}
@@ -136,7 +136,7 @@
         <div class="panel feature-panel h-100" data-reveal style="--reveal-delay: {{ loop.index0 * 90 }}ms;">
           {% if feature.image %}
           <div class="feature-icon-box p-0" style="background: transparent; overflow: hidden;">
-            <img src="{{ url_for('static', filename=feature.image) }}" alt="" style="width: 100%; height: 100%; object-fit: cover; border-radius: 10px;">
+            <img src="{{ url_for('static', filename=feature.image) }}" alt="" loading="lazy" decoding="async" style="width: 100%; height: 100%; object-fit: cover; border-radius: 10px;">
           </div>
           {% else %}
           <div class="feature-icon-box"><i class="bi {{ feature.icon }}"></i></div>

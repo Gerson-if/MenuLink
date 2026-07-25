@@ -134,12 +134,20 @@ class OrderService:
                 )
 
             quantity = raw_item["quantity"]
-            option_ids = set(raw_item.get("option_ids") or [])
+            raw_options = raw_item.get("options") or []
 
-            selected_options, choices_data = self._resolve_options(product, option_ids)
+            per_unit_extra_cents, flat_extra_cents, choices_data = self._resolve_options(product, raw_options)
 
-            unit_price_cents = product.price_cents + sum(o.extra_price_cents for o in selected_options)
-            item_subtotal = unit_price_cents * quantity
+            # Complementos "normais" (sem allow_quantity) são por unidade
+            # do produto — pedir 5 lanches com molho barbecue cobra o
+            # molho 5 vezes, então entram no preço unitário (multiplica
+            # pela quantidade do item). Já os de allow_quantity (ex:
+            # "Bebidas") têm quantidade própria escolhida pelo cliente,
+            # independente de quantos lanches tem na linha — "5 lanches +
+            # 1 Coca 2L" não vira "5 lanches + 5 Cocas". Por isso entram
+            # à parte, somados uma única vez (flat_extra_cents).
+            unit_price_cents = product.price_cents + per_unit_extra_cents
+            item_subtotal = unit_price_cents * quantity + flat_extra_cents
             subtotal_cents += item_subtotal
 
             items_data.append(
@@ -155,20 +163,28 @@ class OrderService:
 
         return items_data, subtotal_cents
 
-    def _resolve_options(self, product, option_ids: set[int]):
+    def _resolve_options(self, product, raw_options: list[dict]):
         """
         Valida e resolve as opções de variação/complemento escolhidas
-        para um produto.
+        para um produto. `raw_options` é uma lista de
+        `{"option_id": int, "quantity": int}` (ver CheckoutOptionSchema).
 
         Regras aplicadas (todas no servidor, nunca confiando no que o
         cliente diz ter escolhido):
         - Toda opção enviada precisa pertencer a um grupo DESSE produto
           e DESSE tenant — impede injetar uma opção de outro produto ou
           de outra loja para tentar burlar preço/composição.
+        - `quantity` > 1 só é aceito em grupos com `allow_quantity` —
+          num grupo comum, cada opção só pode ser escolhida com
+          quantidade 1 (a opção é escolhida ou não).
         - Grupo obrigatório (`is_required`) sem nenhuma opção
-          selecionada é rejeitado.
+          selecionada (soma de quantidades == 0) é rejeitado.
         - Grupo de escolha única (`single_choice`, o que inclui toda
           variação) com mais de uma opção selecionada é rejeitado.
+
+        Retorna `(per_unit_extra_cents, flat_extra_cents, choices_data)`
+        — ver comentário em `_resolve_items` sobre a diferença entre os
+        dois.
         """
         options_by_id = {}
         for group in product.complement_groups:
@@ -176,24 +192,32 @@ class OrderService:
                 if option.is_active:
                     options_by_id[option.id] = (group, option)
 
-        selected: list = []
         choices_data: list[dict] = []
         selections_by_group: dict[int, list] = {}
 
-        for option_id in option_ids:
+        for raw_option in raw_options:
+            option_id = raw_option["option_id"]
+            quantity = raw_option.get("quantity", 1)
             match = options_by_id.get(option_id)
             if match is None:
                 raise OrderValidationError(
                     "Uma das opções escolhidas não está mais disponível. Atualize a página e tente novamente."
                 )
             group, option = match
-            selected.append(option)
-            selections_by_group.setdefault(group.id, []).append((group, option))
+            if quantity > 1 and not group.allow_quantity:
+                raise OrderValidationError(
+                    f"Não é possível escolher mais de uma unidade em '{group.name}'."
+                )
+            selections_by_group.setdefault(group.id, []).append((group, option, quantity))
+
+        per_unit_extra_cents = 0
+        flat_extra_cents = 0
 
         for group in product.complement_groups:
             group_selections = selections_by_group.get(group.id, [])
+            total_quantity = sum(qty for _, _, qty in group_selections)
 
-            if group.is_required and not group_selections:
+            if group.is_required and total_quantity == 0:
                 raise OrderValidationError(
                     f"Escolha uma opção para '{group.name}' antes de continuar."
                 )
@@ -202,16 +226,21 @@ class OrderService:
                     f"Só é possível escolher uma opção para '{group.name}'."
                 )
 
-            for group_obj, option in group_selections:
+            for group_obj, option, quantity in group_selections:
+                if group_obj.allow_quantity:
+                    flat_extra_cents += option.extra_price_cents * quantity
+                else:
+                    per_unit_extra_cents += option.extra_price_cents
                 choices_data.append(
                     {
                         "group_name": group_obj.name,
                         "option_name": option.name,
                         "extra_price_cents": option.extra_price_cents,
+                        "quantity": quantity,
                     }
                 )
 
-        return selected, choices_data
+        return per_unit_extra_cents, flat_extra_cents, choices_data
 
     def _resolve_customer(self, name: str, phone: str):
         customer = self.customer_repo.get_by_phone(phone)
