@@ -127,5 +127,29 @@
       {% block panel_content %}{% endblock %}
     </div>
   </div>
+
+  {# Barra de navegação inferior — só no celular (a sidebar fixa já
+     cobre isso em telas grandes). Não duplica destino nenhum da
+     sidebar; é só um atalho pros mais usados, com "Mais" abrindo a
+     mesma gaveta lateral de sempre. #}
+  <nav class="bottom-tab-bar d-lg-none">
+    <a href="{{ url_for('admin.dashboard') }}" class="bottom-tab-bar-item {{ 'active' if request.endpoint == 'admin.dashboard' }}">
+      <i class="bi bi-speedometer2"></i>Métricas
+    </a>
+    <a href="{{ url_for('admin.tenants_list') }}" class="bottom-tab-bar-item {{ 'active' if request.endpoint and request.endpoint.startswith('admin.tenants') }}">
+      <i class="bi bi-shop"></i>Lojistas
+    </a>
+    <a href="{{ url_for('admin.support_inbox') }}" class="bottom-tab-bar-item {{ 'active' if request.endpoint and request.endpoint.startswith('admin.support_inbox') }}">
+      <i class="bi bi-headset"></i>Suporte
+      {% set unread = admin_unread_chat_count() %}
+      {% if unread %}<span class="status-badge status-blocked">{{ unread }}</span>{% endif %}
+    </a>
+    <a href="{{ url_for('admin.plans_list') }}" class="bottom-tab-bar-item {{ 'active' if request.endpoint and request.endpoint.startswith('admin.plans') }}">
+      <i class="bi bi-sliders"></i>Planos
+    </a>
+    <button type="button" class="bottom-tab-bar-item" @click="sidebarOpen = true">
+      <i class="bi bi-grid-3x3-gap"></i>Mais
+    </button>
+  </nav>
 </div>
 {% endblock %}

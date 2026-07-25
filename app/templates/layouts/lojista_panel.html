@@ -162,5 +162,29 @@
       {% block panel_content %}{% endblock %}
     </div>
   </div>
+
+  {# Barra de navegação inferior — só no celular (a sidebar fixa já
+     cobre isso em telas grandes). Não duplica destino nenhum da
+     sidebar; é só um atalho pros mais usados, com "Mais" abrindo a
+     mesma gaveta lateral de sempre. #}
+  <nav class="bottom-tab-bar d-lg-none">
+    <a href="{{ url_for('lojista.dashboard') }}" class="bottom-tab-bar-item {{ 'active' if request.endpoint == 'lojista.dashboard' }}">
+      <i class="bi bi-speedometer2"></i>Início
+    </a>
+    <a href="{{ url_for('lojista.orders_list') }}" class="bottom-tab-bar-item {{ 'active' if request.endpoint and request.endpoint.startswith('lojista.orders') }}">
+      <i class="bi bi-receipt"></i>Pedidos
+    </a>
+    <a href="{{ url_for('lojista.products_list') }}" class="bottom-tab-bar-item {{ 'active' if request.endpoint and (request.endpoint.startswith('lojista.products') or request.endpoint.startswith('lojista.categories') or request.endpoint.startswith('lojista.images') or request.endpoint.startswith('lojista.complement')) }}">
+      <i class="bi bi-egg-fried"></i>Cardápio
+    </a>
+    <a href="{{ url_for('lojista.chat') }}" class="bottom-tab-bar-item {{ 'active' if request.endpoint and request.endpoint.startswith('lojista.chat') }}">
+      <i class="bi bi-headset"></i>Suporte
+      {% set unread = lojista_unread_chat_count() %}
+      {% if unread %}<span class="status-badge status-blocked">{{ unread }}</span>{% endif %}
+    </a>
+    <button type="button" class="bottom-tab-bar-item" @click="sidebarOpen = true">
+      <i class="bi bi-grid-3x3-gap"></i>Mais
+    </button>
+  </nav>
 </div>
 {% endblock %}

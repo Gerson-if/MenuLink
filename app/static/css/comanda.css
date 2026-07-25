@@ -86,6 +86,14 @@ body {
   font-family: 'Inter', sans-serif;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+  /* Detalhes que tiram a "cara de site aberto no navegador": o retângulo
+     cinza que o Chrome/Safari mobile pinta ao tocar em links/botões
+     (some, sobra só o :active de cada componente, mais discreto) e o
+     "puxão" de rolagem que revela a cor do sistema atrás do topo/rodapé
+     da página inteira ao dar overscroll — deixa a rolagem presa ao
+     conteúdo, como um app instalado. */
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: contain;
 }
 
 .font-display { font-family: 'Archivo Black', sans-serif; letter-spacing: -0.02em; }
@@ -558,6 +566,37 @@ body:has(.app-shell) .toast-flash-stack { top: 84px; }
 }
 .topbar h1 { font-size: 1.25rem; margin: 0; font-weight: 700; color: var(--paper); font-family: 'Archivo Black', sans-serif; }
 .content { padding: 24px; }
+
+/* ---------- Barra de navegação inferior (só no celular) ----------
+   O maior detalhe que faz o painel parecer um app de verdade em vez de
+   um site aberto no celular: os destinos mais usados ficam fixos
+   embaixo, ao alcance do polegar, e "Mais" abre a mesma gaveta lateral
+   de sempre (sidebarOpen, já existe pro botão hamburguer) — sem duplicar
+   nenhuma rota ou lógica de "ativo", só uma segunda porta de entrada pro
+   mesmo menu. Escondida em telas grandes (d-lg-none no markup), onde a
+   sidebar fixa já cumpre esse papel. */
+.bottom-tab-bar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 1030;
+  display: flex; background: color-mix(in srgb, var(--charcoal) 94%, transparent);
+  backdrop-filter: blur(10px); border-top: 1px solid var(--sidebar-border, var(--card-border));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.bottom-tab-bar-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px; padding: 8px 4px 6px; min-height: 56px; color: var(--sidebar-muted, var(--muted-text));
+  text-decoration: none; font-size: .66rem; font-weight: 600; text-align: center; line-height: 1.1;
+  border: none; background: none; position: relative; -webkit-tap-highlight-color: transparent;
+}
+.bottom-tab-bar-item i { font-size: 1.3rem; }
+.bottom-tab-bar-item.active { color: var(--accent); }
+.bottom-tab-bar-item .status-badge {
+  position: absolute; top: 4px; right: calc(50% - 26px); font-size: .6rem; padding: 1px 5px;
+}
+@media (max-width: 991.98px) {
+  /* Espaço reservado embaixo do conteúdo pra barra fixa não tapar o
+     final da página (botões de salvar, última linha de tabela, etc). */
+  .content { padding-bottom: 82px; }
+}
 
 /* Botão sol/lua de alternar claro/escuro (topbar dos painéis) — mesma
    troca de ícone com fade cruzado usada em vários dashboards: os dois

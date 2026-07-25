@@ -26,6 +26,11 @@ function sidebarShell() {
       this.colorMode = this.colorMode === 'light' ? 'dark' : 'light';
       document.documentElement.setAttribute('data-theme', this.colorMode);
       localStorage.setItem('comandaColorMode', this.colorMode);
+      // Mantém a cor da barra de status do celular (meta theme-color, ver
+      // base.html) em sincronia com o tema — sem isso, ela só era
+      // corrigida no carregamento da página, não ao clicar no sol/lua.
+      var meta = document.getElementById('meta-theme-color');
+      if (meta) meta.setAttribute('content', this.colorMode === 'light' ? '#F7F1E4' : '#221C16');
     },
   };
 }

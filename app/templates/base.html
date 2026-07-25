@@ -2,13 +2,31 @@
 <html lang="pt-BR" translate="no" {% block html_attrs %}{% endblock %}>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+{# viewport-fit=cover libera a área atrás do notch/ilha dinâmica pro
+   nosso próprio CSS (env(safe-area-inset-*), ver comanda.css) — sem
+   isso, ao "adicionar à tela de início" o conteúdo ficava com uma faixa
+   preta do sistema em vez de ir de ponta a ponta como um app instalado
+   de verdade. #}
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="csrf-token" content="{{ csrf_token() }}">
 {# `lang="pt-BR"` já diz que a página é em português — os dois abaixo
    evitam a barra/prompt de tradução automática do navegador em cima
    disso (o app é nativo em PT-BR, "traduzir" só atrapalha). #}
 <meta name="google" content="notranslate">
 <meta http-equiv="Content-Language" content="pt-BR">
+
+{# PWA leve: dá pra "adicionar à tela de início" e abrir em tela cheia
+   (sem barra de endereço), do jeito que qualquer app instalado abre.
+   theme-color pinta a barra de status do celular (e a barra do
+   Chrome/Safari) da mesma cor do topo do painel, em vez do branco/cinza
+   padrão do navegador — reforça a sensação de app nativo em vez de site
+   aberto no navegador. #}
+<link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+<meta name="theme-color" id="meta-theme-color" content="#221C16">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Comanda">
 <script>
   /* Aplica o modo claro/escuro salvo ANTES do CSS/primeiro paint —
      evita o "flash" de um tema errado ao carregar a página (mesma ideia
@@ -22,10 +40,18 @@
      sol/lua + esta preferência salva. */
   (function () {
     try {
-      if (document.documentElement.getAttribute('data-theme')) return;
-      var saved = localStorage.getItem('comandaColorMode');
-      if (saved === 'light' || saved === 'dark') {
-        document.documentElement.setAttribute('data-theme', saved);
+      if (!document.documentElement.getAttribute('data-theme')) {
+        var saved = localStorage.getItem('comandaColorMode');
+        if (saved === 'light' || saved === 'dark') {
+          document.documentElement.setAttribute('data-theme', saved);
+        }
+      }
+      // theme-color acompanha o tema (claro é bem mais claro que o
+      // charcoal padrão) — sem isso, a barra de status do celular ficava
+      // escura mesmo com o painel inteiro trocado pro tema claro.
+      var meta = document.getElementById('meta-theme-color');
+      if (meta && document.documentElement.getAttribute('data-theme') === 'light') {
+        meta.setAttribute('content', '#F7F1E4');
       }
     } catch (e) {}
   })();
