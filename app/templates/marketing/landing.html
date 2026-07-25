@@ -41,10 +41,15 @@
   @keyframes heroCtaIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
   .hero-link-secondary {
     color: var(--card-text); text-decoration: none; font-size: .95rem; font-weight: 500;
-    display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; border-radius: 8px;
+    display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; border-radius: 50px;
     background: color-mix(in srgb, var(--card-text) 10%, transparent);
     border: 1px solid color-mix(in srgb, var(--card-text) 18%, transparent);
-    backdrop-filter: blur(6px); transition: background .2s ease, border-color .2s ease, transform .2s ease;
+    /* Sem backdrop-filter aqui de propósito — "vidro fosco" (blur) em
+       vários elementos ao mesmo tempo é o que mais pesa no scroll em
+       celulares mais fracos (cada blur vira uma camada de composição
+       própria pra GPU renderizar). Fundo translúcido simples com
+       color-mix já dá um efeito parecido por uma fração do custo. */
+    transition: background .2s ease, border-color .2s ease, transform .2s ease;
   }
   .hero-link-secondary:hover {
     color: var(--card-text); transform: translateY(-2px);
@@ -65,6 +70,23 @@
     .hero-section { padding: 110px 0 56px 0; text-align: center; }
     .hero-section .display-4 { font-size: 2.1rem; }
     .hero-section .d-flex.gap-3 { align-items: stretch; }
+  }
+
+  /* Toques visuais mais modernos, de baixo custo: gradiente de texto é
+     só um `background-clip` (pintura única, sem repintar a cada frame),
+     e o "badge" acima do título reaproveita o `.pulse-dot` que a seção
+     "mostra" já usa — nada de blur nem animação contínua de fundo
+     (blobs), que é o que pesava na tentativa anterior em celulares mais
+     fracos. */
+  .hero-gradient-text {
+    background-image: linear-gradient(90deg, var(--accent), var(--accent-dark));
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 50px;
+    background: color-mix(in srgb, var(--card-text) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--card-text) 16%, transparent);
+    color: var(--accent); font-size: .8rem; font-weight: 600; margin-bottom: 20px;
   }
 </style>
 {% endblock %}
@@ -106,8 +128,8 @@
     <a href="#recursos" class="landing-drawer-link" onclick="bootstrap.Offcanvas.getInstance(document.getElementById('landingDrawer'))?.hide()">Recursos</a>
     <a href="#planos" class="landing-drawer-link" onclick="bootstrap.Offcanvas.getInstance(document.getElementById('landingDrawer'))?.hide()">Planos</a>
     <hr class="border-secondary-subtle my-3">
-    <a href="{{ url_for('auth.login') }}" class="btn-outline-custom text-center d-flex align-items-center justify-content-center gap-2 mb-2"><i class="bi bi-box-arrow-in-right"></i> Entrar no Painel</a>
-    <a href="{{ url_for('auth.register') }}" class="btn btn-chili d-flex align-items-center justify-content-center gap-2"><i class="bi bi-rocket-takeoff"></i> Criar Minha Loja</a>
+    <a href="{{ url_for('auth.login') }}" class="btn-outline-custom rounded-pill text-center d-flex align-items-center justify-content-center gap-2 mb-2"><i class="bi bi-box-arrow-in-right"></i> Entrar no Painel</a>
+    <a href="{{ url_for('auth.register') }}" class="btn btn-chili rounded-pill d-flex align-items-center justify-content-center gap-2"><i class="bi bi-rocket-takeoff"></i> Criar Minha Loja</a>
   </div>
 </div>
 
@@ -119,10 +141,14 @@
   <div class="container">
     <div class="row align-items-center pt-4 {{ '' if landing.hero_image else 'justify-content-center' }}">
       <div class="{{ 'col-lg-6 mb-5 mb-lg-0 text-center text-lg-start' if landing.hero_image else 'col-lg-8 text-center' }}">
-        <h1 class="font-display display-4 mb-4" style="line-height:1.15;">{{ landing.hero_title }}</h1>
+        <span class="hero-badge">
+          <span class="pulse-dot"></span>
+          Sem comissão por pedido
+        </span>
+        <h1 class="font-display display-4 mb-4 hero-gradient-text" style="line-height:1.15;">{{ landing.hero_title }}</h1>
         <p class="lead text-muted-custom mb-4" style="font-size:1.1rem; line-height:1.6;">{{ landing.hero_subtitle }}</p>
         <div class="hero-cta-group {{ 'justify-content-lg-start' if landing.hero_image else '' }}">
-          <a href="{{ url_for('auth.register') }}" class="btn btn-chili btn-cta-glow fs-6 px-4">Começar Agora — Grátis</a>
+          <a href="{{ url_for('auth.register') }}" class="btn btn-chili rounded-pill btn-cta-glow fs-6 px-4">Começar Agora — Grátis</a>
           <a href="#planos" class="hero-link-secondary">Ver planos de assinatura <i class="bi bi-arrow-down-short"></i></a>
         </div>
       </div>
@@ -229,7 +255,7 @@
             <li class="mb-2"><i class="bi bi-check2 text-accent me-2"></i> Link do cardápio + QR Code</li>
             {% if plan.description %}<li class="mb-2"><i class="bi bi-check2 text-accent me-2"></i> {{ plan.description }}</li>{% endif %}
           </ul>
-          <a href="{{ url_for('auth.register') }}" class="{{ 'btn btn-chili' if plan.is_featured else 'btn-outline-custom text-center' }} w-100 mt-auto">Escolher {{ plan.name }}</a>
+          <a href="{{ url_for('auth.register') }}" class="{{ 'btn btn-chili' if plan.is_featured else 'btn-outline-custom text-center' }} rounded-pill w-100 mt-auto">Escolher {{ plan.name }}</a>
         </div>
       </div>
       {% else %}
@@ -245,7 +271,7 @@
   <div class="container py-4 text-center" style="position: relative; z-index: 1;" data-reveal>
     <h2 class="font-display text-white mb-3">Pronto para organizar o delivery da sua loja?</h2>
     <p class="text-muted-custom mb-4 mx-auto" style="max-width: 480px;">Comece grátis, sem cartão de crédito — seu cardápio fica pronto em minutos.</p>
-    <a href="{{ url_for('auth.register') }}" class="btn btn-chili fs-6 px-4">Criar Minha Loja Agora</a>
+    <a href="{{ url_for('auth.register') }}" class="btn btn-chili rounded-pill fs-6 px-4">Criar Minha Loja Agora</a>
   </div>
 </section>
 
