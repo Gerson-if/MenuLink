@@ -538,7 +538,7 @@ domínio, certificado SSL gratuito com renovação automática.
 - O código do projeto já clonado no servidor, por exemplo em
   `/opt/comanda`:
   ```bash
-  sudo git clone <url-do-seu-repositorio> /opt/comanda
+  sudo git clone https://github.com/Gerson-if/Comanda.git /opt/comanda
   cd /opt/comanda
   ```
 - Se for usar um domínio com SSL, aponte o DNS dele (registro `A`) para
