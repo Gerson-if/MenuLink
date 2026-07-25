@@ -4,7 +4,7 @@
 
 {% block panel_content %}
 <div class="row g-3 mb-4">
-  <div class="col-md-4">
+  <div class="col-6 col-md-4">
     <a href="{{ url_for('admin.tenants_list') }}" class="text-decoration-none">
       <div class="kpi-card">
         <div><div class="kpi-label">Lojistas cadastrados</div><div class="kpi-value">{{ total_tenants }}</div></div>
@@ -12,7 +12,7 @@
       </div>
     </a>
   </div>
-  <div class="col-md-4">
+  <div class="col-6 col-md-4">
     <a href="{{ url_for('admin.tenants_list', status='active') }}" class="text-decoration-none">
       <div class="kpi-card">
         <div><div class="kpi-label">Contas ativas</div><div class="kpi-value">{{ active_tenants }}</div></div>
@@ -20,7 +20,7 @@
       </div>
     </a>
   </div>
-  <div class="col-md-4">
+  <div class="col-6 col-md-4">
     <a href="{{ url_for('admin.tenants_list', status='blocked_payment') }}" class="text-decoration-none">
       <div class="kpi-card">
         <div><div class="kpi-label">Bloqueadas (inadimplência)</div><div class="kpi-value">{{ blocked_tenants }}</div></div>

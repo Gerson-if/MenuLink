@@ -15,8 +15,15 @@
     <a href="{{ url_for('auth.login') }}" class="auth-tab {{ 'is-active' if request.endpoint == 'auth.login' }}" role="tab" aria-selected="{{ 'true' if request.endpoint == 'auth.login' else 'false' }}">
       <i class="bi bi-box-arrow-in-right"></i> Já tenho conta
     </a>
+    {# "Quero criar minha loja" quebrava em 2 linhas em telas bem
+       estreitas, deixando essa aba mais alta que a de login (as duas
+       dividem a mesma pílula com flex:1, então uma ficava esticada e a
+       outra sobrando espaço em branco) — versão mais curta só no
+       celular resolve sem perder o texto completo no resto das telas. #}
     <a href="{{ url_for('auth.register') }}" class="auth-tab {{ 'is-active' if request.endpoint == 'auth.register' }}" role="tab" aria-selected="{{ 'true' if request.endpoint == 'auth.register' else 'false' }}">
-      <i class="bi bi-shop-window"></i> Quero criar minha loja
+      <i class="bi bi-shop-window"></i>
+      <span class="d-none d-sm-inline">Quero criar minha loja</span>
+      <span class="d-sm-none">Criar loja</span>
     </a>
   </div>
   {% endblock %}

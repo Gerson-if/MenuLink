@@ -14,9 +14,12 @@
       {{ status | capitalize }}
     </span>
   </div>
-  <div x-data="{ copied: false }" class="d-flex align-items-center gap-2">
-    <input type="text" class="form-control form-control-sm font-mono" style="width: 260px;" readonly value="{{ cardapio_url_absolute }}">
-    <button type="button" class="btn btn-sm btn-outline-secondary"
+  <div x-data="{ copied: false }" class="d-flex align-items-center gap-2 w-100 w-lg-auto">
+    <input
+      type="text" class="form-control form-control-sm font-mono flex-grow-1" style="min-width: 0; max-width: 320px;"
+      readonly value="{{ cardapio_url_absolute }}"
+    >
+    <button type="button" class="btn btn-sm btn-outline-secondary flex-shrink-0"
       @click="navigator.clipboard.writeText('{{ cardapio_url_absolute }}'); copied = true; setTimeout(() => copied = false, 2000)">
       <span x-show="!copied">Copiar link</span><span x-show="copied">Copiado!</span>
     </button>

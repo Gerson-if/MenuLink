@@ -145,8 +145,15 @@
             } catch (e) {}
           })();
         </script>
-        <a href="{{ cardapio_url_path if cardapio_url_path else '/loja/' ~ current_tenant.slug }}" target="_blank" class="btn btn-sm btn-outline-chili">
-          <i class="bi bi-box-arrow-up-right"></i> Ver cardápio
+        <a
+          href="{{ cardapio_url_path if cardapio_url_path else '/loja/' ~ current_tenant.slug }}" target="_blank"
+          class="btn btn-sm btn-outline-chili" aria-label="Ver cardápio"
+        >
+          {# O texto some em telas bem pequenas — sem espaço suficiente
+             ao lado do título + menu + botão de tema, o navegador
+             quebrava "Ver cardápio" em duas linhas dentro do próprio
+             botão, ficando com uma altura estranha. #}
+          <i class="bi bi-box-arrow-up-right"></i> <span class="d-none d-sm-inline">Ver cardápio</span>
         </a>
       </div>
     </header>
