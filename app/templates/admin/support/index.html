@@ -9,7 +9,15 @@
 </p>
 
 <div class="row g-4">
-  <div class="col-lg-4">
+  {# A lista só ocupa a tela inteira quando NENHUMA conversa está aberta —
+     antes ela sempre dividia espaço com um painel de chat vazio dizendo
+     "selecione uma conversa ao lado", que em telas menores (onde as
+     colunas empilham) aparecia ABAIXO da lista sem fazer sentido nenhum
+     ("ao lado" não existe empilhado). Com uma conversa aberta, a lista
+     vira uma coluna estreita (escondida no celular — ver
+     d-none d-lg-block) e o chat assume o espaço principal, com um botão
+     de voltar pra lista só visível em telas pequenas. #}
+  <div class="col-lg-4 {{ 'd-none d-lg-block' if active_tenant }}">
     <div class="panel p-0 overflow-hidden">
       <div class="panel-title px-3 pt-3"><i class="bi bi-person-lines-fill"></i> Lojistas</div>
       <div class="px-3 pb-2">
@@ -60,10 +68,13 @@
     </div>
   </div>
 
+  {% if active_tenant %}
   <div class="col-lg-8">
-    {% if active_tenant %}
     <div class="panel chat-panel p-0">
       <div class="chat-header">
+        <a href="{{ url_for('admin.support_inbox') }}" class="link-chili d-lg-none flex-shrink-0" aria-label="Voltar pra lista de lojistas">
+          <i class="bi bi-arrow-left fs-5"></i>
+        </a>
         <div class="chat-avatar">
           {% if active_tenant.logo_path %}
           <img src="{{ url_for('static', filename=active_tenant.logo_path) }}" alt="">
@@ -91,12 +102,7 @@
         <button type="submit" class="chat-send-btn" aria-label="Enviar"><i class="bi bi-send-fill"></i></button>
       </form>
     </div>
-    {% else %}
-    <div class="panel d-flex flex-column align-items-center justify-content-center text-center py-5" style="min-height: 300px;">
-      <i class="bi bi-chat-square-text" style="font-size: 2.5rem; opacity: .4;"></i>
-      <p class="text-muted-custom small mt-3 mb-0">Selecione uma conversa ao lado para ver as mensagens.</p>
-    </div>
-    {% endif %}
   </div>
+  {% endif %}
 </div>
 {% endblock %}
