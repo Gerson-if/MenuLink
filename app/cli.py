@@ -2,7 +2,8 @@
 Comandos de linha de comando customizados.
 
 Uso:
-    flask seed-db               -> cria super admin + plano + loja demo (idempotente)
+    flask seed-db               -> cria super admin + plano + loja demo com cardápio
+                                    de exemplo (idempotente)
     flask create-admin          -> cria (ou reseta a senha de) um super admin específico
     flask list-admins           -> lista os super admins cadastrados
     flask update-admin-email    -> troca o e-mail de um super admin existente
@@ -22,9 +23,23 @@ import uuid
 
 import click
 from flask import Flask, current_app
+from slugify import slugify
 
 from app.extensions import db
-from app.models import Banner, BillingCycle, Plan, ProductImage, Tenant, TenantStatus, User, UserRole
+from app.models import (
+    Banner,
+    BillingCycle,
+    Category,
+    ComplementGroup,
+    ComplementOption,
+    Plan,
+    Product,
+    ProductImage,
+    Tenant,
+    TenantStatus,
+    User,
+    UserRole,
+)
 
 
 def register_cli(app: Flask) -> None:
@@ -103,8 +118,156 @@ def seed_db():
     else:
         click.echo("• Loja demo já existia, pulando.")
 
+    # --- Cardápio demo ---
+    # Roda tanto para uma loja recém-criada quanto para uma já existente
+    # (ex: instalações antigas, de antes deste cardápio existir) — assim
+    # rodar `flask seed-db` de novo também serve para "preencher" uma loja
+    # demo que ainda estivesse sem categorias/produtos. Idempotente: só
+    # popula se a loja ainda não tiver nenhuma categoria cadastrada.
+    if Category.query.filter_by(tenant_id=tenant.id).first() is None:
+        _seed_demo_catalog(tenant.id)
+        click.echo("✔ Cardápio demo populado (categorias, produtos, variações e complementos).")
+    else:
+        click.echo("• Cardápio demo já tinha categorias, pulando.")
+
     db.session.commit()
     click.echo("Seed concluído.")
+
+
+def _seed_demo_catalog(tenant_id: int) -> None:
+    """Popula um cardápio de demonstração realista para a loja 'Braseiro
+    & Cia' (uma churrascaria fictícia): categorias, produtos com preço,
+    selo e descrição, variações (ex: ponto da carne, tamanho) e grupos de
+    complemento (ex: acompanhamentos), para servir de exemplo completo
+    tanto do painel do lojista quanto do cardápio público."""
+
+    def add_category(name: str, icon: str, order: int) -> Category:
+        category = Category(
+            tenant_id=tenant_id,
+            name=name,
+            slug=slugify(name),
+            icon=icon,
+            display_order=order,
+            is_active=True,
+        )
+        db.session.add(category)
+        db.session.flush()
+        return category
+
+    def add_product(category: Category, name: str, description: str, price_reais: float, order: int, tag: str | None = None) -> Product:
+        product = Product(
+            tenant_id=tenant_id,
+            category_id=category.id,
+            name=name,
+            slug=slugify(name),
+            description=description,
+            price_cents=round(price_reais * 100),
+            tag=tag,
+            is_active=True,
+            display_order=order,
+        )
+        db.session.add(product)
+        db.session.flush()
+        return product
+
+    def add_group(product: Product, name: str, *, is_variation: bool, is_required: bool, single_choice: bool, allow_quantity: bool = False, max_choices: int | None = None) -> ComplementGroup:
+        group = ComplementGroup(
+            tenant_id=tenant_id,
+            product_id=product.id,
+            name=name,
+            is_variation=is_variation,
+            is_required=is_required,
+            single_choice=single_choice,
+            allow_quantity=allow_quantity,
+            max_choices=max_choices,
+            display_order=0,
+        )
+        db.session.add(group)
+        db.session.flush()
+        return group
+
+    def add_option(group: ComplementGroup, name: str, extra_price_reais: float, order: int) -> ComplementOption:
+        option = ComplementOption(
+            tenant_id=tenant_id,
+            group_id=group.id,
+            name=name,
+            extra_price_cents=round(extra_price_reais * 100),
+            is_active=True,
+            display_order=order,
+        )
+        db.session.add(option)
+        return option
+
+    def add_ponto_da_carne(product: Product) -> None:
+        group = add_group(product, "Ponto da carne", is_variation=True, is_required=True, single_choice=True)
+        for order, name in enumerate(["Mal passado", "Ao ponto", "Bem passado"]):
+            add_option(group, name, 0, order)
+
+    def add_acompanhamentos(product: Product) -> None:
+        group = add_group(product, "Acompanhamentos extras", is_variation=False, is_required=False, single_choice=False, max_choices=3)
+        for order, (name, price) in enumerate([("Farofa extra", 3), ("Vinagrete extra", 3), ("Pão de alho", 4)]):
+            add_option(group, name, price, order)
+
+    # --- Espetinhos ---
+    espetinhos = add_category("Espetinhos", "combo", 0)
+    p = add_product(espetinhos, "Espeto de Picanha", "Picanha nobre grelhada na brasa, temperada com sal grosso.", 18.0, 0, tag="Mais pedido")
+    add_ponto_da_carne(p)
+    add_acompanhamentos(p)
+    p = add_product(espetinhos, "Espeto de Frango com Bacon", "Cubos de frango envoltos em bacon, grelhados no ponto.", 16.0, 1)
+    add_acompanhamentos(p)
+    p = add_product(espetinhos, "Espeto de Linguiça Toscana", "Linguiça artesanal grelhada na brasa.", 14.0, 2)
+    p = add_product(espetinhos, "Espeto de Coração", "Coração de frango temperado e grelhado.", 15.0, 3)
+    p = add_product(espetinhos, "Espeto de Queijo Coalho", "Queijo coalho grelhado com toque de mel e orégano.", 12.0, 4, tag="Vegetariano")
+
+    # --- Pratos na Brasa ---
+    pratos = add_category("Pratos na Brasa", "other", 1)
+    p = add_product(pratos, "Picanha na Chapa", "Fatias generosas de picanha grelhadas na chapa, servidas com arroz e farofa.", 49.0, 0, tag="Mais pedido")
+    add_ponto_da_carne(p)
+    tamanho = add_group(p, "Tamanho da porção", is_variation=True, is_required=True, single_choice=True)
+    add_option(tamanho, "300g (individual)", 0, 0)
+    add_option(tamanho, "500g (para 2 pessoas)", 18, 1)
+    p = add_product(pratos, "Costela Bovina Defumada", "Costela defumada por 8 horas, desmanchando no garfo.", 52.0, 1)
+    p = add_product(pratos, "Frango Inteiro Desossado", "Frango desossado e grelhado inteiro na brasa, temperos da casa.", 38.0, 2)
+    p = add_product(pratos, "Cupim ao Bafo", "Cupim cozido lentamente na brasa até ficar bem macio.", 45.0, 3)
+
+    # --- Acompanhamentos ---
+    acompanhamentos = add_category("Acompanhamentos", "other", 2)
+    add_product(acompanhamentos, "Farofa Especial da Casa", "Farofa crocante com bacon e ovos.", 9.0, 0)
+    add_product(acompanhamentos, "Vinagrete da Casa", "Tomate, cebola e pimentão picados, temperado com azeite.", 7.0, 1)
+    add_product(acompanhamentos, "Arroz Carreteiro", "Arroz soltinho com carne seca desfiada.", 12.0, 2)
+    add_product(acompanhamentos, "Mandioca Frita", "Porção de mandioca frita, crocante por fora e macia por dentro.", 15.0, 3)
+    add_product(acompanhamentos, "Pão de Alho (4 unidades)", "Pão de alho grelhado na brasa.", 10.0, 4)
+
+    # --- Bebidas ---
+    bebidas = add_category("Bebidas", "drink", 3)
+    add_product(bebidas, "Coca-Cola Lata 350ml", "Bem gelada.", 6.0, 0)
+    add_product(bebidas, "Guaraná Antarctica Lata 350ml", "Bem gelado.", 6.0, 1)
+    add_product(bebidas, "Suco Natural de Laranja 500ml", "Feito na hora.", 9.0, 2)
+    add_product(bebidas, "Água Mineral 500ml", "Com ou sem gás.", 4.0, 3)
+    add_product(bebidas, "Cerveja Long Neck", "Bem gelada, direto da geladeira.", 9.0, 4, tag="Gelada")
+    add_product(bebidas, "Caipirinha de Limão", "Feita com cachaça artesanal.", 18.0, 5)
+
+    # --- Sobremesas ---
+    sobremesas = add_category("Sobremesas", "dessert", 4)
+    add_product(sobremesas, "Pudim de Leite", "Receita tradicional da casa.", 9.0, 0)
+    add_product(sobremesas, "Abacaxi na Brasa com Canela", "Abacaxi grelhado na brasa, polvilhado com canela e açúcar.", 11.0, 1, tag="Novidade")
+    p = add_product(sobremesas, "Sorvete (2 bolas)", "Sorvete cremoso, escolha o sabor.", 12.0, 2)
+    sabor = add_group(p, "Sabor", is_variation=True, is_required=True, single_choice=True)
+    for order, name in enumerate(["Chocolate", "Morango", "Creme"]):
+        add_option(sabor, name, 0, order)
+
+    # --- Combos ---
+    combos = add_category("Combos", "combo", 5)
+    add_product(
+        combos, "Combo Casal",
+        "2 espetos à sua escolha + 2 bebidas + 1 acompanhamento — ideal para dividir.",
+        69.0, 0, tag="Promoção",
+    )
+    add_product(
+        combos, "Combo Família",
+        "4 espetos + farofa + vinagrete + 4 bebidas — serve até 4 pessoas.",
+        129.0, 1, tag="Promoção",
+    )
 
 
 @click.command("create-admin")
