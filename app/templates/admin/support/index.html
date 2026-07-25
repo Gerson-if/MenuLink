@@ -11,12 +11,25 @@
 <div class="row g-4">
   <div class="col-lg-4">
     <div class="panel p-0 overflow-hidden">
-      <div class="panel-title px-3 pt-3"><i class="bi bi-chat-dots"></i> Conversas</div>
+      <div class="panel-title px-3 pt-3"><i class="bi bi-person-lines-fill"></i> Lojistas</div>
+      <div class="px-3 pb-2">
+        <input
+          type="search" id="support-contact-search" class="form-control form-control-sm"
+          placeholder="Buscar loja..." autocomplete="off"
+          oninput="
+            var q = this.value.toLowerCase();
+            document.querySelectorAll('.support-conversation-item').forEach(function (item) {
+              item.style.display = item.dataset.searchName.includes(q) ? '' : 'none';
+            });
+          "
+        >
+      </div>
       <div class="support-conversation-list">
         {% if conversations %}
           {% for c in conversations %}
           <a href="{{ url_for('admin.support_inbox', tenant_id=c.tenant.id) }}"
-             class="support-conversation-item {{ 'active' if active_tenant and active_tenant.id == c.tenant.id }}">
+             class="support-conversation-item {{ 'active' if active_tenant and active_tenant.id == c.tenant.id }}"
+             data-search-name="{{ c.tenant.name|lower }}">
             <div class="chat-avatar chat-avatar-sm">
               {% if c.tenant.logo_path %}
               <img src="{{ url_for('static', filename=c.tenant.logo_path) }}" alt="">
@@ -34,12 +47,14 @@
                 {{ "Você: " if c.last_message.sender_role.value == "super_admin" else "" }}{{ c.last_message.body }}
               </p>
               <p class="text-muted-custom small mb-0" style="font-size: 0.72rem;">{{ c.last_message.created_at.strftime("%d/%m %H:%M") }}</p>
+              {% else %}
+              <p class="text-muted-custom small mb-0 fst-italic" style="opacity: .7;">Nenhuma mensagem ainda</p>
               {% endif %}
             </div>
           </a>
           {% endfor %}
         {% else %}
-        <p class="text-muted-custom small text-center py-4 px-3">Nenhuma conversa ainda — quando um lojista mandar uma mensagem de suporte, ela aparece aqui.</p>
+        <p class="text-muted-custom small text-center py-4 px-3">Nenhuma loja cadastrada ainda.</p>
         {% endif %}
       </div>
     </div>
@@ -68,7 +83,11 @@
 
       <form method="POST" action="{{ url_for('admin.chat_send', tenant_id=active_tenant.id) }}" class="chat-input-bar">
         {{ chat_form.hidden_tag() }}
-        {{ chat_form.body(class="chat-input", rows=1, placeholder="Escreva uma mensagem...", style="resize: none;") }}
+        {{ chat_form.body(
+          class="chat-input", rows=1, placeholder="Escreva uma mensagem...", style="resize: none;",
+          oninput="this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,120)+'px';",
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault(); this.form.requestSubmit();}",
+        ) }}
         <button type="submit" class="chat-send-btn" aria-label="Enviar"><i class="bi bi-send-fill"></i></button>
       </form>
     </div>

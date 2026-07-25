@@ -77,36 +77,40 @@ class ChatService:
 
     @staticmethod
     def list_conversations_for_admin() -> list[dict]:
-        """Uma linha por loja que já trocou pelo menos uma mensagem,
-        com a última mensagem e quantas estão sem ler pelo admin — usado
-        pela Central de Suporte (não mistura com a gestão da loja em si,
-        ver app/controllers/admin/chat.py:support_inbox)."""
+        """UMA LINHA POR LOJA (não só as que já mandaram mensagem) — a
+        Central de Suporte funciona como uma lista de "contatos": o Super
+        Admin precisa conseguir puxar assunto com qualquer lojista, não só
+        responder quem já escreveu primeiro. Lojas sem nenhuma mensagem
+        aparecem no fim da lista, ordenadas por nome, com "Nenhuma
+        mensagem ainda" no lugar da prévia — ver
+        app/controllers/admin/chat.py:support_inbox."""
         from app.models import Tenant
 
-        tenant_ids = [row[0] for row in db.session.query(ChatMessage.tenant_id).distinct().all()]
-        if not tenant_ids:
+        tenants = Tenant.query.order_by(Tenant.name).all()
+        if not tenants:
             return []
 
         unread_ids = ChatService.tenant_ids_with_unread_messages_for_admin()
 
+        last_messages_by_tenant = {
+            row.tenant_id: row
+            for row in ChatMessage.query.order_by(ChatMessage.created_at.asc())
+        }  # a última ocorrência de cada tenant_id na iteração ordenada vence
+
         conversations = []
-        for tenant_id in tenant_ids:
-            tenant = db.session.get(Tenant, tenant_id)
-            if tenant is None:
-                continue  # loja pode ter sido removida, mensagens ficam órfãs por CASCADE ainda não rodado
-            last_message = (
-                ChatMessage.query.filter_by(tenant_id=tenant_id).order_by(ChatMessage.created_at.desc()).first()
-            )
+        for tenant in tenants:
             conversations.append({
                 "tenant": tenant,
-                "last_message": last_message,
-                "has_unread": tenant_id in unread_ids,
+                "last_message": last_messages_by_tenant.get(tenant.id),
+                "has_unread": tenant.id in unread_ids,
             })
 
         conversations.sort(
             key=lambda c: (
                 not c["has_unread"],  # não lidas primeiro
-                -(c["last_message"].created_at.timestamp() if c["last_message"] else 0),  # depois, mais recente
+                c["last_message"] is None,  # depois quem já tem conversa
+                -(c["last_message"].created_at.timestamp() if c["last_message"] else 0),  # mais recente primeiro
+                c["tenant"].name.lower(),  # sem conversa nenhuma: ordem alfabética
             )
         )
         return conversations

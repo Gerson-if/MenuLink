@@ -16,7 +16,11 @@
 
   <form method="POST" action="{{ url_for('lojista.chat_send') }}" class="chat-input-bar">
     {{ form.hidden_tag() }}
-    {{ form.body(class="chat-input", rows=1, placeholder="Escreva uma mensagem...", style="resize: none;") }}
+    {{ form.body(
+      class="chat-input", rows=1, placeholder="Escreva uma mensagem...", style="resize: none;",
+      oninput="this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,120)+'px';",
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault(); this.form.requestSubmit();}",
+    ) }}
     <button type="submit" class="chat-send-btn" aria-label="Enviar"><i class="bi bi-send-fill"></i></button>
   </form>
 </div>

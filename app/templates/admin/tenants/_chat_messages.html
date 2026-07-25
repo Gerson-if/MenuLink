@@ -23,7 +23,21 @@
 </div>
 <script>
   (function () {
+    // Este fragmento é trocado inteiro (hx-swap="outerHTML") a cada
+    // atualização (envio de mensagem ou o poll de 5s) — sem este cuidado,
+    // toda vez o painel voltava pro topo/fundo do zero, "arrancando" o
+    // Super Admin de onde estava lendo. window.__chatShouldAutoScroll
+    // (global, sobrevive à troca do elemento) guarda se ele estava perto
+    // do fim na ÚLTIMA vez que vimos o scroll: se sim, mantemos colado no
+    // fim (comportamento normal de chat); se ele rolou pra cima pra ler o
+    // histórico, respeitamos e não forçamos a volta a cada atualização.
     var el = document.getElementById('chat-messages');
-    if (el) el.scrollTop = el.scrollHeight;
+    if (!el) return;
+    if (window.__chatShouldAutoScroll !== false) {
+      el.scrollTop = el.scrollHeight;
+    }
+    el.addEventListener('scroll', function () {
+      window.__chatShouldAutoScroll = (el.scrollHeight - el.scrollTop - el.clientHeight) < 80;
+    });
   })();
 </script>

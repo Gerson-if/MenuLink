@@ -7,7 +7,7 @@ app/controllers/admin/chat.py.
 import re
 
 from app.extensions import db
-from app.models import ChatMessage, ChatSenderRole, Tenant
+from app.models import ChatMessage, ChatSenderRole, Tenant, TenantStatus, UserRole
 from app.services.chat_service import ChatError, ChatService
 
 
@@ -165,6 +165,44 @@ class TestAdminChatRoutes:
 
         with app.app_context():
             assert tenant_id not in ChatService.tenant_ids_with_unread_messages_for_admin()
+
+    def test_support_inbox_lists_every_tenant_as_a_contact_even_without_messages(self, app, client, login_as):
+        """A Central de Suporte funciona como uma lista de contatos: o
+        Super Admin precisa conseguir puxar assunto com qualquer lojista,
+        não só responder quem já escreveu primeiro — ver
+        ChatService.list_conversations_for_admin."""
+        with app.app_context():
+            from app.models import Plan, User
+
+            plan = Plan.query.first()
+            tenant = Tenant(
+                name="Loja Sem Conversa", slug="loja-sem-conversa", email="semconversa@x.com",
+                plan_id=plan.id, status=TenantStatus.ACTIVE, delivery_enabled=True,
+            )
+            db.session.add(tenant)
+            db.session.flush()
+            owner = User(name="Dono Sem Conversa", email="dono-sem-conversa@x.com", role=UserRole.OWNER, tenant_id=tenant.id)
+            owner.set_password("senha123")
+            db.session.add(owner)
+            db.session.commit()
+            tenant_id = tenant.id
+
+        login_as(client, "admin@cardapio.saas", "admin123")
+
+        resp = client.get("/admin/suporte")
+        html = resp.get_data(as_text=True)
+        assert "Loja Sem Conversa" in html
+        assert "Nenhuma mensagem ainda" in html
+
+        # entra na conversa vazia e manda a primeira mensagem, como um
+        # contato novo — sem que o lojista precise escrever primeiro
+        _post_with_csrf(
+            client, f"/admin/lojistas/{tenant_id}/mensagens/enviar", {"body": "Oi! Qualquer coisa é só chamar."},
+            f"/admin/suporte/{tenant_id}",
+        )
+        with app.app_context():
+            messages = ChatService(tenant_id).list_messages()
+            assert any("Qualquer coisa" in m.body for m in messages)
 
     def test_admin_can_reply(self, app, client, login_as):
         with app.app_context():
