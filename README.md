@@ -1,9 +1,43 @@
 # Comanda — Plataforma Multi-Tenant de Cardápio Digital
 
+![Python](https://img.shields.io/badge/Python-3.13-blue?logo=python&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-3.x-black?logo=flask&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-produção-336791?logo=postgresql&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-desenvolvimento-003B57?logo=sqlite&logoColor=white)
+![Testes](https://img.shields.io/badge/testes-pytest-0A9EDC?logo=pytest&logoColor=white)
+![Licença](https://img.shields.io/badge/licença-proprietária-lightgrey)
+
 Comanda é uma plataforma multi-tenant de cardápio digital: um Super
 Administrador gerencia a plataforma e os planos, e cada Lojista tem seu
 próprio cardápio, produtos, pedidos e clientes, totalmente isolados dos
 demais.
+
+## Índice
+
+- [Stack](#stack)
+- [Funcionalidades](#funcionalidades)
+  - [Autenticação e multi-tenant](#autenticação-e-multi-tenant)
+  - [Painel do lojista](#painel-do-lojista)
+  - [Cardápio público e checkout](#cardápio-público-e-checkout)
+  - [Pedidos, vendas e relatórios financeiros](#pedidos-vendas-e-relatórios-financeiros)
+  - [Painel do Super Admin](#painel-do-super-admin)
+  - [Integração com Asaas (cobrança de faturas)](#integração-com-asaas-cobrança-de-faturas)
+- [Identidade visual](#identidade-visual)
+- [Arquitetura](#arquitetura)
+- [Estratégia multi-tenant](#estratégia-multi-tenant)
+- [Testes automatizados](#testes-automatizados)
+- [Como rodar localmente (SQLite)](#como-rodar-localmente-sqlite)
+- [Deploy em produção](#deploy-em-produção)
+  - [Requisitos](#requisitos)
+  - [Instalação guiada](#instalação-guiada)
+  - [Atualizando para uma versão mais nova](#atualizando-para-uma-versão-mais-nova)
+  - [Detalhes técnicos do que o instalador configura](#detalhes-técnicos-do-que-o-instalador-configura)
+  - [Checklist de variáveis de ambiente (`.env`)](#checklist-de-variáveis-de-ambiente-env)
+  - [Verificando que subiu certo](#verificando-que-subiu-certo)
+- [Comandos úteis](#comandos-úteis)
+- [Validações de dados](#validações-de-dados)
+- [Fora do escopo atual](#fora-do-escopo-atual)
+- [Licença](#licença)
 
 ## Stack
 
@@ -18,6 +52,8 @@ demais.
   aplicação renderizar.
 - **Banco de dados**: SQLite em desenvolvimento, PostgreSQL recomendado
   em produção.
+
+[⬆ voltar ao índice](#índice)
 
 ## Funcionalidades
 
@@ -279,6 +315,8 @@ cria/reaproveita o cliente Asaas do tenant → cria a cobrança → salva
 `mark_paid_by_asaas_payment_id` é chamado pelo webhook para casar a
 notificação com a fatura certa.
 
+[⬆ voltar ao índice](#índice)
+
 ## Identidade visual
 
 Duas identidades visuais, cada uma customizável em tempo de execução
@@ -310,6 +348,8 @@ Fonts em tempo de execução.
 implementam a mesma casca (sidebar retrátil, colapsável em desktop,
 drawer em mobile) parametrizada por tema. Toda página de painel
 estende um desses layouts e só preenche `page_title`/`panel_content`.
+
+[⬆ voltar ao índice](#índice)
 
 ## Arquitetura
 
@@ -357,6 +397,8 @@ tests/                          # pytest — auth, multi-tenant, CRUD, checkout,
 **Camadas**: Controller (rota) → Service (regra de negócio) → Repository
 (query) → Model (tabela). Controllers nunca acessam o banco diretamente.
 
+[⬆ voltar ao índice](#índice)
+
 ## Estratégia multi-tenant
 
 Banco compartilhado, schema compartilhado, isolamento por coluna
@@ -372,6 +414,8 @@ de requisição, por `app/utils/tenant_context.py`:
 
 `get_current_tenant()` é o único ponto de leitura do tenant atual usado
 pelo resto da aplicação.
+
+[⬆ voltar ao índice](#índice)
 
 ## Testes automatizados
 
@@ -403,6 +447,8 @@ sessões, proteção contra open redirect no `?next=` do login); chat
 lojista↔Super Admin; e testes de produção (assets críticos servidos
 localmente sem depender de CDN, variáveis de ambiente obrigatórias
 validadas, QR Code gerado localmente).
+
+[⬆ voltar ao índice](#índice)
 
 ## Como rodar localmente (SQLite)
 
@@ -475,6 +521,8 @@ detalhe de cada lojista.
 Troque essas senhas antes de qualquer uso além de desenvolvimento
 local.
 
+[⬆ voltar ao índice](#índice)
+
 ## Deploy em produção
 
 O jeito recomendado de colocar o Comanda no ar é um VPS Ubuntu comum
@@ -525,8 +573,12 @@ O script pergunta, em ordem, e explica cada decisão antes de perguntar:
    geradas de forma independente a cada instalação, para que o vazamento
    de uma não comprometa outro servidor, e são mostradas (uma única
    vez) ao final da instalação.
-4. **Usuário de sistema** que vai rodar a aplicação (criado
-   automaticamente, sem privilégios de root).
+4. **Usuário de sistema** que vai rodar a aplicação, sem privilégios de
+   root. Por padrão o script sugere o próprio usuário que você já usa
+   para dar deploy por SSH (detectado via `sudo`) — se ele já existir,
+   é só reaproveitado, sem criar nada novo. Se preferir um usuário
+   dedicado só para a aplicação, digite outro nome: se não existir,
+   o script cria na hora.
 5. **Firewall (ufw)**, opcional — libera só SSH (a porta é detectada
    automaticamente), HTTP e HTTPS, bloqueando o resto.
 
@@ -641,6 +693,8 @@ obrigatórios são:
   renderização inicial. O QR Code também é gerado localmente, sem
   depender de API externa.
 
+[⬆ voltar ao índice](#índice)
+
 ## Comandos úteis
 
 ```bash
@@ -651,6 +705,8 @@ flask seed-db                      # popula dados mínimos (idempotente)
 flask create-admin                 # cria/atualiza um super admin específico
 pytest tests/ -v                    # roda a suíte de testes
 ```
+
+[⬆ voltar ao índice](#índice)
 
 ## Validações de dados
 
@@ -665,6 +721,8 @@ pytest tests/ -v                    # roda a suíte de testes
 - **Preço de custo maior que preço de venda** é bloqueado no formulário
   de produto.
 - **Endereço de entrega** não aceita string só de espaços em branco.
+
+[⬆ voltar ao índice](#índice)
 
 ## Fora do escopo atual
 
@@ -681,3 +739,11 @@ pytest tests/ -v                    # roda a suíte de testes
 - **Testes de navegador (visual)**: toda a cobertura de testes é via
   `pytest` + test client Flask (HTTP, HTML, regras de negócio) — não há
   Selenium/Playwright validando renderização real em um navegador.
+
+[⬆ voltar ao índice](#índice)
+
+## Licença
+
+Software proprietário — todos os direitos reservados. Uso, cópia,
+modificação e redistribuição exigem autorização expressa do titular.
+Ver texto completo em [`LICENSE`](LICENSE).

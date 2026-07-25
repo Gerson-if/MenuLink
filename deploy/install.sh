@@ -307,9 +307,18 @@ esac
 
 echo
 log "Usuário de sistema"
-info "A aplicação roda com um usuário dedicado, sem privilégios de root."
-ask "Nome do usuário de sistema a criar/usar" "comanda"
+info "A aplicação roda com um usuário sem privilégios de root — pode ser um"
+info "usuário já existente no servidor (ex.: o mesmo usado para dar deploy"
+info "por SSH) ou um novo, se preferir um dedicado só para a aplicação."
+DEFAULT_SERVICE_USER="${SUDO_USER:-}"
+if [ -z "$DEFAULT_SERVICE_USER" ] || [ "$DEFAULT_SERVICE_USER" = "root" ]; then
+    DEFAULT_SERVICE_USER="comanda"
+fi
+ask "Nome do usuário de sistema (criado automaticamente se não existir)" "$DEFAULT_SERVICE_USER"
 SERVICE_USER="$REPLY_VALUE"
+if id "${SERVICE_USER}" &>/dev/null; then
+    info "Usuário '${SERVICE_USER}' já existe — será reaproveitado, nada será criado."
+fi
 
 echo
 log "Firewall (ufw)"
