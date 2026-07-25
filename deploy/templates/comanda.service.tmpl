@@ -5,7 +5,7 @@ After=network.target __DB_SERVICE__
 [Service]
 Type=simple
 User=__SERVICE_USER__
-Group=__SERVICE_USER__
+Group=__SERVICE_GROUP__
 WorkingDirectory=__APP_DIR__
 EnvironmentFile=__APP_DIR__/.env
 ExecStart=__APP_DIR__/venv/bin/gunicorn \

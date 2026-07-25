@@ -5,6 +5,7 @@ __pycache__/
 venv/
 env/
 .env
+.env.bak.*
 instance/*.db
 app/static/uploads/*
 !app/static/uploads/.gitkeep

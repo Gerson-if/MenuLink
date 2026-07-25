@@ -67,10 +67,21 @@ BACKUP_DIR="${APP_DIR}/deploy/backups"
 KEEP_BACKUPS=5
 STAMP="$(date +%Y%m%d%H%M%S)"
 
-run_as_app_user() { sudo -u "${SERVICE_USER}" -H bash -lc "$*"; }
+run_as_app_user() {
+    # bash -c (não -lc): evita sequenciar .bash_profile/.profile do usuário
+    # de sistema, que hoje pode ser um login existente de verdade. Um
+    # perfil customizado que imprime algo (MOTD, banner) contaminaria a
+    # saída de comandos como "git rev-parse", quebrando o commit lido.
+    sudo -u "${SERVICE_USER}" -H bash -c "$*"
+}
 
 get_database_url() {
-    grep -m1 '^DATABASE_URL=' "${APP_DIR}/.env" | cut -d= -f2- || true
+    # O .env usa o formato do SQLAlchemy (ex: postgresql+psycopg2://...),
+    # mas pg_dump/psql (libpq) só reconhecem "postgresql://" ou
+    # "postgres://" — sem o sufixo "+driver" a URI vira uma string
+    # inválida para o libpq, que a trata como um nome de banco literal.
+    grep -m1 '^DATABASE_URL=' "${APP_DIR}/.env" | cut -d= -f2- \
+        | sed -E 's#^(postgres(ql)?)\+[A-Za-z0-9_]+://#\1://#' || true
 }
 
 check_local_changes() {

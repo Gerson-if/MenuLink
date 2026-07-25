@@ -116,6 +116,7 @@ render_template() {
     sed \
         -e "s#__APP_DIR__#${APP_DIR}#g" \
         -e "s#__SERVICE_USER__#${SERVICE_USER}#g" \
+        -e "s#__SERVICE_GROUP__#${SERVICE_GROUP}#g" \
         -e "s#__PORT__#${APP_PORT}#g" \
         -e "s#__WORKERS__#${GUNICORN_WORKERS}#g" \
         -e "s#__SERVER_NAME__#${SERVER_NAME}#g" \
@@ -125,7 +126,13 @@ render_template() {
 }
 
 run_as_app_user() {
-    sudo -u "${SERVICE_USER}" -H bash -lc "$*"
+    # bash -c (não -lc): evita sequenciar .bash_profile/.profile do usuário.
+    # Como o usuário de sistema agora pode ser um login existente de verdade
+    # (ex: reaproveitado do SSH), um perfil customizado que imprime algo
+    # (MOTD, banner, etc.) contaminaria a saída de comandos como
+    # "git rev-parse", quebrando a leitura do commit atual. -H já garante
+    # $HOME correto para git/pip sem precisar de shell de login.
+    sudo -u "${SERVICE_USER}" -H bash -c "$*"
 }
 
 # --------------------------------------------------------------------------
@@ -396,9 +403,14 @@ log "Configurando o usuário de sistema '${SERVICE_USER}'..."
 if ! id "${SERVICE_USER}" &>/dev/null; then
     useradd --system --create-home --home-dir "/home/${SERVICE_USER}" --shell /usr/sbin/nologin "${SERVICE_USER}"
 fi
-chown -R "${SERVICE_USER}:${SERVICE_USER}" "${APP_DIR}"
+# Não assume que o grupo primário tem o mesmo nome do usuário — verdade
+# para o "comanda" criado por este script, mas não necessariamente para
+# um usuário existente reaproveitado (ex: alguns provedores de VPS criam
+# o usuário inicial num grupo "users" ou "sudo" em vez de um grupo próprio).
+SERVICE_GROUP="$(id -gn "${SERVICE_USER}")"
+chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "${APP_DIR}"
 mkdir -p "${APP_DIR}/instance" "${APP_DIR}/app/static/uploads" "${APP_DIR}/deploy/backups"
-chown -R "${SERVICE_USER}:${SERVICE_USER}" "${APP_DIR}/instance" "${APP_DIR}/app/static/uploads" "${APP_DIR}/deploy/backups"
+chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "${APP_DIR}/instance" "${APP_DIR}/app/static/uploads" "${APP_DIR}/deploy/backups"
 
 # --------------------------------------------------------------------------
 # 4. Ambiente virtual e dependências Python
@@ -472,7 +484,7 @@ ASAAS_ENVIRONMENT=sandbox
 ASAAS_WEBHOOK_TOKEN=
 ENVEOF
 
-chown "${SERVICE_USER}:${SERVICE_USER}" "${APP_DIR}/.env"
+chown "${SERVICE_USER}:${SERVICE_GROUP}" "${APP_DIR}/.env"
 chmod 600 "${APP_DIR}/.env"
 
 # --------------------------------------------------------------------------
