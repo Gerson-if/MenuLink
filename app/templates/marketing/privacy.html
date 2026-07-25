@@ -5,6 +5,11 @@
 <h1 class="font-display text-white">Política de Privacidade</h1>
 <p class="legal-updated">Última atualização: {{ updated_at }}</p>
 
+{% if platform_settings and platform_settings.privacy_content %}
+{# Texto customizado pelo Super Admin — ver
+   app/controllers/admin/settings.py:settings_legal. #}
+{{ platform_settings.privacy_content|safe }}
+{% else %}
 <p>Esta Política de Privacidade explica como a Comanda coleta, usa e protege dados pessoais de lojistas (usuários do painel) e de clientes finais (visitantes do cardápio público), em conformidade com a Lei Geral de Proteção de Dados (Lei nº 13.709/2018 — LGPD).</p>
 
 <h2>1. Quem somos e a quem esta política se aplica</h2>
@@ -51,4 +56,5 @@
 
 <h2>11. Contato</h2>
 <p>Para exercer seus direitos como titular de dados ou tirar dúvidas sobre esta política, entre em contato pelo e-mail de suporte informado no rodapé do site.</p>
+{% endif %}
 {% endblock %}

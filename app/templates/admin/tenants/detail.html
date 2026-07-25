@@ -147,16 +147,16 @@
       </form>
     </div>
 
-    <div class="panel chat-panel mt-4" id="chat">
-      <div class="panel-title"><i class="bi bi-headset"></i> Conversa com {{ tenant.name }}</div>
-
-      {% include "admin/tenants/_chat_messages.html" %}
-
-      <form method="POST" action="{{ url_for('admin.chat_send', tenant_id=tenant.id) }}" class="d-flex gap-2 mt-3" style="border-top: 1px solid var(--card-border); padding-top: 12px;">
-        {{ chat_form.hidden_tag() }}
-        {{ chat_form.body(class="form-control", rows=2, placeholder="Escreva uma mensagem...", style="resize: none;") }}
-        <button type="submit" class="btn btn-chili align-self-end"><i class="bi bi-send"></i></button>
-      </form>
+    <div class="panel mt-4">
+      <div class="panel-title"><i class="bi bi-headset"></i> Suporte</div>
+      <p class="text-muted-custom small mb-3">
+        A conversa com {{ tenant.name }} fica na Central de Suporte, separada
+        da gestão da loja.
+      </p>
+      <a href="{{ url_for('admin.support_inbox', tenant_id=tenant.id) }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-chat-dots"></i> Abrir conversa
+        {% if has_unread_chat %}<span class="status-badge status-blocked ms-1">Nova mensagem</span>{% endif %}
+      </a>
     </div>
   </div>
 

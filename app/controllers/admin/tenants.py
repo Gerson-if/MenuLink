@@ -1,8 +1,6 @@
 from flask import flash, make_response, redirect, render_template, request, url_for
 
 from app.forms.admin_forms import SubscriptionCycleForm, TenantCreateForm, TenantEditForm, TenantStatusReasonForm
-from app.forms.chat_forms import ChatMessageForm
-from app.models import ChatSenderRole
 from app.repositories.plan_repository import PlanRepository
 from app.services.admin_billing_service import AdminBillingService
 from app.services.admin_tenant_service import AdminTenantService, TenantAdminError
@@ -121,8 +119,12 @@ def tenants_detail(tenant_id):
     if subscription is not None:
         cycle_form.billing_cycle.data = subscription.billing_cycle.value
 
-    chat_service = ChatService(tenant.id)
-    chat_service.mark_read(reader_role=ChatSenderRole.SUPER_ADMIN)
+    # A conversa em si mora na Central de Suporte (admin.support_inbox),
+    # não aqui — só mostramos se há mensagem nova, sem marcar como lida
+    # (ver bug corrigido: antes, só abrir esta página de gestão da loja
+    # — pra mudar o plano, por exemplo — já marcava a conversa como lida
+    # sem o admin nunca ter aberto o chat de verdade).
+    has_unread_chat = tenant.id in ChatService.tenant_ids_with_unread_messages_for_admin()
 
     return render_template(
         "admin/tenants/detail.html",
@@ -132,8 +134,7 @@ def tenants_detail(tenant_id):
         asaas_configured=billing_service.is_asaas_configured(),
         subscription=subscription,
         cycle_form=cycle_form,
-        chat_messages=chat_service.list_messages(),
-        chat_form=ChatMessageForm(),
+        has_unread_chat=has_unread_chat,
     )
 
 

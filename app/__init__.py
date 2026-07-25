@@ -123,14 +123,22 @@ def _register_blueprints(app: Flask) -> None:
 
     @app.get("/termos-de-uso")
     def terms_of_use():
+        from app.models.platform_settings import PlatformSettings
+
+        settings = PlatformSettings.get_or_create()
+        updated_at = settings.terms_updated_at.strftime("%d/%m/%Y") if settings.terms_content and settings.terms_updated_at else "24 de julho de 2026"
         return render_template(
-            "marketing/terms.html", updated_at="24 de julho de 2026", store_tenant=_store_tenant_from_query(),
+            "marketing/terms.html", updated_at=updated_at, store_tenant=_store_tenant_from_query(),
         )
 
     @app.get("/politica-de-privacidade")
     def privacy_policy():
+        from app.models.platform_settings import PlatformSettings
+
+        settings = PlatformSettings.get_or_create()
+        updated_at = settings.privacy_updated_at.strftime("%d/%m/%Y") if settings.privacy_content and settings.privacy_updated_at else "24 de julho de 2026"
         return render_template(
-            "marketing/privacy.html", updated_at="24 de julho de 2026", store_tenant=_store_tenant_from_query(),
+            "marketing/privacy.html", updated_at=updated_at, store_tenant=_store_tenant_from_query(),
         )
 
 

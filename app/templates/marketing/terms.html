@@ -5,6 +5,13 @@
 <h1 class="font-display text-white">Termos de Uso</h1>
 <p class="legal-updated">Última atualização: {{ updated_at }}</p>
 
+{% if platform_settings and platform_settings.terms_content %}
+{# Texto customizado pelo Super Admin (Termos & Privacidade no painel) — ver
+   app/controllers/admin/settings.py:settings_legal. Confiamos nesse HTML
+   porque só o Super Admin (papel mais privilegiado do sistema) consegue
+   editá-lo, o mesmo nível de confiança já dado a landing_content. #}
+{{ platform_settings.terms_content|safe }}
+{% else %}
 <p>Estes Termos de Uso regulam o acesso e uso da plataforma Comanda ("Comanda", "plataforma", "nós"), um serviço de cardápio digital e gestão de pedidos via WhatsApp para estabelecimentos comerciais ("lojista", "loja"). Ao criar uma conta ou usar o cardápio público de uma loja hospedada na Comanda, você concorda com estes termos.</p>
 
 <h2>1. O que é a Comanda</h2>
@@ -43,4 +50,5 @@
 
 <h2>11. Contato</h2>
 <p>Dúvidas sobre estes Termos de Uso podem ser enviadas para o e-mail de suporte informado no rodapé do site ou diretamente ao lojista responsável pela loja acessada, quando a dúvida for sobre um pedido específico.</p>
+{% endif %}
 {% endblock %}

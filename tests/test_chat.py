@@ -113,13 +113,58 @@ class TestLojistaChatRoutes:
 
 
 class TestAdminChatRoutes:
-    def test_tenant_detail_shows_chat_panel(self, app, client, login_as):
+    def test_tenant_detail_links_to_support_inbox_instead_of_embedding_chat(self, app, client, login_as):
+        """A conversa agora mora na Central de Suporte (admin.support_inbox),
+        separada da gestão da loja — ver app/controllers/admin/chat.py."""
         with app.app_context():
             tenant_id = Tenant.query.filter_by(slug="braseiro-cia").first().id
 
         login_as(client, "admin@cardapio.saas", "admin123")
         resp = client.get(f"/admin/lojistas/{tenant_id}")
-        assert "Conversa com" in resp.get_data(as_text=True)
+        html = resp.get_data(as_text=True)
+        assert "Conversa com" not in html
+        assert f"/admin/suporte/{tenant_id}" in html
+
+    def test_viewing_tenant_detail_does_not_mark_chat_as_read(self, app, client, login_as):
+        """Bug corrigido: antes, só abrir a página de gestão da loja (pra
+        mudar o plano, por exemplo) já marcava a conversa como lida sem o
+        admin nunca ter aberto o chat de verdade — fazendo mensagens
+        novas "sumirem" do indicador sem ninguém ter lido."""
+        with app.app_context():
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            from app.models import User
+
+            owner = User.query.filter_by(email="lojista@braseiroecia.com.br").first()
+            ChatService(tenant.id).send_message(sender_user=owner, sender_role=ChatSenderRole.LOJISTA, body="Oi, preciso de ajuda")
+            tenant_id = tenant.id
+
+        login_as(client, "admin@cardapio.saas", "admin123")
+        client.get(f"/admin/lojistas/{tenant_id}")  # visita a página de gestão da loja, não o chat
+
+        with app.app_context():
+            assert tenant_id in ChatService.tenant_ids_with_unread_messages_for_admin()
+
+    def test_support_inbox_lists_conversation_and_marks_read(self, app, client, login_as):
+        with app.app_context():
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            from app.models import User
+
+            owner = User.query.filter_by(email="lojista@braseiroecia.com.br").first()
+            ChatService(tenant.id).send_message(sender_user=owner, sender_role=ChatSenderRole.LOJISTA, body="Oi, preciso de ajuda")
+            tenant_id = tenant.id
+
+        login_as(client, "admin@cardapio.saas", "admin123")
+
+        resp = client.get("/admin/suporte")
+        assert "Braseiro" in resp.get_data(as_text=True)
+
+        resp = client.get(f"/admin/suporte/{tenant_id}")
+        html = resp.get_data(as_text=True)
+        assert "Conversa com" in html
+        assert "Oi, preciso de ajuda" in html
+
+        with app.app_context():
+            assert tenant_id not in ChatService.tenant_ids_with_unread_messages_for_admin()
 
     def test_admin_can_reply(self, app, client, login_as):
         with app.app_context():
@@ -128,11 +173,23 @@ class TestAdminChatRoutes:
         login_as(client, "admin@cardapio.saas", "admin123")
         _post_with_csrf(
             client, f"/admin/lojistas/{tenant_id}/mensagens/enviar", {"body": "Já vou verificar"},
-            f"/admin/lojistas/{tenant_id}",
+            f"/admin/suporte/{tenant_id}",
         )
         with app.app_context():
             messages = ChatService(tenant_id).list_messages()
             assert any("verificar" in m.body for m in messages)
+
+    def test_admin_chat_messages_fragment_does_not_error(self, app, client, login_as):
+        """Bug corrigido: o fragmento chamado pelo polling HTMX do admin
+        (hx-trigger="every 5s") não passava `tenant` pro template, que usa
+        tenant.name/tenant.id — cada poll de 5s quebrava silenciosamente e
+        o chat do admin nunca se atualizava sozinho sem um F5 manual."""
+        with app.app_context():
+            tenant_id = Tenant.query.filter_by(slug="braseiro-cia").first().id
+
+        login_as(client, "admin@cardapio.saas", "admin123")
+        resp = client.get(f"/admin/lojistas/{tenant_id}/mensagens")
+        assert resp.status_code == 200
 
     def test_tenants_list_flags_unread_messages(self, app, client, login_as):
         with app.app_context():

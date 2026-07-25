@@ -110,6 +110,56 @@ class AsaasSettingsForm(FlaskForm):
             raise ValidationError("Não dá pra definir um novo token e marcar \"remover\" ao mesmo tempo.")
 
 
+SMTP_ENCRYPTION_CHOICES = [
+    ("tls", "STARTTLS (recomendado — porta 587 na maioria dos provedores)"),
+    ("ssl", "SSL/TLS implícito (porta 465 na maioria dos provedores)"),
+    ("none", "Nenhuma (sem criptografia — só pra servidores internos/teste)"),
+]
+
+
+class EmailSettingsForm(FlaskForm):
+    """
+    Integração de e-mail (SMTP) — usada para recuperação de senha,
+    avisos de cobrança de fatura etc (ver app/services/email_service.py).
+    A senha nunca é pré-preenchida no GET (mesmo padrão da chave de API
+    do Asaas) — deixar em branco mantém a senha atual.
+    """
+
+    host = StringField("Servidor SMTP (host)", validators=[DataRequired(), Length(max=255)])
+    port = IntegerField("Porta", validators=[DataRequired(), NumberRange(min=1, max=65535)], default=587)
+    encryption = SelectField("Criptografia", choices=SMTP_ENCRYPTION_CHOICES)
+
+    username = StringField("Usuário SMTP", validators=[Optional(), Length(max=255)])
+    password = StringField(
+        "Nova senha (deixe em branco para manter a atual)", validators=[Optional(), Length(max=255)],
+    )
+    clear_password = BooleanField("Remover senha salva")
+
+    from_email = StringField("E-mail remetente (de onde os e-mails são enviados)", validators=[DataRequired(), Email(), Length(max=255)])
+    from_name = StringField("Nome do remetente", validators=[Optional(), Length(max=150)], default="Comanda")
+
+    submit = SubmitField("Salvar configurações")
+
+    def validate_password(self, field):
+        if field.data and self.clear_password.data:
+            raise ValidationError("Não dá pra definir uma nova senha e marcar \"remover\" ao mesmo tempo.")
+
+
+class EmailTestForm(FlaskForm):
+    to = StringField("Enviar e-mail de teste para", validators=[DataRequired(), Email(), Length(max=255)])
+    submit = SubmitField("Enviar teste")
+
+
+class LegalContentForm(FlaskForm):
+    """Termos de Uso e Política de Privacidade — texto em HTML simples
+    (h2, p, ul/li, strong são as tags já usadas no texto padrão). Deixar
+    em branco restaura o texto padrão do sistema para aquele documento."""
+
+    terms_content = TextAreaField("Termos de Uso (HTML)", validators=[Optional(), Length(max=20000)])
+    privacy_content = TextAreaField("Política de Privacidade (HTML)", validators=[Optional(), Length(max=20000)])
+    submit = SubmitField("Salvar")
+
+
 class AdminAppearanceForm(FlaskForm):
     """Cor de destaque do painel administrativo (Super Admin + painel
     do lojista compartilham o mesmo design system) — opcional, some

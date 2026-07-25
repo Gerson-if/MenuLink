@@ -14,7 +14,7 @@ Tabela de linha única (singleton): sempre o registro de id=1, obtido
 via `PlatformSettings.get_or_create()`.
 """
 
-from sqlalchemy import JSON, Column, Integer, String
+from sqlalchemy import JSON, Column, Date, Integer, String, Text
 
 from app.extensions import db
 from app.models.base import TimestampMixin
@@ -101,6 +101,35 @@ class PlatformSettings(db.Model, TimestampMixin):
     # uma migration nova a cada campo (mesmo padrão de Tenant.theme_settings).
     landing_content = Column(JSON, nullable=True)
 
+    # --- Integração de e-mail (SMTP) ---
+    # Usado por app/services/email_service.py para enviar e-mails de
+    # verdade (recuperação de senha, cobrança de faturas etc.) — ver
+    # app/utils/mailer.py. Sem isso configurado, o sistema continua
+    # funcionando (o link de recuperação de senha só fica no log da
+    # aplicação, como sempre foi), então essa integração é opcional.
+    smtp_host = Column(String(255), nullable=True)
+    smtp_port = Column(Integer, nullable=False, default=587, server_default="587")
+    smtp_username = Column(String(255), nullable=True)
+    smtp_password = Column(String(255), nullable=True)
+    # "tls" (STARTTLS, porta 587 normalmente) ou "ssl" (SMTPS implícito,
+    # porta 465 normalmente) — a maioria dos provedores (Gmail, SendGrid,
+    # Amazon SES, Mailgun) aceita STARTTLS na 587.
+    smtp_encryption = Column(String(10), nullable=False, default="tls", server_default="tls")
+    smtp_from_email = Column(String(255), nullable=True)
+    smtp_from_name = Column(String(150), nullable=True)
+
+    # --- Termos de Uso / Política de Privacidade ---
+    # Texto em HTML simples (h2/p/ul/li/strong — mesmas tags já usadas nos
+    # templates padrão) que SUBSTITUI o conteúdo hardcoded de
+    # marketing/terms.html e marketing/privacy.html quando preenchido.
+    # Vazio/None = continua mostrando o texto padrão do template (nada
+    # muda pra quem nunca editar pelo painel). Ver
+    # app/controllers/admin/settings.py:settings_legal.
+    terms_content = Column(Text, nullable=True)
+    terms_updated_at = Column(Date, nullable=True)
+    privacy_content = Column(Text, nullable=True)
+    privacy_updated_at = Column(Date, nullable=True)
+
     @classmethod
     def get_or_create(cls) -> "PlatformSettings":
         settings = db.session.get(cls, 1)
@@ -117,6 +146,10 @@ class PlatformSettings(db.Model, TimestampMixin):
     @property
     def asaas_webhook_configured(self) -> bool:
         return bool(self.asaas_webhook_token)
+
+    @property
+    def email_configured(self) -> bool:
+        return bool(self.smtp_host and self.smtp_from_email)
 
     @property
     def admin_theme_css_vars(self) -> dict | None:

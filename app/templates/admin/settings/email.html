@@ -1,0 +1,120 @@
+{% extends "layouts/admin_panel.html" %}
+{% block title %}Integração de e-mail — Comanda Admin{% endblock %}
+{% block page_title %}Integração de e-mail{% endblock %}
+
+{% block panel_content %}
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="panel mb-4">
+      <div class="panel-title"><i class="bi bi-envelope-at"></i> Servidor SMTP</div>
+
+      <div class="d-flex gap-2 mb-3">
+        {% if settings.email_configured %}
+        <span class="status-badge status-active">E-mail configurado</span>
+        {% else %}
+        <span class="status-badge status-blocked">Sem e-mail configurado</span>
+        {% endif %}
+      </div>
+
+      {% if not settings.email_configured %}
+      <div class="alert alert-warning py-2 small mb-3">
+        <i class="bi bi-exclamation-triangle"></i>
+        Sem isso configurado, o link de recuperação de senha não é enviado por
+        e-mail (só fica registrado no log do servidor) e nenhum aviso de
+        cobrança de fatura é enviado automaticamente.
+      </div>
+      {% endif %}
+
+      <form method="POST" novalidate>
+        {{ form.hidden_tag() }}
+
+        <div class="row g-2">
+          <div class="col-8">
+            <div class="mb-3">
+              {{ form.host.label(class="form-label small fw-semibold") }}
+              {{ form.host(class="form-control", placeholder="smtp.seuprovedor.com") }}
+              {% for error in form.host.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="mb-3">
+              {{ form.port.label(class="form-label small fw-semibold") }}
+              {{ form.port(class="form-control") }}
+              {% for error in form.port.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          {{ form.encryption.label(class="form-label small fw-semibold") }}
+          {{ form.encryption(class="form-select") }}
+        </div>
+
+        <hr style="border-color: var(--card-border);">
+
+        <div class="mb-3">
+          {{ form.username.label(class="form-label small fw-semibold") }}
+          {{ form.username(class="form-control", placeholder="geralmente o próprio e-mail remetente") }}
+        </div>
+
+        <div class="mb-3">
+          {{ form.password.label(class="form-label small fw-semibold") }}
+          {{ form.password(class="form-control", type="password", placeholder="deixe em branco para manter a atual") }}
+          {% for error in form.password.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+          <div class="form-check mt-2">
+            {{ form.clear_password(class="form-check-input") }}
+            {{ form.clear_password.label(class="form-check-label small") }}
+          </div>
+        </div>
+
+        <hr style="border-color: var(--card-border);">
+
+        <div class="mb-3">
+          {{ form.from_email.label(class="form-label small fw-semibold") }}
+          {{ form.from_email(class="form-control", placeholder="naoresponda@seudominio.com") }}
+          {% for error in form.from_email.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+        </div>
+
+        <div class="mb-3">
+          {{ form.from_name.label(class="form-label small fw-semibold") }}
+          {{ form.from_name(class="form-control", placeholder="Comanda") }}
+        </div>
+
+        {{ form.submit(class="btn btn-chili") }}
+      </form>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="panel mb-4">
+      <div class="panel-title"><i class="bi bi-send-check"></i> Enviar e-mail de teste</div>
+      <p class="text-muted-custom small mb-3">
+        Confirma que o servidor, a porta e as credenciais estão certos antes de
+        contar com a integração em produção — envia um e-mail simples de teste.
+      </p>
+      <form method="POST" action="{{ url_for('admin.settings_email_test') }}">
+        {{ test_form.hidden_tag() }}
+        <div class="input-group">
+          {{ test_form.to(class="form-control form-control-sm", placeholder="seu@email.com") }}
+          <button type="submit" class="btn btn-sm btn-outline-secondary" {{ "disabled" if not settings.email_configured }}>Enviar teste</button>
+        </div>
+        {% for error in test_form.to.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+      </form>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title"><i class="bi bi-info-circle"></i> Onde isso é usado</div>
+      <ul class="text-muted-custom small mb-0 ps-3">
+        <li class="mb-2">Recuperação de senha (login e cadastro do lojista) — o link de redefinição é enviado por e-mail em vez de só aparecer no log do servidor.</li>
+        <li class="mb-2">Avisos de cobrança de fatura (planos/assinatura dos lojistas).</li>
+        <li>Outras notificações da plataforma, conforme forem sendo adicionadas.</li>
+      </ul>
+      <p class="text-muted-custom small mt-3 mb-0">
+        Provedores comuns: Gmail/Workspace (<code>smtp.gmail.com</code>, porta 587,
+        STARTTLS — exige uma <em>senha de app</em>, não a senha normal da conta),
+        SendGrid, Amazon SES, Mailgun.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

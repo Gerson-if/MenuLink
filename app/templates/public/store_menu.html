@@ -364,9 +364,9 @@
         <a href="#" class="customer-account-link" @click.prevent="openCustomerAccount()" x-text="customerLoggedIn ? 'Meus pedidos' : 'Já é cliente? Ver meus pedidos'"></a>
       </div>
       <div class="mt-2" style="font-size: .68rem; opacity: .7;">
-        <a href="{{ url_for('privacy_policy', loja=menu_data.tenant.slug) }}" target="_blank" class="customer-account-link">Privacidade</a>
+        <a href="{{ url_for('privacy_policy', loja=menu_data.tenant.slug) }}" class="customer-account-link">Privacidade</a>
         <span class="mx-1">·</span>
-        <a href="{{ url_for('terms_of_use', loja=menu_data.tenant.slug) }}" target="_blank" class="customer-account-link">Termos</a>
+        <a href="{{ url_for('terms_of_use', loja=menu_data.tenant.slug) }}" class="customer-account-link">Termos</a>
       </div>
     </div>
   </aside>

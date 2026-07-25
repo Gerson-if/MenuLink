@@ -4,6 +4,7 @@ Admin) — hoje só a integração de cobrança com o Asaas.
 """
 
 import secrets
+from datetime import date
 
 from app.extensions import db
 from app.models.platform_settings import PlatformSettings
@@ -55,6 +56,65 @@ class PlatformSettingsService:
         if gateway is None:
             raise PaymentGatewayError("Nenhuma chave de API configurada ainda.")
         gateway.ping()
+
+    def update_email(
+        self, *, host: str | None, port: int, username: str | None,
+        password: str | None = None, clear_password: bool = False,
+        encryption: str, from_email: str | None, from_name: str | None,
+    ) -> PlatformSettings:
+        self.settings.smtp_host = (host or "").strip() or None
+        self.settings.smtp_port = port or 587
+        self.settings.smtp_username = (username or "").strip() or None
+        self.settings.smtp_encryption = encryption if encryption in ("tls", "ssl", "none") else "tls"
+        self.settings.smtp_from_email = (from_email or "").strip() or None
+        self.settings.smtp_from_name = (from_name or "").strip() or None
+
+        if clear_password:
+            self.settings.smtp_password = None
+        elif password:
+            self.settings.smtp_password = password
+
+        db.session.commit()
+        return self.settings
+
+    def send_test_email(self, *, to: str) -> None:
+        """Usado pelo botão "Enviar e-mail de teste" — levanta EmailError
+        (mensagem já pronta pra exibir) se o envio falhar por qualquer
+        motivo, incluindo SMTP ainda não configurado."""
+        from app.services.email_service import EmailService
+
+        EmailService(self.settings).send(
+            to=to,
+            subject="Teste de configuração de e-mail — Comanda",
+            body_text=(
+                "Se você recebeu este e-mail, a integração de e-mail do Comanda está "
+                "configurada corretamente e pronta para enviar recuperação de senha, "
+                "avisos de cobrança e outras notificações."
+            ),
+            body_html=(
+                "<p>Se você recebeu este e-mail, a integração de e-mail do Comanda está "
+                "configurada corretamente e pronta para enviar recuperação de senha, "
+                "avisos de cobrança e outras notificações.</p>"
+            ),
+        )
+
+    def update_legal_content(self, *, terms_content: str | None, privacy_content: str | None) -> PlatformSettings:
+        """Salva o texto customizado de Termos de Uso e/ou Política de
+        Privacidade — deixar um campo em branco restaura o texto padrão
+        do template pra aquele documento (ver `terms_content`/
+        `privacy_content` em app/models/platform_settings.py)."""
+        today = date.today()
+
+        terms_content = (terms_content or "").strip()
+        self.settings.terms_content = terms_content or None
+        self.settings.terms_updated_at = today if terms_content else None
+
+        privacy_content = (privacy_content or "").strip()
+        self.settings.privacy_content = privacy_content or None
+        self.settings.privacy_updated_at = today if privacy_content else None
+
+        db.session.commit()
+        return self.settings
 
     def update_admin_appearance(
         self, *, accent_color=None, reset_to_default=False, platform_logo_file=None, support_whatsapp=None,

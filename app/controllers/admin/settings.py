@@ -1,6 +1,8 @@
 from flask import abort, flash, make_response, redirect, render_template, request, url_for
+from flask_login import current_user
 
-from app.forms.admin_forms import AdminAppearanceForm, AsaasSettingsForm, LandingContentForm
+from app.forms.admin_forms import AdminAppearanceForm, AsaasSettingsForm, EmailSettingsForm, EmailTestForm, LandingContentForm, LegalContentForm
+from app.services.email_service import EmailError
 from app.services.payment_gateway.base import PaymentGatewayError
 from app.services.platform_settings_service import PlatformSettingsService
 from app.utils.decorators import super_admin_required
@@ -72,6 +74,85 @@ def settings_asaas_test():
     else:
         flash("Conexão com o Asaas funcionando — a chave de API é válida.", "success")
     return redirect(url_for("admin.settings_asaas"))
+
+
+@admin_bp.route("/configuracoes/email", methods=["GET", "POST"])
+@super_admin_required
+def settings_email():
+    service = PlatformSettingsService()
+    settings = service.settings
+    form = EmailSettingsForm()
+    test_form = EmailTestForm()
+
+    if not form.is_submitted():
+        form.host.data = settings.smtp_host or ""
+        form.port.data = settings.smtp_port or 587
+        form.encryption.data = settings.smtp_encryption or "tls"
+        form.username.data = settings.smtp_username or ""
+        form.from_email.data = settings.smtp_from_email or ""
+        form.from_name.data = settings.smtp_from_name or ""
+
+    if form.validate_on_submit():
+        service.update_email(
+            host=form.host.data, port=form.port.data, username=form.username.data,
+            password=form.password.data, clear_password=form.clear_password.data,
+            encryption=form.encryption.data, from_email=form.from_email.data, from_name=form.from_name.data,
+        )
+        flash("Configurações de e-mail atualizadas.", "success")
+        if not settings.smtp_password and not form.clear_password.data:
+            flash(
+                "Servidor e remetente salvos, mas nenhuma senha foi definida ainda — a maioria dos "
+                "provedores SMTP exige autenticação. Envie um e-mail de teste abaixo para confirmar.",
+                "warning",
+            )
+        return redirect(url_for("admin.settings_email"))
+
+    if not test_form.is_submitted():
+        test_form.to.data = current_user.email
+
+    return render_template("admin/settings/email.html", form=form, test_form=test_form, settings=settings)
+
+
+@admin_bp.route("/configuracoes/email/testar", methods=["POST"])
+@super_admin_required
+def settings_email_test():
+    test_form = EmailTestForm()
+    if not test_form.validate_on_submit():
+        flash("Informe um e-mail válido para o teste.", "danger")
+        return redirect(url_for("admin.settings_email"))
+
+    service = PlatformSettingsService()
+    try:
+        service.send_test_email(to=test_form.to.data)
+    except EmailError as exc:
+        flash(f"Falha ao enviar o e-mail de teste: {exc}", "danger")
+    else:
+        flash(f"E-mail de teste enviado para {test_form.to.data} — confira a caixa de entrada (e o spam).", "success")
+    return redirect(url_for("admin.settings_email"))
+
+
+@admin_bp.route("/configuracoes/legal", methods=["GET", "POST"])
+@super_admin_required
+def settings_legal():
+    service = PlatformSettingsService()
+    settings = service.settings
+    form = LegalContentForm()
+
+    if not form.is_submitted():
+        form.terms_content.data = settings.terms_content or ""
+        form.privacy_content.data = settings.privacy_content or ""
+
+    if form.validate_on_submit():
+        service.update_legal_content(
+            terms_content=form.terms_content.data, privacy_content=form.privacy_content.data,
+        )
+        flash("Termos de Uso e Política de Privacidade atualizados.", "success")
+        return redirect(url_for("admin.settings_legal"))
+
+    return render_template(
+        "admin/settings/legal.html", form=form, settings=settings,
+        terms_url=url_for("terms_of_use", _external=True), privacy_url=url_for("privacy_policy", _external=True),
+    )
 
 
 @admin_bp.route("/configuracoes/aparencia", methods=["GET", "POST"])

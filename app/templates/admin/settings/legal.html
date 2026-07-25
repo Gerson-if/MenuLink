@@ -1,0 +1,53 @@
+{% extends "layouts/admin_panel.html" %}
+{% block title %}Termos &amp; Privacidade — Comanda Admin{% endblock %}
+{% block page_title %}Termos &amp; Privacidade{% endblock %}
+
+{% block panel_content %}
+<div class="alert alert-secondary py-2 small mb-4">
+  <i class="bi bi-info-circle"></i>
+  Deixe um campo em branco para manter o texto padrão do sistema naquele
+  documento. O texto aceita HTML simples (<code>&lt;h2&gt;</code>,
+  <code>&lt;p&gt;</code>, <code>&lt;ul&gt;/&lt;li&gt;</code>,
+  <code>&lt;strong&gt;</code>) — o mesmo usado no texto padrão.
+</div>
+
+<form method="POST" novalidate>
+  {{ form.hidden_tag() }}
+
+  <div class="row g-4">
+    <div class="col-lg-6">
+      <div class="panel">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="panel-title mb-0"><i class="bi bi-file-earmark-text"></i> Termos de Uso</div>
+          <a href="{{ terms_url }}" target="_blank" class="link-chili small">Ver página &rarr;</a>
+        </div>
+        {% if settings.terms_content %}
+        <span class="status-badge status-active mb-2 d-inline-block">Texto customizado (atualizado em {{ settings.terms_updated_at.strftime("%d/%m/%Y") }})</span>
+        {% else %}
+        <span class="status-badge status-blocked mb-2 d-inline-block">Usando o texto padrão</span>
+        {% endif %}
+        {{ form.terms_content(class="form-control", rows=16, style="font-family: monospace; font-size: .82rem;") }}
+        {% for error in form.terms_content.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="panel">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="panel-title mb-0"><i class="bi bi-shield-lock"></i> Política de Privacidade</div>
+          <a href="{{ privacy_url }}" target="_blank" class="link-chili small">Ver página &rarr;</a>
+        </div>
+        {% if settings.privacy_content %}
+        <span class="status-badge status-active mb-2 d-inline-block">Texto customizado (atualizado em {{ settings.privacy_updated_at.strftime("%d/%m/%Y") }})</span>
+        {% else %}
+        <span class="status-badge status-blocked mb-2 d-inline-block">Usando o texto padrão</span>
+        {% endif %}
+        {{ form.privacy_content(class="form-control", rows=16, style="font-family: monospace; font-size: .82rem;") }}
+        {% for error in form.privacy_content.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-4">{{ form.submit(class="btn btn-chili") }}</div>
+</form>
+{% endblock %}

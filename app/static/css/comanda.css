@@ -213,6 +213,16 @@ body {
 .chat-bubble-body { font-size: .9rem; white-space: pre-wrap; word-break: break-word; }
 .chat-bubble-time { font-size: .65rem; opacity: .6; margin-top: 4px; text-align: right; }
 
+/* ---------- Central de Suporte (lista de conversas do admin) ---------- */
+.support-conversation-list { max-height: min(600px, 70vh); overflow-y: auto; }
+.support-conversation-item {
+  display: block; padding: 12px 16px; border-top: 1px solid var(--card-border);
+  color: var(--card-text); text-decoration: none; transition: background .15s;
+}
+.support-conversation-item:first-child { border-top: none; }
+.support-conversation-item:hover { background: rgba(255,255,255,.04); color: var(--card-text); }
+.support-conversation-item.active { background: color-mix(in srgb, var(--accent) 12%, transparent); border-left: 3px solid var(--accent); padding-left: 13px; }
+
 /* ---------- Upload / dropzone ---------- */
 .dropzone { border: 2px dashed var(--card-border); border-radius: 10px; padding: 24px 16px; text-align: center; cursor: pointer; transition: all .2s ease; background: rgba(0,0,0,.1); }
 .dropzone:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 4%, transparent); }

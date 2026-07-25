@@ -40,8 +40,10 @@
       {% for tenant in tenants %}
       <tr style="border-top: 1px solid var(--card-border);">
         <td class="px-3 py-3">
-          <a href="{{ url_for('admin.tenants_detail', tenant_id=tenant.id, _anchor='chat') }}" class="text-white text-decoration-none fw-semibold">{{ tenant.name }}</a>
-          {% if tenant.id in unread_chat_tenant_ids %}<span class="status-badge status-blocked ms-1" title="Mensagem nova"><i class="bi bi-chat-dots"></i></span>{% endif %}
+          <a href="{{ url_for('admin.tenants_detail', tenant_id=tenant.id) }}" class="text-white text-decoration-none fw-semibold">{{ tenant.name }}</a>
+          {% if tenant.id in unread_chat_tenant_ids %}
+          <a href="{{ url_for('admin.support_inbox', tenant_id=tenant.id) }}" class="status-badge status-blocked ms-1 text-decoration-none" title="Mensagem nova no chat — abrir na Central de Suporte"><i class="bi bi-chat-dots"></i></a>
+          {% endif %}
         </td>
         <td class="px-3 py-3 text-muted-custom">{{ tenant.email }}</td>
         <td class="px-3 py-3 text-muted-custom">{{ tenant.plan.name if tenant.plan else "—" }}</td>

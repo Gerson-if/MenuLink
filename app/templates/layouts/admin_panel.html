@@ -63,8 +63,14 @@
       <a href="{{ url_for('admin.settings_security') }}" class="nav-link {{ 'active' if request.endpoint == 'admin.settings_security' }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Segurança">
         <i class="bi bi-shield-check"></i><span class="nav-label">Segurança</span>
       </a>
-      <a href="{{ url_for('admin.tenants_list', chat='unread') }}" class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.tenants') and request.args.get('chat') == 'unread' }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Suporte">
-        <i class="bi bi-headset"></i><span class="nav-label">Suporte</span>
+      <a href="{{ url_for('admin.settings_email') }}" class="nav-link {{ 'active' if request.endpoint == 'admin.settings_email' }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Integração de E-mail">
+        <i class="bi bi-envelope-at"></i><span class="nav-label">Integração de E-mail</span>
+      </a>
+      <a href="{{ url_for('admin.settings_legal') }}" class="nav-link {{ 'active' if request.endpoint == 'admin.settings_legal' }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Termos &amp; Privacidade">
+        <i class="bi bi-file-earmark-text"></i><span class="nav-label">Termos &amp; Privacidade</span>
+      </a>
+      <a href="{{ url_for('admin.support_inbox') }}" class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.support_inbox') }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Central de Suporte">
+        <i class="bi bi-headset"></i><span class="nav-label">Central de Suporte</span>
         {% set unread = admin_unread_chat_count() %}
         {% if unread %}<span class="status-badge status-blocked ms-1">{{ unread }}</span>{% endif %}
       </a>

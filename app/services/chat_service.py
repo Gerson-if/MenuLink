@@ -74,3 +74,39 @@ class ChatService:
             .all()
         )
         return {row[0] for row in rows}
+
+    @staticmethod
+    def list_conversations_for_admin() -> list[dict]:
+        """Uma linha por loja que já trocou pelo menos uma mensagem,
+        com a última mensagem e quantas estão sem ler pelo admin — usado
+        pela Central de Suporte (não mistura com a gestão da loja em si,
+        ver app/controllers/admin/chat.py:support_inbox)."""
+        from app.models import Tenant
+
+        tenant_ids = [row[0] for row in db.session.query(ChatMessage.tenant_id).distinct().all()]
+        if not tenant_ids:
+            return []
+
+        unread_ids = ChatService.tenant_ids_with_unread_messages_for_admin()
+
+        conversations = []
+        for tenant_id in tenant_ids:
+            tenant = db.session.get(Tenant, tenant_id)
+            if tenant is None:
+                continue  # loja pode ter sido removida, mensagens ficam órfãs por CASCADE ainda não rodado
+            last_message = (
+                ChatMessage.query.filter_by(tenant_id=tenant_id).order_by(ChatMessage.created_at.desc()).first()
+            )
+            conversations.append({
+                "tenant": tenant,
+                "last_message": last_message,
+                "has_unread": tenant_id in unread_ids,
+            })
+
+        conversations.sort(
+            key=lambda c: (
+                not c["has_unread"],  # não lidas primeiro
+                -(c["last_message"].created_at.timestamp() if c["last_message"] else 0),  # depois, mais recente
+            )
+        )
+        return conversations
