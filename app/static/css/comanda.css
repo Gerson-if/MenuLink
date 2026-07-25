@@ -85,6 +85,7 @@ body {
   color: var(--paper);
   font-family: 'Inter', sans-serif;
   min-height: 100vh;
+  min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
   /* Detalhes que tiram a "cara de site aberto no navegador": o retângulo
      cinza que o Chrome/Safari mobile pinta ao tocar em links/botões
@@ -370,7 +371,7 @@ body:has(.app-shell) .toast-flash-stack { top: 84px; }
 .toast-flash-leave-end { opacity: 0; transform: scale(.97) translateX(8px); max-height: 0; margin-top: -10px; }
 
 /* ---------- Painel de autenticação (login/cadastro/recuperar) ---------- */
-.auth-shell { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 16px; gap: 20px; }
+.auth-shell { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 16px; gap: 20px; }
 .auth-panel { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius); padding: 40px 30px; width: 100%; max-width: 440px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); animation: authPanelIn .5s ease both; }
 .auth-back-link { display: inline-flex; align-items: center; gap: 6px; color: var(--muted-text); text-decoration: none; font-size: .85rem; }
 .auth-back-link:hover { color: var(--card-text); }
@@ -426,10 +427,10 @@ body:has(.app-shell) .toast-flash-stack { top: 84px; }
 .settings-option-swatch { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--card-border); flex-shrink: 0; }
 
 /* ---------- App shell (sidebar + topbar), usado pelo lojista e super admin ---------- */
-.app-shell { display: flex; min-height: 100vh; }
+.app-shell { display: flex; min-height: 100vh; min-height: 100dvh; }
 .sidebar {
   width: 260px; flex-shrink: 0; background: var(--ink); color: var(--sidebar-text);
-  display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh;
+  display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; height: 100dvh;
   transition: width .25s cubic-bezier(.4,0,.2,1); overflow: hidden; border-right: 1px solid var(--sidebar-border);
 }
 .sidebar.is-collapsed { width: 78px; }
@@ -439,9 +440,19 @@ body:has(.app-shell) .toast-flash-stack { top: 84px; }
      "left") quando "show" é ligado — mesma easing da versão recolhível
      de desktop, só que mais rápida por ser um deslize maior. Sombra
      forte simula profundidade, como uma gaveta física se abrindo por
-     cima do conteúdo. */
+     cima do conteúdo.
+
+     `100vh` no celular é calculado com base na altura MÁXIMA da tela
+     (barra de endereço recolhida) — mas ao abrir a gaveta a barra ainda
+     costuma estar visível, então a gaveta (fixed, 100vh) nascia maior
+     que a área realmente visível e o rodapé (avatar + Sair da conta)
+     ficava escondido embaixo da dobra, só aparecendo depois de rolar a
+     página (o que recolhe a barra do navegador) — dava a impressão de
+     bug. `100dvh` (dynamic viewport height) acompanha a altura visível
+     de verdade; mantemos o `100vh` antes como fallback pra navegadores
+     que não suportam `dvh`. */
   .sidebar {
-    position: fixed; left: 0; top: 0; height: 100vh; width: 280px; z-index: 1050;
+    position: fixed; left: 0; top: 0; height: 100vh; height: 100dvh; width: 280px; z-index: 1050;
     transform: translateX(-100%); transition: transform .3s cubic-bezier(.4,0,.2,1);
     border-right: 1px solid var(--sidebar-border); box-shadow: 12px 0 40px rgba(0,0,0,.45);
   }
