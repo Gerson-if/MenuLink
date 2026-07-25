@@ -3,6 +3,12 @@
 {% block page_title %}Gerenciar Lojistas{% endblock %}
 
 {% block panel_content %}
+{% if chat_filter == 'unread' %}
+<div class="alert alert-secondary py-2 small mb-3 d-flex justify-content-between align-items-center">
+  <span><i class="bi bi-headset"></i> Mostrando só lojas com mensagem nova no chat de suporte.</span>
+  <a href="{{ url_for('admin.tenants_list') }}" class="link-chili">Ver todos os lojistas</a>
+</div>
+{% endif %}
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
   <form method="GET" class="d-flex flex-wrap gap-2">
     <input type="text" name="q" value="{{ term }}" placeholder="Buscar por nome, e-mail ou slug..." class="form-control form-control-sm" style="max-width: 260px;">
@@ -47,7 +53,10 @@
   </table>
 </div>
 {% else %}
-<div class="panel empty-state"><i class="bi bi-shop"></i>Nenhum lojista encontrado{% if term or status %} com esse filtro{% endif %}.</div>
+<div class="panel empty-state">
+  <i class="bi bi-{{ 'headset' if chat_filter == 'unread' else 'shop' }}"></i>
+  {% if chat_filter == 'unread' %}Nenhuma mensagem nova no momento.{% else %}Nenhum lojista encontrado{% if term or status %} com esse filtro{% endif %}.{% endif %}
+</div>
 {% endif %}
 {% include "_pagination.html" %}
 

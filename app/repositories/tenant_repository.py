@@ -38,7 +38,7 @@ class TenantRepository(BaseRepository[Tenant]):
 
         return query.order_by(Tenant.created_at.desc()).all()
 
-    def search_paginated(self, page: int, per_page: int = 20, term: str = "", status: str = ""):
+    def search_paginated(self, page: int, per_page: int = 20, term: str = "", status: str = "", tenant_ids=None):
         from sqlalchemy import select
 
         from app.extensions import db
@@ -55,6 +55,12 @@ class TenantRepository(BaseRepository[Tenant]):
 
         if status:
             stmt = stmt.where(Tenant.status == status)
+
+        if tenant_ids is not None:
+            # Usado pelo atalho "Suporte" da sidebar do Super Admin (ver
+            # tenants_list) — mostra só as lojas com mensagem não lida,
+            # sem duplicar a lógica de busca/paginação.
+            stmt = stmt.where(Tenant.id.in_(tenant_ids))
 
         stmt = stmt.order_by(Tenant.created_at.desc())
         return db.paginate(stmt, page=page, per_page=per_page, error_out=False)

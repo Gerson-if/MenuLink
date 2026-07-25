@@ -22,7 +22,8 @@ class TestSelfRegistration:
             data={
                 "owner_name": "Nova Dona", "whatsapp_number": "11988887777",
                 "store_name": "Doceria Nova", "slug": "doceria-nova",
-                "email": "dona@doceria.com", "password": "senha123", "csrf_token": csrf,
+                "email": "dona@doceria.com", "password": "senha123",
+                "password_confirm": "senha123", "csrf_token": csrf,
             },
             follow_redirects=True,
         )
@@ -48,7 +49,7 @@ class TestSelfRegistration:
             data={
                 "owner_name": "X", "whatsapp_number": "11999998888", "store_name": "Y",
                 "slug": "loja-y", "email": "contato@braseiroecia.com.br",  # já existe (seed)
-                "password": "senha123", "csrf_token": csrf,
+                "password": "senha123", "password_confirm": "senha123", "csrf_token": csrf,
             },
             follow_redirects=True,
         )

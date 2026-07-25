@@ -5,6 +5,22 @@
 <div class="auth-shell">
   <a href="{{ url_for('index') }}" class="auth-back-link"><i class="bi bi-arrow-left"></i> Voltar ao site</a>
 
+  {# Navegação Entrar / Criar Loja fica ACIMA do formulário de propósito:
+     são duas telas diferentes (não duas ações), então precisam aparecer
+     antes de qualquer botão de ação do formulário — colocada depois do
+     botão de enviar, dava a impressão de ser "mais um passo" do próprio
+     cadastro/login em vez de uma troca de tela. #}
+  {% block auth_nav_tabs %}
+  <div class="auth-tabs" role="tablist" aria-label="Escolha entre entrar ou criar uma loja">
+    <a href="{{ url_for('auth.login') }}" class="auth-tab {{ 'is-active' if request.endpoint == 'auth.login' }}" role="tab" aria-selected="{{ 'true' if request.endpoint == 'auth.login' else 'false' }}">
+      <i class="bi bi-box-arrow-in-right"></i> Já tenho conta
+    </a>
+    <a href="{{ url_for('auth.register') }}" class="auth-tab {{ 'is-active' if request.endpoint == 'auth.register' }}" role="tab" aria-selected="{{ 'true' if request.endpoint == 'auth.register' else 'false' }}">
+      <i class="bi bi-shop-window"></i> Quero criar minha loja
+    </a>
+  </div>
+  {% endblock %}
+
   <div class="auth-panel" style="max-width: {% block auth_panel_width %}440px{% endblock %};">
     <div class="text-center mb-4">
       {% if platform_settings and platform_settings.platform_logo %}
@@ -20,12 +36,5 @@
 
     {% block auth_content %}{% endblock %}
   </div>
-
-  {% block auth_nav_tabs %}
-  <div class="auth-tabs">
-    <a href="{{ url_for('auth.login') }}" class="auth-tab {{ 'is-active' if request.endpoint == 'auth.login' }}">Entrar</a>
-    <a href="{{ url_for('auth.register') }}" class="auth-tab {{ 'is-active' if request.endpoint == 'auth.register' }}">Criar Loja</a>
-  </div>
-  {% endblock %}
 </div>
 {% endblock %}

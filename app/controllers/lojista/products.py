@@ -1,12 +1,13 @@
 from markupsafe import escape
 
-from flask import flash, make_response, redirect, render_template, request, url_for
+from flask import flash, redirect, render_template, request, url_for
 
 from app.forms.product_forms import ProductForm, ImageUploadForm
 from app.forms.complement_forms import ComplementGroupForm, ComplementOptionForm
 from app.services.category_service import CategoryService
 from app.services.product_service import ProductService, ProductLimitReachedError
 from app.utils.decorators import lojista_required
+from app.utils.htmx import hx_fragment_response
 from app.utils.tenant_context import get_current_tenant
 
 from app.controllers.lojista import lojista_bp
@@ -17,12 +18,14 @@ def _populate_category_choices(form, tenant):
     form.category_id.choices = [(0, "Sem categoria")] + [(c.id, c.name) for c in categories]
 
 
-def _rerender_product_fragment(tenant, product, *, trigger=None):
+def _rerender_product_fragment(tenant, product, *, trigger=None, toast=None):
     """Usado depois de criar/atualizar um produto vindo do drawer (HTMX):
     devolve só o fragmento do form (não a página inteira), com um
     HX-Trigger opcional pra avisar a listagem de fundo (ver
     products/list.html, hx-trigger="productSaved from:body") que precisa
-    se atualizar."""
+    se atualizar, e um toast de confirmação (ver app/utils/htmx.py) —
+    sem ele, salvar pelo drawer não dava nenhum sinal visível de que a
+    gravação deu certo."""
     form = ProductForm(obj=product)
     form.price.data = product.price_cents / 100
     form.cost_price.data = (product.cost_price_cents / 100) if product.cost_price_cents else None
@@ -35,10 +38,7 @@ def _rerender_product_fragment(tenant, product, *, trigger=None):
         image_form=ImageUploadForm(), group_form=ComplementGroupForm(), option_form=ComplementOptionForm(),
         form_action=url_for("lojista.products_edit", product_id=product.id), hide_back_link=True,
     )
-    response = make_response(html)
-    if trigger:
-        response.headers["HX-Trigger"] = trigger
-    return response
+    return hx_fragment_response(html, trigger=trigger, toast=toast)
 
 
 @lojista_bp.route("/produtos")
@@ -168,7 +168,9 @@ def products_edit(product_id):
         if is_hx:
             # Continua no drawer (fecha só quando o lojista clicar no X) —
             # a listagem de fundo se atualiza sozinha via HX-Trigger.
-            return _rerender_product_fragment(tenant, product, trigger="productSaved")
+            return _rerender_product_fragment(
+                tenant, product, trigger="productSaved", toast="Produto atualizado com sucesso.",
+            )
 
         flash("Produto atualizado com sucesso.", "success")
         return redirect(url_for("lojista.products_edit", product_id=product.id))

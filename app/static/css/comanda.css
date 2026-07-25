@@ -291,10 +291,16 @@ body:has(.app-shell) .toast-flash-stack { top: 84px; }
 .auth-panel { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius); padding: 40px 30px; width: 100%; max-width: 440px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); animation: authPanelIn .5s ease both; }
 .auth-back-link { display: inline-flex; align-items: center; gap: 6px; color: var(--muted-text); text-decoration: none; font-size: .85rem; }
 .auth-back-link:hover { color: var(--card-text); }
+/* As abas Entrar/Criar Loja são NAVEGAÇÃO (trocam de tela), não uma
+   ação a executar — por isso usam um contorno fino na aba ativa em vez
+   do preenchimento sólido de var(--accent) que os botões de ação
+   (.btn-chili) usam. Preenchimento igual ao do botão "Entrar"/"Criar
+   Loja" logo abaixo confundia o lojista, que achava que clicar na aba
+   também enviaria o formulário. */
 .auth-tabs { display: flex; gap: 4px; background: color-mix(in srgb, var(--card-text) 6%, transparent); border-radius: 30px; padding: 4px; width: 100%; max-width: 440px; }
-.auth-tab { flex: 1; text-align: center; padding: 8px 12px; border-radius: 26px; font-size: .85rem; font-weight: 600; color: var(--muted-text); text-decoration: none; transition: background .2s ease, color .2s ease; }
+.auth-tab { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; text-align: center; padding: 8px 12px; border-radius: 26px; font-size: .85rem; font-weight: 600; color: var(--muted-text); text-decoration: none; border: 1px solid transparent; transition: background .2s ease, color .2s ease, border-color .2s ease; }
 .auth-tab:hover { color: var(--card-text); }
-.auth-tab.is-active { background: var(--accent); color: #fff; }
+.auth-tab.is-active { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
 @keyframes authPanelIn {
   from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: none; }

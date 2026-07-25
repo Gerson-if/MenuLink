@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
-from wtforms.validators import DataRequired, Email, Length, Regexp
+from wtforms.validators import DataRequired, Email, EqualTo, Length, Regexp
 
 from app.utils.validators import bounded_length, not_blank, phone_number
 
@@ -38,6 +38,13 @@ class RegistrationForm(FlaskForm):
         validators=[
             DataRequired(message="Informe uma senha."),
             Length(min=6, max=128, message="A senha deve ter entre 6 e 128 caracteres."),
+        ],
+    )
+    password_confirm = PasswordField(
+        "Confirmar senha",
+        validators=[
+            DataRequired(message="Confirme a senha."),
+            EqualTo("password", message="As senhas não coincidem."),
         ],
     )
     submit = SubmitField("Criar Meu Painel Administrativo")

@@ -3,25 +3,25 @@ from flask import flash, make_response, redirect, render_template, request, url_
 from app.forms.banner_forms import BannerForm
 from app.services.banner_service import BannerService
 from app.utils.decorators import lojista_required
+from app.utils.htmx import hx_fragment_response
 from app.utils.tenant_context import get_current_tenant
 from app.utils.uploads import InvalidImageError
 
 from app.controllers.lojista import lojista_bp
 
 
-def _rerender_banner_fragment(banner, *, trigger=None):
+def _rerender_banner_fragment(banner, *, trigger=None, toast=None):
     """Ver _rerender_product_fragment em products.py — mesmo padrão pro
     drawer de banners: devolve só o fragmento, com HX-Trigger opcional
-    pra avisar a listagem de fundo."""
+    pra avisar a listagem de fundo, e um toast de confirmação (ver
+    app/utils/htmx.py) — sem ele, salvar pelo drawer não dava nenhum
+    sinal visível de que a gravação deu certo."""
     form = BannerForm(obj=banner)
     html = render_template(
         "lojista/banners/_form_fragment.html", form=form, banner=banner,
         form_action=url_for("lojista.banners_edit", banner_id=banner.id), hide_back_link=True,
     )
-    response = make_response(html)
-    if trigger:
-        response.headers["HX-Trigger"] = trigger
-    return response
+    return hx_fragment_response(html, trigger=trigger, toast=toast)
 
 
 @lojista_bp.route("/banners")
@@ -52,7 +52,7 @@ def banners_create():
                 flash(str(exc), "danger")
             else:
                 if is_hx:
-                    return _rerender_banner_fragment(banner, trigger="bannerSaved")
+                    return _rerender_banner_fragment(banner, trigger="bannerSaved", toast="Banner criado com sucesso.")
                 flash("Banner criado com sucesso.", "success")
                 return redirect(url_for("lojista.banners_list"))
 
@@ -84,7 +84,7 @@ def banners_edit(banner_id):
             flash(str(exc), "danger")
         else:
             if is_hx:
-                return _rerender_banner_fragment(banner, trigger="bannerSaved")
+                return _rerender_banner_fragment(banner, trigger="bannerSaved", toast="Banner atualizado com sucesso.")
             flash("Banner atualizado com sucesso.", "success")
             return redirect(url_for("lojista.banners_list"))
 

@@ -8,7 +8,7 @@ Uso:
 
 import os
 
-from flask import Flask, render_template
+from flask import Flask, render_template, request
 
 from app.config import config_by_name
 from app.extensions import db, migrate, login_manager, bcrypt, csrf, ma, limiter
@@ -109,13 +109,29 @@ def _register_blueprints(app: Flask) -> None:
             "marketing/landing.html", plans=plans, current_year=datetime.now().year, landing=landing,
         )
 
+    def _store_tenant_from_query():
+        """Se o link veio do cardápio público de uma loja (ver
+        public/store_menu.html, que manda ?loja=<slug>), devolve o
+        tenant pra a página legal linkar de volta pro cardápio da loja
+        em vez da landing page da Comanda — quem está lendo aqui é o
+        cliente final daquela loja, não um lojista em potencial olhando
+        o site institucional."""
+        from app.models import Tenant
+
+        slug = request.args.get("loja", "").strip()
+        return Tenant.query.filter_by(slug=slug).first() if slug else None
+
     @app.get("/termos-de-uso")
     def terms_of_use():
-        return render_template("marketing/terms.html", updated_at="24 de julho de 2026")
+        return render_template(
+            "marketing/terms.html", updated_at="24 de julho de 2026", store_tenant=_store_tenant_from_query(),
+        )
 
     @app.get("/politica-de-privacidade")
     def privacy_policy():
-        return render_template("marketing/privacy.html", updated_at="24 de julho de 2026")
+        return render_template(
+            "marketing/privacy.html", updated_at="24 de julho de 2026", store_tenant=_store_tenant_from_query(),
+        )
 
 
 def _register_request_hooks(app: Flask) -> None:
@@ -200,6 +216,16 @@ def _register_template_filters(app: Flask) -> None:
         if tenant is None:
             return 0
         return ChatService(tenant.id).unread_count(reader_role=ChatSenderRole.LOJISTA)
+
+    @app.template_global("admin_unread_chat_count")
+    def admin_unread_chat_count() -> int:
+        """Selo de mensagens não lidas na sidebar do Super Admin (ver
+        layouts/admin_panel.html) — soma quantas lojas têm pelo menos uma
+        mensagem nova, mesmo critério já usado na listagem de lojistas
+        (ChatService.tenant_ids_with_unread_messages_for_admin)."""
+        from app.services.chat_service import ChatService
+
+        return len(ChatService.tenant_ids_with_unread_messages_for_admin())
 
     @app.template_global("static_versioned")
     def static_versioned(filename: str) -> str:

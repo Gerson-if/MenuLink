@@ -63,6 +63,11 @@
       <a href="{{ url_for('admin.settings_security') }}" class="nav-link {{ 'active' if request.endpoint == 'admin.settings_security' }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Segurança">
         <i class="bi bi-shield-check"></i><span class="nav-label">Segurança</span>
       </a>
+      <a href="{{ url_for('admin.tenants_list', chat='unread') }}" class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.tenants') and request.args.get('chat') == 'unread' }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Suporte">
+        <i class="bi bi-headset"></i><span class="nav-label">Suporte</span>
+        {% set unread = admin_unread_chat_count() %}
+        {% if unread %}<span class="status-badge status-blocked ms-1">{{ unread }}</span>{% endif %}
+      </a>
     </nav>
 
     <div class="sidebar-foot">

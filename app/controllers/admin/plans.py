@@ -1,8 +1,9 @@
-from flask import flash, make_response, redirect, render_template, request, url_for
+from flask import flash, redirect, render_template, request, url_for
 
 from app.forms.admin_forms import PlanForm
 from app.services.admin_plan_service import AdminPlanService
 from app.utils.decorators import super_admin_required
+from app.utils.htmx import hx_fragment_response
 
 from app.controllers.admin import admin_bp
 
@@ -15,11 +16,13 @@ def plans_list():
     return render_template("admin/plans/list.html", plans=plans)
 
 
-def _rerender_plan_fragment(plan, *, trigger=None):
+def _rerender_plan_fragment(plan, *, trigger=None, toast=None):
     """Ver _rerender_banner_fragment em lojista/banners.py — mesmo padrão
     pro drawer de planos: devolve só o fragmento, com HX-Trigger opcional
     pra avisar a listagem de fundo (ver plans/list.html,
-    hx-trigger="planSaved from:body")."""
+    hx-trigger="planSaved from:body") e um toast de confirmação (ver
+    app/utils/htmx.py) — sem ele, salvar pelo drawer não dava nenhum
+    sinal visível de que a gravação deu certo."""
     form = PlanForm(obj=plan)
     form.price.data = plan.price_cents / 100
     form.billing_cycle.data = plan.billing_cycle.value
@@ -27,10 +30,7 @@ def _rerender_plan_fragment(plan, *, trigger=None):
         "admin/plans/_form_fragment.html", form=form, plan=plan,
         form_action=url_for("admin.plans_edit", plan_id=plan.id), hide_back_link=True,
     )
-    response = make_response(html)
-    if trigger:
-        response.headers["HX-Trigger"] = trigger
-    return response
+    return hx_fragment_response(html, trigger=trigger, toast=toast)
 
 
 @admin_bp.route("/planos/novo", methods=["GET", "POST"])
@@ -53,7 +53,7 @@ def plans_create():
             display_order=form.display_order.data,
         )
         if is_hx:
-            return _rerender_plan_fragment(plan, trigger="planSaved")
+            return _rerender_plan_fragment(plan, trigger="planSaved", toast="Plano criado com sucesso.")
         flash("Plano criado com sucesso.", "success")
         return redirect(url_for("admin.plans_list"))
 
@@ -91,7 +91,7 @@ def plans_edit(plan_id):
             display_order=form.display_order.data,
         )
         if is_hx:
-            return _rerender_plan_fragment(plan, trigger="planSaved")
+            return _rerender_plan_fragment(plan, trigger="planSaved", toast="Plano atualizado com sucesso.")
         flash("Plano atualizado com sucesso.", "success")
         return redirect(url_for("admin.plans_list"))
 

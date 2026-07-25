@@ -8,6 +8,7 @@ from app.services.admin_billing_service import AdminBillingService
 from app.services.admin_tenant_service import AdminTenantService, TenantAdminError
 from app.services.chat_service import ChatService
 from app.utils.decorators import super_admin_required
+from app.utils.htmx import hx_fragment_response
 
 from app.controllers.admin import admin_bp
 
@@ -17,12 +18,14 @@ def _populate_plan_choices(form):
     form.plan_id.choices = [(0, "Sem plano")] + [(p.id, p.name) for p in plans]
 
 
-def _rerender_tenant_fragment(tenant, *, trigger=None):
+def _rerender_tenant_fragment(tenant, *, trigger=None, toast=None):
     """Ver _rerender_banner_fragment em lojista/banners.py — mesmo padrão
     pra gaveta de "Editar dados" no detalhe do lojista: devolve só o
     fragmento, com HX-Trigger opcional pra avisar o painel "Dados da
     loja" (ver tenants/detail.html, hx-trigger="tenantSaved from:body")
-    que precisa se atualizar."""
+    que precisa se atualizar, e um toast de confirmação (ver
+    app/utils/htmx.py) — sem ele, salvar pelo drawer não dava nenhum
+    sinal visível de que a gravação deu certo."""
     form = TenantEditForm(obj=tenant)
     form.plan_id.data = tenant.plan_id or 0
     _populate_plan_choices(form)
@@ -30,10 +33,7 @@ def _rerender_tenant_fragment(tenant, *, trigger=None):
         "admin/tenants/_form_fragment.html", form=form, tenant=tenant,
         form_action=url_for("admin.tenants_edit", tenant_id=tenant.id), hide_back_link=True,
     )
-    response = make_response(html)
-    if trigger:
-        response.headers["HX-Trigger"] = trigger
-    return response
+    return hx_fragment_response(html, trigger=trigger, toast=toast)
 
 
 @admin_bp.route("/lojistas")
@@ -42,9 +42,15 @@ def tenants_list():
     term = request.args.get("q", "").strip()
     status = request.args.get("status", "").strip()
     page = request.args.get("page", 1, type=int)
+    chat_filter = request.args.get("chat", "").strip()
+
+    unread_chat_tenant_ids = ChatService.tenant_ids_with_unread_messages_for_admin()
 
     service = AdminTenantService()
-    pagination = service.repo.search_paginated(page=page, per_page=20, term=term, status=status)
+    pagination = service.repo.search_paginated(
+        page=page, per_page=20, term=term, status=status,
+        tenant_ids=unread_chat_tenant_ids if chat_filter == "unread" else None,
+    )
 
     return render_template(
         "admin/tenants/list.html",
@@ -52,7 +58,8 @@ def tenants_list():
         pagination=pagination,
         term=term,
         status=status,
-        unread_chat_tenant_ids=ChatService.tenant_ids_with_unread_messages_for_admin(),
+        chat_filter=chat_filter,
+        unread_chat_tenant_ids=unread_chat_tenant_ids,
     )
 
 
@@ -156,7 +163,7 @@ def tenants_edit(tenant_id):
             flash(str(exc), "danger")
         else:
             if is_hx:
-                return _rerender_tenant_fragment(tenant, trigger="tenantSaved")
+                return _rerender_tenant_fragment(tenant, trigger="tenantSaved", toast="Dados da loja atualizados.")
             flash("Dados da loja atualizados.", "success")
             return redirect(url_for("admin.tenants_detail", tenant_id=tenant.id))
 

@@ -18,7 +18,7 @@
 </ul>
 
 <h2>3. Cardápio público e clientes finais</h2>
-<p>Ao fazer um pedido pelo cardápio público de uma loja, o cliente final informa nome e telefone para identificação — esses dados pertencem ao contexto daquela loja específica e não são compartilhados com outras lojas da plataforma. O cliente final pode, a qualquer momento, consultar seus pedidos, editar seu cadastro ou solicitar a remoção da própria conta diretamente pelo cardápio ("Meus Dados"). Veja mais detalhes na nossa <a href="{{ url_for('privacy_policy') }}">Política de Privacidade</a>.</p>
+<p>Ao fazer um pedido pelo cardápio público de uma loja, o cliente final informa nome e telefone para identificação — esses dados pertencem ao contexto daquela loja específica e não são compartilhados com outras lojas da plataforma. O cliente final pode, a qualquer momento, consultar seus pedidos, editar seu cadastro ou solicitar a remoção da própria conta diretamente pelo cardápio ("Meus Dados"). Veja mais detalhes na nossa <a href="{{ url_for('privacy_policy', loja=store_tenant.slug if store_tenant else None) }}">Política de Privacidade</a>.</p>
 
 <h2>4. Planos e pagamento da assinatura</h2>
 <p>O uso da plataforma pelo lojista pode estar sujeito a um plano de assinatura pago, cobrado recorrentemente através do nosso parceiro de pagamentos (Asaas). O não pagamento de uma cobrança vencida pode resultar na suspensão temporária do acesso ao painel e/ou do cardápio público até a regularização. Cancelamentos podem ser solicitados a qualquer momento; o acesso permanece disponível até o fim do período já pago.</p>

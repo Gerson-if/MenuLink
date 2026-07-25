@@ -214,6 +214,56 @@ initDropzonePreviews();
 document.body.addEventListener('htmx:afterSwap', (evt) => initDropzonePreviews(evt.detail.target));
 
 /*
+ * Toast de confirmação para salvamentos feitos pelo drawer (HTMX) —
+ * criar/editar plano, produto, categoria, banner e dados do lojista
+ * trocam só o fragmento do formulário, então o toast desenhado a partir
+ * de flash() em base.html (só existe numa página inteira) nunca
+ * aparecia: o lojista/Super Admin salvava e não tinha nenhum sinal de
+ * que a gravação deu certo. O backend manda a mensagem no header
+ * HX-Trigger (ver app/utils/htmx.py, hx_fragment_response) como o evento
+ * "toastMessage"; este listener desenha o mesmo toast usado no
+ * carregamento normal da página (mesmo HTML/CSS/transição do Alpine que
+ * o bloco em base.html usa, só que criado dinamicamente).
+ */
+function showToast(message, category) {
+  if (!message) return;
+  let stack = document.querySelector('.toast-flash-stack');
+  if (!stack) {
+    stack = document.createElement('div');
+    stack.className = 'toast-flash-stack';
+    document.body.appendChild(stack);
+  }
+  const cat = ['success', 'danger', 'warning', 'info'].includes(category) ? category : 'secondary';
+  const icons = {
+    success: 'bi-check-circle-fill', danger: 'bi-x-circle-fill',
+    warning: 'bi-exclamation-triangle-fill', info: 'bi-info-circle-fill',
+  };
+  const icon = icons[cat] || 'bi-info-circle-fill';
+
+  const wrap = document.createElement('div');
+  wrap.innerHTML = `<div class="toast-flash toast-flash-${cat}"
+      x-data="{ show: false }" x-init="requestAnimationFrame(() => show = true); setTimeout(() => show = false, 6000)"
+      x-show="show"
+      x-transition:enter="toast-flash-enter" x-transition:enter-start="toast-flash-enter-start" x-transition:enter-end="toast-flash-enter-end"
+      x-transition:leave="toast-flash-leave" x-transition:leave-start="toast-flash-leave-start" x-transition:leave-end="toast-flash-leave-end">
+    <i class="bi ${icon} toast-flash-icon" aria-hidden="true"></i>
+    <span class="toast-flash-message"></span>
+    <button type="button" class="toast-flash-close" @click="show = false" aria-label="Fechar">&times;</button>
+  </div>`;
+  const el = wrap.firstElementChild;
+  el.querySelector('.toast-flash-message').textContent = message;
+  stack.appendChild(el);
+  // Alpine observa o DOM e inicializa o x-data sozinho assim que o nó
+  // entra na árvore — mesmo mecanismo que já faz o drawer funcionar com
+  // conteúdo trazido via HTMX em outras telas do painel.
+}
+
+document.body.addEventListener('toastMessage', (evt) => {
+  const detail = evt.detail || {};
+  showToast(detail.message, detail.category);
+});
+
+/*
  * "+ Novo produto" cria o rascunho assim que o lojista clica, pra já
  * abrir a edição completa (fotos/complementos disponíveis desde o
  * início — ver lojista.products_create_draft). Se ele fechar a barra

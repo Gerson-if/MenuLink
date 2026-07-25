@@ -29,7 +29,8 @@ class TestPhoneValidation:
             "/cadastro",
             data={
                 "owner_name": "Teste", "whatsapp_number": "(11) 99999-8888", "store_name": "Loja Fone Ok",
-                "slug": "loja-fone-ok", "email": "foneok@teste.com", "password": "senha123", "csrf_token": csrf,
+                "slug": "loja-fone-ok", "email": "foneok@teste.com", "password": "senha123",
+                "password_confirm": "senha123", "csrf_token": csrf,
             },
             follow_redirects=True,
         )
