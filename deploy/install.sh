@@ -53,7 +53,7 @@ APP_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 TEMPLATES_DIR="${SCRIPT_DIR}/templates"
 CONF_FILE="${SCRIPT_DIR}/.deploy.conf"
 
-C_RESET="\033[0m"; C_BOLD="\033[1m"; C_GREEN="\033[32m"; C_YELLOW="\033[33m"; C_RED="\033[31m"; C_BLUE="\033[34m"
+C_RESET="\033[0m"; C_BOLD="\033[1m"; C_DIM="\033[2m"; C_GREEN="\033[32m"; C_YELLOW="\033[33m"; C_RED="\033[31m"; C_BLUE="\033[34m"; C_CYAN="\033[36m"
 
 log()  { echo -e "${C_GREEN}==>${C_RESET} ${C_BOLD}$*${C_RESET}"; }
 info() { echo -e "    $*"; }
@@ -163,19 +163,58 @@ run_as_app_user() {
 # variáveis carregadas do CONF_FILE (APP_DIR, SERVICE_USER, SERVICE_NAME,
 # APP_PORT, DOMAIN, WWW_ALIAS, SSL_ENABLED, DB_ENGINE) — por isso só são
 # chamadas depois do "source $CONF_FILE" feito na seção 0.
+#
+# Chrome visual do menu (banner()/section()/item()/ok()/fail()) fica só em
+# ASCII puro de propósito — sem caracteres de desenho de caixa (╔═╗ etc.)
+# nem centralização calculada por comprimento de string, que dependem de
+# locale/UTF-8 do terminal e já causaram bug sutil de contagem de bytes em
+# outro ponto deste script (ver STEP="Firewall"); aqui o risco era só
+# cosmético, mas o padrão do projeto é preferir a opção que não pode
+# quebrar de forma silenciosa num terminal/locale diferente do nosso.
 # --------------------------------------------------------------------------
+
+banner() {
+    # banner "título" -> cabeçalho de destaque (usado só no menu principal)
+    echo
+    echo -e "${C_CYAN}${C_BOLD}============================================================${C_RESET}"
+    echo -e "${C_CYAN}${C_BOLD}  $1${C_RESET}"
+    echo -e "${C_CYAN}${C_BOLD}============================================================${C_RESET}"
+}
+
+section() {
+    # section "título" -> cabeçalho leve (usado nos submenus e resultados)
+    echo
+    echo -e "${C_CYAN}${C_BOLD}▸ $1${C_RESET}"
+    echo -e "${C_CYAN}------------------------------------------------------------${C_RESET}"
+}
+
+item() {
+    # item NUM "texto" ["nota opcional em cinza"]
+    if [ -n "${3:-}" ]; then
+        echo -e "  ${C_GREEN}${C_BOLD}$1${C_RESET}) $2  ${C_DIM}($3)${C_RESET}"
+    else
+        echo -e "  ${C_GREEN}${C_BOLD}$1${C_RESET}) $2"
+    fi
+}
+
+ok()   { info "${C_GREEN}✔${C_RESET} $1"; }
+fail() { warn "${C_RED}✘${C_RESET} $1"; }
+
+pause_menu() {
+    echo
+    ask "Pressione Enter para voltar" ""
+}
 
 manage_super_admin_menu() {
     while true; do
-        echo
-        log "Gerenciar Super Admin"
+        section "Gerenciar Super Admin"
         run_as_app_user "cd '${APP_DIR}' && venv/bin/flask list-admins" \
             || warn "Não consegui listar os Super Admins agora (veja o erro acima)."
         echo
-        echo "  1) Criar um novo Super Admin (ou redefinir a senha de um já existente)"
-        echo "  2) Trocar o e-mail de um Super Admin existente"
-        echo "  3) Remover um Super Admin"
-        echo "  4) Voltar ao menu principal"
+        item 1 "Criar um novo Super Admin" "ou redefinir a senha de um já existente"
+        item 2 "Trocar o e-mail de um Super Admin existente"
+        item 3 "Remover um Super Admin"
+        item 4 "Voltar ao menu principal"
         ask "Escolha uma opção [1-4]" "4"
         case "$REPLY_VALUE" in
             1)
@@ -211,49 +250,48 @@ manage_super_admin_menu() {
 }
 
 run_verificacoes() {
-    echo
-    log "Verificações do sistema"
+    section "Verificações do sistema"
 
     if systemctl is-active --quiet "${SERVICE_NAME}" 2>/dev/null; then
-        info "✔ Serviço '${SERVICE_NAME}' está ativo."
+        ok "Serviço '${SERVICE_NAME}' está ativo."
     else
-        warn "✘ Serviço '${SERVICE_NAME}' NÃO está ativo. Diagnóstico: systemctl status ${SERVICE_NAME}"
+        fail "Serviço '${SERVICE_NAME}' NÃO está ativo. Diagnóstico: systemctl status ${SERVICE_NAME}"
     fi
 
     if command -v nginx >/dev/null 2>&1; then
         if nginx -t >/dev/null 2>&1; then
-            info "✔ Configuração do Nginx é válida."
+            ok "Configuração do Nginx é válida."
         else
-            warn "✘ 'nginx -t' encontrou um problema na configuração atual (rode 'nginx -t' para ver o erro)."
+            fail "'nginx -t' encontrou um problema na configuração atual (rode 'nginx -t' para ver o erro)."
         fi
         if systemctl is-active --quiet nginx 2>/dev/null; then
-            info "✔ Nginx está ativo."
+            ok "Nginx está ativo."
         else
-            warn "✘ Nginx NÃO está ativo."
+            fail "Nginx NÃO está ativo."
         fi
     fi
 
     if command -v curl >/dev/null 2>&1; then
         http_code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "http://127.0.0.1:${APP_PORT}/" 2>/dev/null || echo "000")"
         if [ "$http_code" != "000" ]; then
-            info "✔ Aplicação responde localmente na porta ${APP_PORT} (HTTP ${http_code})."
+            ok "Aplicação responde localmente na porta ${APP_PORT} (HTTP ${http_code})."
         else
-            warn "✘ Aplicação não respondeu localmente na porta ${APP_PORT} — diagnóstico: journalctl -u ${SERVICE_NAME} -n 50"
+            fail "Aplicação não respondeu localmente na porta ${APP_PORT} — diagnóstico: journalctl -u ${SERVICE_NAME} -n 50"
         fi
     fi
 
     if run_as_app_user "cd '${APP_DIR}' && venv/bin/flask check-db" >/dev/null 2>&1; then
-        info "✔ Conexão com o banco de dados OK."
+        ok "Conexão com o banco de dados OK."
     else
-        warn "✘ Não consegui confirmar a conexão com o banco de dados — diagnóstico: sudo -u ${SERVICE_USER} bash -lc \"cd ${APP_DIR} && venv/bin/flask check-db\""
+        fail "Não consegui confirmar a conexão com o banco de dados — diagnóstico: sudo -u ${SERVICE_USER} bash -lc \"cd ${APP_DIR} && venv/bin/flask check-db\""
     fi
 
     if [ "${SSL_ENABLED:-n}" = "s" ] && [ -n "${DOMAIN:-}" ] && command -v openssl >/dev/null 2>&1; then
         cert_expiry="$(echo | timeout 5 openssl s_client -servername "${DOMAIN}" -connect "${DOMAIN}:443" 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)"
         if [ -n "$cert_expiry" ]; then
-            info "✔ Certificado SSL de ${DOMAIN} válido até: ${cert_expiry}"
+            ok "Certificado SSL de ${DOMAIN} válido até: ${cert_expiry}"
         else
-            warn "✘ Não consegui confirmar o certificado SSL de ${DOMAIN} (porta 443 pode estar bloqueada ou o certificado ainda não foi emitido)."
+            fail "Não consegui confirmar o certificado SSL de ${DOMAIN} (porta 443 pode estar bloqueada ou o certificado ainda não foi emitido)."
         fi
     fi
 
@@ -262,12 +300,11 @@ run_verificacoes() {
         [ -n "$disk_info" ] && info "Espaço em disco em ${APP_DIR}: ${disk_info}"
     fi
 
-    echo
-    ask "Pressione Enter para voltar ao menu" ""
+    pause_menu
 }
 
 run_update_script() {
-    echo
+    section "Atualizar sistema"
     log "Rodando deploy/update.sh..."
     if bash "${SCRIPT_DIR}/update.sh"; then
         info "deploy/update.sh terminou (veja o resumo/STATUS acima para o resultado exato)."
@@ -275,32 +312,139 @@ run_update_script() {
         update_rc=$?
         warn "deploy/update.sh terminou com código de saída ${update_rc} — veja as mensagens acima (linha STATUS=...) para entender o que aconteceu."
     fi
-    echo
-    ask "Pressione Enter para voltar ao menu" ""
+    pause_menu
+}
+
+restart_service() {
+    section "Reiniciar o serviço da aplicação"
+    if confirm "Reiniciar '${SERVICE_NAME}' agora? A aplicação fica indisponível por alguns segundos." "n"; then
+        if systemctl restart "${SERVICE_NAME}"; then
+            sleep 2
+            if systemctl is-active --quiet "${SERVICE_NAME}"; then
+                ok "Serviço reiniciado e está ativo."
+            else
+                fail "O serviço foi reiniciado mas não ficou ativo — diagnóstico: journalctl -u ${SERVICE_NAME} -n 50"
+            fi
+        else
+            fail "Falha ao reiniciar (veja o erro acima)."
+        fi
+    else
+        info "Cancelado."
+    fi
+    pause_menu
+}
+
+reload_nginx() {
+    section "Recarregar o Nginx"
+    if ! command -v nginx >/dev/null 2>&1; then
+        warn "Nginx não parece estar instalado neste servidor."
+        pause_menu
+        return
+    fi
+    if nginx -t; then
+        if systemctl reload nginx; then
+            ok "Nginx recarregado."
+        else
+            fail "Falha ao recarregar (veja o erro acima)."
+        fi
+    else
+        fail "'nginx -t' encontrou um problema na configuração — corrija antes de recarregar."
+    fi
+    pause_menu
+}
+
+show_recent_logs() {
+    section "Últimas linhas do log de '${SERVICE_NAME}'"
+    journalctl -u "${SERVICE_NAME}" -n 60 --no-pager 2>/dev/null || warn "Não consegui ler os logs (journalctl indisponível?)."
+    pause_menu
+}
+
+show_status_summary() {
+    section "Status resumido"
+    echo -e "${C_BOLD}${SERVICE_NAME}:${C_RESET}"
+    systemctl status "${SERVICE_NAME}" --no-pager -l 2>/dev/null | head -n 10 || warn "Não consegui consultar o status de '${SERVICE_NAME}'."
+    if command -v nginx >/dev/null 2>&1; then
+        echo
+        echo -e "${C_BOLD}nginx:${C_RESET}"
+        systemctl status nginx --no-pager -l 2>/dev/null | head -n 6 || warn "Não consegui consultar o status do Nginx."
+    fi
+    pause_menu
+}
+
+renew_ssl_cert() {
+    section "Renovar certificado SSL"
+    if [ "${SSL_ENABLED:-n}" != "s" ] || [ -z "${DOMAIN:-}" ]; then
+        warn "Este servidor não tem SSL configurado (sem domínio, ou SSL não foi ativado na instalação)."
+        pause_menu
+        return
+    fi
+    log "Renovando certificado de ${DOMAIN}..."
+    if command -v certbot >/dev/null 2>&1 && certbot certificates 2>/dev/null | grep -q "${DOMAIN}"; then
+        if certbot renew --cert-name "${DOMAIN}" --force-renewal; then
+            ok "Certificado renovado com sucesso via certbot."
+        else
+            fail "A renovação via certbot falhou (veja o erro acima)."
+        fi
+    elif [ -x "/root/.acme.sh/acme.sh" ]; then
+        if /root/.acme.sh/acme.sh --renew -d "${DOMAIN}" --force; then
+            ok "Certificado renovado com sucesso via acme.sh."
+        else
+            fail "A renovação via acme.sh falhou (veja o erro acima)."
+        fi
+    else
+        warn "Não encontrei nem certbot nem acme.sh configurados para ${DOMAIN} — o certificado pode não ter sido emitido ainda (veja a opção 'Verificações do sistema')."
+    fi
+    pause_menu
+}
+
+system_commands_menu() {
+    while true; do
+        section "Comandos do sistema"
+        item 1 "Reiniciar o serviço da aplicação" "${SERVICE_NAME}"
+        item 2 "Recarregar o Nginx"
+        item 3 "Ver logs recentes da aplicação"
+        item 4 "Ver status resumido (serviço + Nginx)"
+        item 5 "Renovar certificado SSL manualmente"
+        item 6 "Voltar ao menu principal"
+        ask "Escolha uma opção [1-6]" "6"
+        case "$REPLY_VALUE" in
+            1) restart_service ;;
+            2) reload_nginx ;;
+            3) show_recent_logs ;;
+            4) show_status_summary ;;
+            5) renew_ssl_cert ;;
+            6|*) return 0 ;;
+        esac
+    done
 }
 
 main_menu() {
     while true; do
-        echo
-        log "O que você quer fazer?"
+        banner "COMANDA · Painel de instalação e manutenção"
+        echo "  Diretório : ${APP_DIR}"
         if [ -f "$CONF_FILE" ]; then
-            echo "  1) Rodar atualização (buscar e aplicar a versão mais nova do repositório)"
-            echo "  2) Verificações do sistema (serviço, Nginx, banco de dados, SSL...)"
-            echo "  3) Gerenciar Super Admin (criar, redefinir senha, trocar e-mail, remover)"
-            echo "  4) Reconfigurar esta instalação (domínio, SSL, banco, systemd, Nginx...)"
-            echo "  5) Sair"
-            ask "Escolha uma opção [1-5]" "5"
+            [ -n "${DOMAIN:-}" ] && echo "  Endereço  : ${SERVER_NAME:-$DOMAIN} $([ "${SSL_ENABLED:-n}" = "s" ] && echo "(HTTPS)" || echo "(HTTP)")"
+            echo
+            item 1 "Atualizar sistema" "busca e aplica a versão mais nova"
+            item 2 "Verificações do sistema" "serviço, Nginx, banco, SSL..."
+            item 3 "Comandos do sistema" "reiniciar, logs, status, renovar SSL..."
+            item 4 "Gerenciar Super Admin" "criar, redefinir, trocar e-mail, remover"
+            item 5 "Reconfigurar esta instalação" "domínio, SSL, banco, systemd, Nginx..."
+            item 6 "Sair"
+            ask "Escolha uma opção [1-6]" "6"
             case "$REPLY_VALUE" in
                 1) run_update_script ;;
                 2) run_verificacoes ;;
-                3) manage_super_admin_menu ;;
-                4) return 0 ;;
-                5) echo "Até mais!"; exit 0 ;;
+                3) system_commands_menu ;;
+                4) manage_super_admin_menu ;;
+                5) return 0 ;;
+                6) echo "Até mais!"; exit 0 ;;
                 *) warn "Opção inválida." ;;
             esac
         else
-            echo "  1) Instalar o Comanda agora (fluxo guiado completo)"
-            echo "  2) Sair"
+            echo
+            item 1 "Instalar o Comanda agora" "fluxo guiado completo"
+            item 2 "Sair"
             ask "Escolha uma opção [1-2]" "1"
             case "$REPLY_VALUE" in
                 1) return 0 ;;
