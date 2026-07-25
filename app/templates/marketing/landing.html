@@ -72,21 +72,14 @@
     .hero-section .d-flex.gap-3 { align-items: stretch; }
   }
 
-  /* Toques visuais mais modernos, de baixo custo: gradiente de texto é
-     só um `background-clip` (pintura única, sem repintar a cada frame),
-     e o "badge" acima do título reaproveita o `.pulse-dot` que a seção
-     "mostra" já usa — nada de blur nem animação contínua de fundo
-     (blobs), que é o que pesava na tentativa anterior em celulares mais
-     fracos. */
-  .hero-gradient-text {
-    background-image: linear-gradient(90deg, var(--accent), var(--accent-dark));
-    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
-  }
+  /* Badge acima do título: reaproveita o `.pulse-dot` que a seção
+     "mostra" já usa (só o pontinho fica na cor de destaque — o texto
+     fica neutro, pra não competir com o botão e o título). */
   .hero-badge {
     display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 50px;
     background: color-mix(in srgb, var(--card-text) 8%, transparent);
     border: 1px solid color-mix(in srgb, var(--card-text) 16%, transparent);
-    color: var(--accent); font-size: .8rem; font-weight: 600; margin-bottom: 20px;
+    color: var(--card-text); font-size: .8rem; font-weight: 600; margin-bottom: 20px;
   }
 </style>
 {% endblock %}
@@ -145,7 +138,7 @@
           <span class="pulse-dot"></span>
           Sem comissão por pedido
         </span>
-        <h1 class="font-display display-4 mb-4 hero-gradient-text" style="line-height:1.15;">{{ landing.hero_title }}</h1>
+        <h1 class="font-display display-4 mb-4" style="line-height:1.15;">{{ landing.hero_title }}</h1>
         <p class="lead text-muted-custom mb-4" style="font-size:1.1rem; line-height:1.6;">{{ landing.hero_subtitle }}</p>
         <div class="hero-cta-group {{ 'justify-content-lg-start' if landing.hero_image else '' }}">
           <a href="{{ url_for('auth.register') }}" class="btn btn-chili rounded-pill btn-cta-glow fs-6 px-4">Começar Agora — Grátis</a>
