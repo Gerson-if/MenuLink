@@ -13,6 +13,7 @@ app/static/uploads/*
 
 # Estado local gerado pelo instalador de deploy (específico de cada servidor)
 deploy/.deploy.conf
+deploy/.update.lock
 deploy/backups/*
 !deploy/backups/.gitkeep
 
