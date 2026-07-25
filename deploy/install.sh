@@ -387,7 +387,13 @@ elif [ "$DB_ENGINE" = "external" ]; then
     esac
 fi
 
-if [ "$WANT_SSL" = "s" ] && [ "$SSL_PROVIDER" = "letsencrypt" ]; then
+if [ "$WANT_SSL" = "s" ]; then
+    # Instala o certbot mesmo quando o provedor escolhido é a ZeroSSL: se a
+    # emissão via acme.sh falhar (ver seção 10 — a ZeroSSL tem um passo a
+    # mais, o registro de conta via EAB, que pode falhar por problemas de
+    # conectividade do próprio servidor e não tem nada a ver com o DNS do
+    # domínio), o script tenta automaticamente o Let's Encrypt em seguida em
+    # vez de deixar o site sem HTTPS.
     apt-get install -y -qq certbot python3-certbot-nginx
 fi
 
@@ -532,17 +538,25 @@ systemctl reload nginx || systemctl restart nginx
 # 10. SSL
 # --------------------------------------------------------------------------
 
+# Emite (ou reemite) o certificado via Let's Encrypt/certbot — usado tanto
+# quando o provedor escolhido é o Let's Encrypt quanto como fallback
+# automático se a ZeroSSL falhar (ver abaixo). Devolve 0/1; não imprime
+# nada em caso de sucesso nem de falha, quem chama decide a mensagem.
+issue_letsencrypt_cert() {
+    certbot --nginx --non-interactive --agree-tos -m "${SSL_EMAIL}" "${CERT_DOMAINS[@]}" --redirect
+}
+
 if [ "$WANT_SSL" = "s" ]; then
     CERT_DOMAINS=("-d" "${DOMAIN}")
     [ -n "$WWW_ALIAS" ] && CERT_DOMAINS+=("-d" "${WWW_ALIAS}")
 
     if [ "$SSL_PROVIDER" = "letsencrypt" ]; then
         log "Emitindo certificado com Let's Encrypt (certbot)..."
-        if certbot --nginx --non-interactive --agree-tos -m "${SSL_EMAIL}" "${CERT_DOMAINS[@]}" --redirect; then
+        if issue_letsencrypt_cert; then
             info "Certificado emitido para ${SSL_NAMES}. A renovação automática já está agendada (certbot.timer)."
         else
-            warn "A emissão do certificado falhou. Confira se o DNS de ${SSL_NAMES} já aponta para ${PUBLIC_IP:-este servidor} e rode depois:"
-            warn "  certbot --nginx ${CERT_DOMAINS[*]}"
+            warn "A emissão do certificado falhou. Isso quase sempre significa que o DNS de ${SSL_NAMES} ainda não aponta para ${PUBLIC_IP:-este servidor} (o certbot usa esse endereço pra validar que o domínio é seu). Confira com 'getent hosts ${DOMAIN}' e, quando resolver certo, rode:"
+            warn "  certbot --nginx ${CERT_DOMAINS[*]} --redirect"
         fi
     else
         log "Instalando acme.sh e emitindo certificado com ZeroSSL..."
@@ -551,9 +565,18 @@ if [ "$WANT_SSL" = "s" ]; then
         fi
         ACME="/root/.acme.sh/acme.sh"
         "$ACME" --set-default-ca --server zerossl || true
-        "$ACME" --register-account -m "${SSL_EMAIL}" --server zerossl || true
+
+        ZEROSSL_OK=1
+        if ! "$ACME" --register-account -m "${SSL_EMAIL}" --server zerossl; then
+            ZEROSSL_OK=0
+            warn "Não consegui registrar a conta junto à ZeroSSL (erro comum: 'Cannot resolve _eab_kid')."
+            warn "Isso normalmente é uma falha de conectividade DESTE SERVIDOR com a API da"
+            warn "ZeroSSL (não tem relação com o DNS do seu domínio) — pode ser IPv6 mal"
+            warn "configurado na VPS, firewall de saída ou instabilidade momentânea deles."
+        fi
+
         mkdir -p "/etc/nginx/ssl/${CERT_NAME}"
-        if "$ACME" --issue "${CERT_DOMAINS[@]}" --nginx; then
+        if [ "$ZEROSSL_OK" = "1" ] && "$ACME" --issue "${CERT_DOMAINS[@]}" --nginx; then
             "$ACME" --install-cert -d "${DOMAIN}" \
                 --key-file       "/etc/nginx/ssl/${CERT_NAME}/privkey.pem" \
                 --fullchain-file "/etc/nginx/ssl/${CERT_NAME}/fullchain.pem" \
@@ -562,8 +585,17 @@ if [ "$WANT_SSL" = "s" ]; then
             nginx -t && systemctl reload nginx
             info "Certificado ZeroSSL emitido para ${SSL_NAMES} e instalado. acme.sh já agenda a renovação automática via cron."
         else
-            warn "A emissão do certificado ZeroSSL falhou. Confira se o DNS de ${SSL_NAMES} já aponta para ${PUBLIC_IP:-este servidor} e rode depois:"
-            warn "  ${ACME} --issue ${CERT_DOMAINS[*]} --nginx"
+            if [ "$ZEROSSL_OK" = "1" ]; then
+                warn "A emissão do certificado ZeroSSL falhou. Se a conta foi registrada mas a emissão em si não, geralmente é o DNS de ${SSL_NAMES} ainda não apontando para ${PUBLIC_IP:-este servidor} — confira com 'getent hosts ${DOMAIN}'."
+            fi
+            log "Tentando emitir com Let's Encrypt como alternativa (não depende da ZeroSSL)..."
+            if issue_letsencrypt_cert; then
+                info "Certificado emitido para ${SSL_NAMES} via Let's Encrypt (a ZeroSSL falhou, mas o site já está com HTTPS). A renovação automática já está agendada (certbot.timer)."
+            else
+                warn "A emissão automática também falhou pelo Let's Encrypt. Confira se o DNS de ${SSL_NAMES} já aponta para ${PUBLIC_IP:-este servidor} ('getent hosts ${DOMAIN}') e, quando resolver certo, rode um destes:"
+                warn "  certbot --nginx ${CERT_DOMAINS[*]} --redirect        (Let's Encrypt — recomendado)"
+                warn "  ${ACME} --issue ${CERT_DOMAINS[*]} --nginx           (ZeroSSL)"
+            fi
         fi
     fi
 fi
