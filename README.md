@@ -31,6 +31,7 @@ demais.
   - [Requisitos](#requisitos)
   - [Instalação guiada](#instalação-guiada)
   - [Atualizando para uma versão mais nova](#atualizando-para-uma-versão-mais-nova)
+  - [Backup e restauração (migração entre servidores)](#backup-e-restauração-migração-entre-servidores)
   - [Detalhes técnicos do que o instalador configura](#detalhes-técnicos-do-que-o-instalador-configura)
   - [Checklist de variáveis de ambiente (`.env`)](#checklist-de-variáveis-de-ambiente-env)
   - [Verificando que subiu certo](#verificando-que-subiu-certo)
@@ -643,6 +644,86 @@ servidor sempre atualizado sem intervenção manual:
 # roda toda segunda-feira às 4h da manhã
 0 4 * * 1 root bash /opt/comanda/deploy/update.sh >> /var/log/comanda-update.log 2>&1
 ```
+
+### Backup e restauração (migração entre servidores)
+
+Além do backup automático que o `update.sh` faz antes de cada
+atualização (pensado para rollback local), há um par de scripts
+dedicado a **migrar o sistema inteiro para outra VPS** sem perder os
+dados dos lojistas — banco de dados, uploads (logos, fotos do
+cardápio) e o `.env`.
+
+A forma mais simples de usar é pelo próprio menu do instalador:
+
+```bash
+sudo bash deploy/install.sh
+```
+
+Depois de detectar uma instalação existente, escolha a opção
+**"Backup e restauração"** no menu principal. O submenu oferece:
+
+- **Fazer backup agora** — gera um arquivo `.tar.gz` em
+  `deploy/backups/`, pronto para copiar para outro servidor.
+- **Listar backups existentes** — mostra os arquivos já gerados nesse
+  servidor.
+- **Restaurar um backup** — lista os backups disponíveis para escolher
+  por número (ou aceita um caminho digitado), pede confirmação antes
+  de continuar e então executa a restauração.
+
+Também dá para rodar os scripts diretamente, sem passar pelo menu:
+
+```bash
+# Gerar um backup
+sudo bash deploy/backup.sh
+
+# Restaurar um backup (peça para digitar "restaurar" como confirmação)
+sudo bash deploy/restore.sh deploy/backups/comanda_backup_2026-07-25_12-00-00.tar.gz.gpg
+```
+
+**O que o backup contém:**
+
+1. Dump do banco de dados (`pg_dump --clean --if-exists` no
+   PostgreSQL, ou cópia do arquivo no caso de SQLite).
+2. Os uploads (`app/static/uploads/`) compactados.
+3. O `.env` (chaves e credenciais).
+4. Um `MANIFESTO.txt` com data, versão e o que está incluído.
+
+Tudo isso é compactado num único `.tar.gz` e, se o `gpg` estiver
+disponível no servidor, **criptografado com AES-256** (senha via
+`BACKUP_PASSPHRASE` ou digitada na hora) — importante porque o backup
+contém segredos de produção. É gerado também um checksum `.sha256`
+para conferir a integridade do arquivo antes de restaurar. Use
+`--no-encrypt` em `backup.sh` para pular a criptografia (não
+recomendado fora de um teste local).
+
+**Migrando para outra VPS**, o fluxo é:
+
+1. Na VPS antiga: `sudo bash deploy/backup.sh` (ou pelo menu).
+2. Copie o arquivo gerado (`.tar.gz` ou `.tar.gz.gpg` + `.sha256`) para
+   a VPS nova — por exemplo com `scp`.
+3. Na VPS nova, com o Comanda já instalado (`deploy/install.sh` rodado
+   uma vez): `sudo bash deploy/restore.sh <arquivo>` (ou pelo menu).
+
+**Segurança da restauração** — como é uma operação destrutiva
+(sobrescreve o banco e os uploads atuais), `restore.sh` tem várias
+camadas de proteção:
+
+- Pede para digitar a palavra `restaurar` como confirmação explícita
+  (a menos que rode com `--yes`).
+- Antes de tocar em qualquer coisa, tira um **snapshot de segurança do
+  estado atual** em `deploy/backups/pre_restore_<timestamp>/` — mesmo
+  que a restauração dê errado ou seja feita por engano, dá para voltar
+  atrás manualmente.
+- Confere o checksum `.sha256` do backup antes de usá-lo.
+- Recusa restaurar um backup de um tipo de banco diferente do
+  configurado no servidor atual (ex: backup de PostgreSQL num servidor
+  configurado com SQLite).
+- Roda `flask db upgrade` no final, garantindo que o schema fique
+  compatível com a versão de código já instalada na VPS nova.
+
+Use `--skip-env` em `restore.sh` se quiser manter o `.env` atual do
+servidor (por exemplo, se o domínio/URLs mudaram entre uma VPS e
+outra) em vez de sobrescrevê-lo com o `.env` do backup.
 
 ### Detalhes técnicos do que o instalador configura
 
