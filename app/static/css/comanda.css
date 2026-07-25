@@ -217,8 +217,17 @@ body {
   display: flex; align-items: center; gap: 12px; padding: 14px 18px;
   border-bottom: 1px solid var(--card-border); background: rgba(0,0,0,.12); flex-shrink: 0;
 }
-.chat-header-name { font-weight: 700; font-size: .95rem; color: var(--card-text); }
-.chat-header-status { font-size: .75rem; color: var(--muted-text); }
+.chat-header-name {
+  font-weight: 700; font-size: .95rem; color: var(--card-text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.chat-header-status { font-size: .75rem; color: var(--muted-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* min-width: 0 é o que permite o nome/e-mail truncar com "..." dentro de
+   um flex item em vez de forçar o cabeçalho a crescer/quebrar em duas
+   linhas — sem isso, um nome de loja comprido (ex: "Braseiro & Cia")
+   espremido ao lado do link "Ver dados da loja" quebrava feio no
+   celular. */
+.chat-header > div { min-width: 0; }
 
 .chat-avatar {
   width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; overflow: hidden;
@@ -578,4 +587,16 @@ body:has(.app-shell) .toast-flash-stack { top: 84px; }
   .topbar h1 { font-size: 1.05rem; }
   .content { padding: 12px; }
   .panel { padding: 16px; }
+
+  /* Chat no celular: cabeçalho mais compacto (o link "Ver dados da loja"
+     some — é uma ação secundária, e competir por espaço com o nome da
+     loja é o que fazia o nome quebrar em duas linhas feio) e bolhas
+     ocupam mais largura, já que a tela toda é estreita. */
+  .chat-header { gap: 8px; padding: 10px 12px; }
+  .chat-header-tenant-link { display: none; }
+  .chat-avatar { width: 34px; height: 34px; font-size: .85rem; }
+  .chat-bubble { max-width: 85%; }
+  .chat-messages { padding: 12px 10px; }
+  .chat-input-bar { padding: 10px; gap: 8px; }
+  .chat-send-btn { width: 38px; height: 38px; font-size: 1rem; }
 }

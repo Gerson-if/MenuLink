@@ -86,7 +86,7 @@
           <div class="chat-header-name">{{ active_tenant.name }}</div>
           <div class="chat-header-status">{{ active_tenant.email }}</div>
         </div>
-        <a href="{{ url_for('admin.tenants_detail', tenant_id=active_tenant.id) }}" class="link-chili small flex-shrink-0">Ver dados da loja &rarr;</a>
+        <a href="{{ url_for('admin.tenants_detail', tenant_id=active_tenant.id) }}" class="link-chili small flex-shrink-0 chat-header-tenant-link">Ver dados da loja &rarr;</a>
       </div>
 
       {% set tenant = active_tenant %}

@@ -33,9 +33,30 @@
     // histórico, respeitamos e não forçamos a volta a cada atualização.
     var el = document.getElementById('chat-messages');
     if (!el) return;
-    if (window.__chatShouldAutoScroll !== false) {
-      el.scrollTop = el.scrollHeight;
+
+    function scrollToBottomIfAppropriate() {
+      if (window.__chatShouldAutoScroll !== false) {
+        el.scrollTop = el.scrollHeight;
+      }
     }
+
+    // BUG CORRIGIDO (mensagens "cortadas" atrás da barra de digitar,
+    // sobretudo no celular): rolar pro fim aqui, na hora em que o script
+    // roda, mede um scrollHeight ainda provisório — as fontes web
+    // (Inter, ver fonts.css) costumam terminar de carregar/aplicar DEPOIS
+    // desse primeiro cálculo, e o texto reflui (fica um pouco mais alto),
+    // então "o fim de agora" não é mais o fim de verdade e a última
+    // mensagem passa a ficar parcialmente escondida atrás da barra de
+    // digitar. Por isso rolamos de novo depois que o layout assenta
+    // (requestAnimationFrame) e de novo quando as fontes terminam de
+    // carregar (document.fonts.ready) — corrigindo a posição sem esperar
+    // o usuário perceber.
+    scrollToBottomIfAppropriate();
+    requestAnimationFrame(scrollToBottomIfAppropriate);
+    if (window.document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(scrollToBottomIfAppropriate);
+    }
+
     el.addEventListener('scroll', function () {
       window.__chatShouldAutoScroll = (el.scrollHeight - el.scrollTop - el.clientHeight) < 80;
     });
