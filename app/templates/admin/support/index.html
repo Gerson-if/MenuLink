@@ -17,16 +17,25 @@
           {% for c in conversations %}
           <a href="{{ url_for('admin.support_inbox', tenant_id=c.tenant.id) }}"
              class="support-conversation-item {{ 'active' if active_tenant and active_tenant.id == c.tenant.id }}">
-            <div class="d-flex justify-content-between align-items-start gap-2">
-              <strong class="small">{{ c.tenant.name }}</strong>
-              {% if c.has_unread %}<span class="status-badge status-blocked">Nova</span>{% endif %}
+            <div class="chat-avatar chat-avatar-sm">
+              {% if c.tenant.logo_path %}
+              <img src="{{ url_for('static', filename=c.tenant.logo_path) }}" alt="">
+              {% else %}
+              <span>{{ c.tenant.name[:1]|upper }}</span>
+              {% endif %}
             </div>
-            {% if c.last_message %}
-            <p class="text-muted-custom small mb-0 text-truncate">
-              {{ "Você: " if c.last_message.sender_role.value == "super_admin" else "" }}{{ c.last_message.body }}
-            </p>
-            <p class="text-muted-custom small mb-0" style="font-size: 0.75rem;">{{ c.last_message.created_at.strftime("%d/%m %H:%M") }}</p>
-            {% endif %}
+            <div class="flex-grow-1 overflow-hidden">
+              <div class="d-flex justify-content-between align-items-start gap-2">
+                <strong class="small text-truncate">{{ c.tenant.name }}</strong>
+                {% if c.has_unread %}<span class="status-badge status-blocked flex-shrink-0">Nova</span>{% endif %}
+              </div>
+              {% if c.last_message %}
+              <p class="text-muted-custom small mb-0 text-truncate">
+                {{ "Você: " if c.last_message.sender_role.value == "super_admin" else "" }}{{ c.last_message.body }}
+              </p>
+              <p class="text-muted-custom small mb-0" style="font-size: 0.72rem;">{{ c.last_message.created_at.strftime("%d/%m %H:%M") }}</p>
+              {% endif %}
+            </div>
           </a>
           {% endfor %}
         {% else %}
@@ -38,19 +47,29 @@
 
   <div class="col-lg-8">
     {% if active_tenant %}
-    <div class="panel chat-panel">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <div class="panel-title mb-0"><i class="bi bi-headset"></i> Conversa com {{ active_tenant.name }}</div>
-        <a href="{{ url_for('admin.tenants_detail', tenant_id=active_tenant.id) }}" class="link-chili small">Ver dados da loja &rarr;</a>
+    <div class="panel chat-panel p-0">
+      <div class="chat-header">
+        <div class="chat-avatar">
+          {% if active_tenant.logo_path %}
+          <img src="{{ url_for('static', filename=active_tenant.logo_path) }}" alt="">
+          {% else %}
+          <span>{{ active_tenant.name[:1]|upper }}</span>
+          {% endif %}
+        </div>
+        <div class="flex-grow-1">
+          <div class="chat-header-name">{{ active_tenant.name }}</div>
+          <div class="chat-header-status">{{ active_tenant.email }}</div>
+        </div>
+        <a href="{{ url_for('admin.tenants_detail', tenant_id=active_tenant.id) }}" class="link-chili small flex-shrink-0">Ver dados da loja &rarr;</a>
       </div>
 
       {% set tenant = active_tenant %}
       {% include "admin/tenants/_chat_messages.html" %}
 
-      <form method="POST" action="{{ url_for('admin.chat_send', tenant_id=active_tenant.id) }}" class="d-flex gap-2 mt-3" style="border-top: 1px solid var(--card-border); padding-top: 12px;">
+      <form method="POST" action="{{ url_for('admin.chat_send', tenant_id=active_tenant.id) }}" class="chat-input-bar">
         {{ chat_form.hidden_tag() }}
-        {{ chat_form.body(class="form-control", rows=2, placeholder="Escreva uma mensagem...", style="resize: none;") }}
-        <button type="submit" class="btn btn-chili align-self-end"><i class="bi bi-send"></i></button>
+        {{ chat_form.body(class="chat-input", rows=1, placeholder="Escreva uma mensagem...", style="resize: none;") }}
+        <button type="submit" class="chat-send-btn" aria-label="Enviar"><i class="bi bi-send-fill"></i></button>
       </form>
     </div>
     {% else %}

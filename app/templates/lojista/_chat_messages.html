@@ -1,16 +1,24 @@
 <div id="chat-messages" class="chat-messages" hx-get="{{ url_for('lojista.chat_messages_fragment') }}" hx-trigger="every 5s" hx-swap="outerHTML" hx-select="#chat-messages">
   {% if messages %}
+  {% set ns = namespace(last_day=None) %}
   {% for message in messages %}
-  <div class="chat-bubble-row {{ 'chat-bubble-row-own' if message.sender_role.value == 'lojista' else '' }}">
-    <div class="chat-bubble {{ 'chat-bubble-own' if message.sender_role.value == 'lojista' else 'chat-bubble-other' }}">
-      <div class="chat-bubble-sender">{{ "Você" if message.sender_role.value == "lojista" else "Suporte Comanda" }}</div>
-      <div class="chat-bubble-body">{{ message.body }}</div>
-      <div class="chat-bubble-time">{{ message.created_at.strftime("%d/%m %H:%M") }}</div>
+    {% set day = message.created_at.date() %}
+    {% if day != ns.last_day %}
+    <div class="chat-day-divider"><span>{{ chat_day_label(message.created_at) }}</span></div>
+    {% set ns.last_day = day %}
+    {% endif %}
+    <div class="chat-bubble-row {{ 'chat-bubble-row-own' if message.sender_role.value == 'lojista' else '' }}">
+      <div class="chat-bubble {{ 'chat-bubble-own' if message.sender_role.value == 'lojista' else 'chat-bubble-other' }}">
+        <div class="chat-bubble-body">{{ message.body }}</div>
+        <div class="chat-bubble-time">{{ message.created_at.strftime("%H:%M") }}</div>
+      </div>
     </div>
-  </div>
   {% endfor %}
   {% else %}
-  <p class="text-muted-custom small text-center py-4">Nenhuma mensagem ainda — mande um "oi" pro suporte 👋</p>
+  <div class="chat-empty-state">
+    <i class="bi bi-headset"></i>
+    <p class="mb-0">Nenhuma mensagem ainda — mande um "oi" pro suporte 👋</p>
+  </div>
   {% endif %}
 </div>
 <script>

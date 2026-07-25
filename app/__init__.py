@@ -235,6 +235,22 @@ def _register_template_filters(app: Flask) -> None:
 
         return len(ChatService.tenant_ids_with_unread_messages_for_admin())
 
+    @app.template_global("chat_day_label")
+    def chat_day_label(moment) -> str:
+        """"Hoje"/"Ontem"/data — usado pelos separadores de dia no chat de
+        suporte (estilo WhatsApp), tanto do lado do lojista quanto do
+        Super Admin. `moment` é o `created_at` (timezone-aware) de uma
+        ChatMessage; comparamos só a data local do servidor."""
+        from datetime import date, timedelta
+
+        moment_date = moment.date()
+        today = date.today()
+        if moment_date == today:
+            return "Hoje"
+        if moment_date == today - timedelta(days=1):
+            return "Ontem"
+        return moment_date.strftime("%d/%m/%Y")
+
     @app.template_global("static_versioned")
     def static_versioned(filename: str) -> str:
         """URL de um arquivo em static/ com `?v=<mtime>` — permite ligar

@@ -3,15 +3,21 @@
 {% block page_title %}Suporte{% endblock %}
 
 {% block panel_content %}
-<div class="panel chat-panel">
-  <div class="panel-title"><i class="bi bi-headset"></i> Fale com o suporte</div>
+<div class="panel chat-panel p-0">
+  <div class="chat-header">
+    <div class="chat-header-avatar"><i class="bi bi-headset"></i></div>
+    <div>
+      <div class="chat-header-name">Suporte Comanda</div>
+      <div class="chat-header-status">Fale com a nossa equipe por aqui</div>
+    </div>
+  </div>
 
   {% include "lojista/_chat_messages.html" %}
 
-  <form method="POST" action="{{ url_for('lojista.chat_send') }}" class="d-flex gap-2 mt-3" style="border-top: 1px solid var(--card-border); padding-top: 12px;">
+  <form method="POST" action="{{ url_for('lojista.chat_send') }}" class="chat-input-bar">
     {{ form.hidden_tag() }}
-    {{ form.body(class="form-control", rows=2, placeholder="Escreva sua mensagem...", style="resize: none;") }}
-    <button type="submit" class="btn btn-chili align-self-end"><i class="bi bi-send"></i></button>
+    {{ form.body(class="chat-input", rows=1, placeholder="Escreva uma mensagem...", style="resize: none;") }}
+    <button type="submit" class="chat-send-btn" aria-label="Enviar"><i class="bi bi-send-fill"></i></button>
   </form>
 </div>
 {% endblock %}

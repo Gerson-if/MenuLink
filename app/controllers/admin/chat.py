@@ -37,7 +37,17 @@ def support_inbox(tenant_id=None):
         "admin/support/index.html",
         conversations=conversations,
         active_tenant=active_tenant,
-        chat_messages=chat_messages,
+        # A partial reaproveitada (admin/tenants/_chat_messages.html, a
+        # mesma usada pelo polling HTMX) espera a variável `messages` —
+        # esse é o 4º bug de chat achado nesta rodada (os outros três:
+        # mark_read disparando em qualquer GET de tenants_detail, o
+        # fragmento de polling não recebendo `tenant`, e este aqui). O
+        # nome errado (`chat_messages`) já existia no código antigo, que
+        # nunca de fato mostrava o histórico de mensagens no painel do
+        # admin — só passava despercebido porque a maioria das
+        # conversas de teste tinha poucas mensagens e ninguém reparou
+        # que a lista vinha sempre vazia.
+        messages=chat_messages,
         chat_form=chat_form,
     )
 
