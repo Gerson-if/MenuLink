@@ -109,6 +109,15 @@ valid_domain() {
     [[ "$1" =~ ^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$ ]]
 }
 
+valid_email() {
+    # Checagem simples (não é RFC 5322 completa, só o suficiente pra pegar
+    # entradas obviamente erradas, tipo alguém digitar "2" sem querer aqui
+    # — o servidor da ACME (Let's Encrypt/ZeroSSL) rejeita o registro
+    # inteiro quando o e-mail é inválido, derrubando a emissão do
+    # certificado bem no meio da instalação.
+    [[ "$1" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]
+}
+
 confirm() {
     # confirm "pergunta" "S|n" -> retorna 0 (sim) ou 1 (não)
     local prompt="$1" default="${2:-S}" answer
@@ -555,8 +564,14 @@ if [ -n "$DOMAIN" ]; then
             2) SSL_PROVIDER="zerossl" ;;
             *) SSL_PROVIDER="letsencrypt" ;;
         esac
-        ask "E-mail para avisos de expiração/renovação do certificado" "admin@${DOMAIN}"
-        SSL_EMAIL="$REPLY_VALUE"
+        while true; do
+            ask "E-mail para avisos de expiração/renovação do certificado" "admin@${DOMAIN}"
+            SSL_EMAIL="$REPLY_VALUE"
+            if valid_email "$SSL_EMAIL"; then
+                break
+            fi
+            err "'${SSL_EMAIL}' não parece um e-mail válido (ex: admin@${DOMAIN}). A ACME (Let's Encrypt/ZeroSSL) recusa o registro inteiro com um e-mail inválido — tente de novo."
+        done
     fi
 else
     warn "Sem domínio configurado: a aplicação vai rodar em HTTP simples (http://${SERVER_NAME}/)."
