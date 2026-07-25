@@ -119,8 +119,12 @@ def _register_blueprints(app: Flask) -> None:
 
 
 def _register_request_hooks(app: Flask) -> None:
+    from app.utils.session_guard import enforce_session_not_revoked
     from app.utils.tenant_context import load_tenant_from_session
 
+    # enforce_session_not_revoked primeiro: se a sessão foi encerrada,
+    # nem faz sentido resolver o tenant dela em seguida.
+    app.before_request(enforce_session_not_revoked)
     app.before_request(load_tenant_from_session)
 
 
@@ -181,6 +185,21 @@ def _register_template_filters(app: Flask) -> None:
         public/store_menu.html) — base64 evita ter que escapar manualmente
         caracteres reservados de URL como o "#" das cores hex do SVG."""
         return base64.b64encode(value.encode("utf-8")).decode("ascii")
+
+    @app.template_global("lojista_unread_chat_count")
+    def lojista_unread_chat_count() -> int:
+        """Selo de mensagens não lidas na sidebar do lojista (ver
+        layouts/lojista_panel.html) — template_global (não context
+        processor) de propósito: só roda quando o próprio template do
+        painel do lojista chama, não em toda requisição do app inteiro."""
+        from app.models import ChatSenderRole
+        from app.services.chat_service import ChatService
+        from app.utils.tenant_context import get_current_tenant
+
+        tenant = get_current_tenant()
+        if tenant is None:
+            return 0
+        return ChatService(tenant.id).unread_count(reader_role=ChatSenderRole.LOJISTA)
 
     @app.template_global("static_versioned")
     def static_versioned(filename: str) -> str:

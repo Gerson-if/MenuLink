@@ -10,19 +10,27 @@
     <div class="panel">
       <div class="panel-title"><i class="bi bi-star"></i> Seu plano atual</div>
       {% if tenant.plan %}
+      {% set cycle = subscription.billing_cycle.value if subscription else tenant.plan.billing_cycle.value %}
       <div class="text-white fw-bold fs-4 font-display">{{ tenant.plan.name }}</div>
-      <div class="text-accent fs-5 mb-2">R$ {{ "%.2f"|format(tenant.plan.price_cents / 100) }}<span class="text-muted-custom small">/{{ "ano" if tenant.plan.billing_cycle.value == "yearly" else "mês" }}</span></div>
+      <div class="text-accent fs-5 mb-2">R$ {{ "%.2f"|format(tenant.plan.price_cents / 100) }}<span class="text-muted-custom small">/{{ "ano" if cycle == "yearly" else "mês" }}</span></div>
       <ul class="text-muted-custom small">
         <li>{{ tenant.plan.max_products if tenant.plan.max_products is not none else "Produtos ilimitados" }}{{ " produtos" if tenant.plan.max_products is not none else "" }}</li>
         <li>{{ tenant.plan.max_categories if tenant.plan.max_categories is not none else "Categorias ilimitadas" }}{{ " categorias" if tenant.plan.max_categories is not none else "" }}</li>
       </ul>
+      <p class="text-muted-custom small mb-0">
+        Cobrança <strong>{{ "anual" if cycle == "yearly" else "mensal" }}</strong>{% if subscription %} — próximo vencimento previsto em {{ subscription.current_period_end.strftime("%d/%m/%Y") }}{% endif %}.
+      </p>
       {% else %}
       <p class="text-muted-custom small">Você ainda não tem um plano associado (período de teste).</p>
       {% endif %}
-      <p class="text-muted-custom small mt-3 mb-0">
-        Para trocar de plano ou tirar dúvidas sobre cobrança, fale com o
-        suporte pelo WhatsApp da plataforma.
+      <p class="text-muted-custom small mt-3 mb-2">
+        Para trocar de plano ou tirar dúvidas sobre cobrança, fale com o suporte.
       </p>
+      {% if platform_settings and platform_settings.support_whatsapp %}
+      <a href="https://wa.me/{{ platform_settings.support_whatsapp }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary w-100">
+        <i class="bi bi-whatsapp"></i> Falar no WhatsApp
+      </a>
+      {% endif %}
     </div>
   </div>
 
@@ -31,7 +39,7 @@
       <div class="panel-title"><i class="bi bi-receipt-cutoff"></i> Faturas</div>
       {% if invoices %}
       <table class="table table-borderless table-sm mb-0" style="color: var(--card-text);">
-        <thead class="text-muted-custom small text-uppercase"><tr><th>Vencimento</th><th>Valor</th><th>Status</th></tr></thead>
+        <thead class="text-muted-custom small text-uppercase"><tr><th>Vencimento</th><th>Valor</th><th>Status</th><th></th></tr></thead>
         <tbody>
           {% for invoice in invoices %}
           <tr style="border-top: 1px solid var(--card-border);">
@@ -42,6 +50,13 @@
               {% elif invoice.status.value == 'overdue' %}<span class="status-badge status-blocked">Vencida</span>
               {% elif invoice.status.value == 'canceled' %}<span class="status-badge status-suspended">Cancelada</span>
               {% else %}<span class="status-badge status-trial">Pendente</span>{% endif %}
+            </td>
+            <td class="text-end">
+              {% if invoice.payment_link_url and invoice.status.value in ('pending', 'overdue') %}
+              <a href="{{ invoice.payment_link_url }}" target="_blank" rel="noopener" class="btn btn-sm btn-chili">
+                <i class="bi bi-box-arrow-up-right"></i> Pagar agora
+              </a>
+              {% endif %}
             </td>
           </tr>
           {% endfor %}

@@ -1,3 +1,5 @@
+from datetime import date, timedelta
+
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileAllowed, FileField
 from wtforms import BooleanField, DateField, DecimalField, IntegerField, SelectField, StringField, SubmitField, TextAreaField
@@ -5,18 +7,18 @@ from wtforms.validators import DataRequired, Email, Length, NumberRange, Optiona
 
 from app.models.platform_settings import ASAAS_ENVIRONMENT_CHOICES, LANDING_THEME_CHOICES
 from app.utils.colors import normalize_hex
-from app.utils.validators import not_blank, phone_number
+from app.utils.validators import bounded_length, not_blank, phone_number
 
 
 class TenantCreateForm(FlaskForm):
     name = StringField("Nome da loja", validators=[DataRequired(), Length(max=150), not_blank])
-    email = StringField("E-mail da loja", validators=[DataRequired(), Length(max=180), Email()])
+    email = StringField("E-mail da loja", validators=[DataRequired(), bounded_length(180), Email()])
     phone = StringField("Telefone (opcional)", validators=[Optional(), Length(max=20), phone_number()])
     whatsapp_number = StringField("WhatsApp (com DDI+DDD, ex: 5567999998888)", validators=[Optional(), Length(max=20), phone_number()])
     plan_id = SelectField("Plano", coerce=int, validators=[Optional()])
 
     owner_name = StringField("Nome do responsável (lojista)", validators=[DataRequired(), Length(max=150), not_blank])
-    owner_email = StringField("E-mail de login do lojista", validators=[DataRequired(), Length(max=180), Email()])
+    owner_email = StringField("E-mail de login do lojista", validators=[DataRequired(), bounded_length(180), Email()])
     owner_password = StringField("Senha inicial", validators=[DataRequired(), Length(min=6, max=128)])
 
     submit = SubmitField("Criar lojista")
@@ -24,7 +26,7 @@ class TenantCreateForm(FlaskForm):
 
 class TenantEditForm(FlaskForm):
     name = StringField("Nome da loja", validators=[DataRequired(), Length(max=150), not_blank])
-    email = StringField("E-mail da loja", validators=[DataRequired(), Length(max=180), Email()])
+    email = StringField("E-mail da loja", validators=[DataRequired(), bounded_length(180), Email()])
     phone = StringField("Telefone (opcional)", validators=[Optional(), Length(max=20), phone_number()])
     whatsapp_number = StringField("WhatsApp (com DDI+DDD)", validators=[Optional(), Length(max=20), phone_number()])
     plan_id = SelectField("Plano", coerce=int, validators=[Optional()])
@@ -50,9 +52,28 @@ class PlanForm(FlaskForm):
 
 
 class InvoiceForm(FlaskForm):
-    amount = DecimalField("Valor (R$)", places=2, validators=[DataRequired(), NumberRange(min=0.01)])
+    amount = DecimalField(
+        "Valor (R$)", places=2,
+        validators=[DataRequired(), NumberRange(min=0.01, max=100000, message="Valor deve estar entre R$ 0,01 e R$ 100.000,00.")],
+    )
     due_date = DateField("Vencimento", validators=[DataRequired()])
     submit = SubmitField("Lançar fatura")
+
+    def validate_due_date(self, field):
+        if not field.data:
+            return
+        max_future = date.today() + timedelta(days=730)
+        if field.data > max_future:
+            raise ValidationError("Vencimento muito distante (máximo 2 anos à frente) — confira a data.")
+
+
+class SubscriptionCycleForm(FlaskForm):
+    billing_cycle = SelectField(
+        "Ciclo de cobrança desta assinatura",
+        choices=[("monthly", "Mensal"), ("yearly", "Anual")],
+        validators=[DataRequired()],
+    )
+    submit = SubmitField("Salvar ciclo")
 
 
 class AsaasSettingsForm(FlaskForm):
@@ -93,7 +114,9 @@ class AdminAppearanceForm(FlaskForm):
     """Cor de destaque do painel administrativo (Super Admin + painel
     do lojista compartilham o mesmo design system) — opcional, some
     dono de plataforma pode querer trocar o vermelho-tijolo padrão pela
-    cor da própria marca."""
+    cor da própria marca. Inclui também a logo do sistema (landing page,
+    favicon e telas de autenticação — ver PlatformSettings.platform_logo;
+    não afeta a logo de cada loja nem o painel do lojista)."""
 
     accent_color = StringField(
         "Cor de destaque do painel",
@@ -101,6 +124,17 @@ class AdminAppearanceForm(FlaskForm):
         render_kw={"type": "color"},
     )
     reset_to_default = BooleanField("Voltar para a cor padrão")
+
+    platform_logo = FileField(
+        "Logo do sistema (opcional)",
+        validators=[FileAllowed(["png", "jpg", "jpeg", "webp"], message="Formato não suportado.")],
+    )
+
+    support_whatsapp = StringField(
+        "WhatsApp de suporte (com DDI+DDD, ex: 5567999998888)",
+        validators=[Optional(), Length(max=20), phone_number()],
+    )
+
     submit = SubmitField("Salvar aparência")
 
     def validate_accent_color(self, field):
@@ -117,6 +151,16 @@ class LandingContentForm(FlaskForm):
     hero_title = StringField("Título principal", validators=[DataRequired(), Length(max=200), not_blank])
     hero_subtitle = TextAreaField("Subtítulo", validators=[DataRequired(), Length(max=500), not_blank])
     hero_image = FileField("Arte de destaque (opcional)", validators=[FileAllowed(["png", "jpg", "jpeg", "webp"], message="Formato não suportado.")])
+    hero_image_opacity = IntegerField(
+        "Opacidade da arte de destaque (%)", default=100,
+        validators=[Optional(), NumberRange(min=10, max=100)],
+        render_kw={"type": "range", "min": 10, "max": 100, "step": 5},
+    )
+    hero_image_blur = IntegerField(
+        "Desfoque da arte de destaque (px)", default=0,
+        validators=[Optional(), NumberRange(min=0, max=20)],
+        render_kw={"type": "range", "min": 0, "max": 20, "step": 1},
+    )
     hero_video = FileField(
         "Vídeo de fundo do hero (opcional — substitui a arte de destaque)",
         validators=[FileAllowed(["mp4", "webm"], message="Formato não suportado. Use MP4 ou WEBM.")],

@@ -1,0 +1,17 @@
+{% extends "layouts/lojista_panel.html" %}
+{% block title %}Suporte{% endblock %}
+{% block page_title %}Suporte{% endblock %}
+
+{% block panel_content %}
+<div class="panel chat-panel">
+  <div class="panel-title"><i class="bi bi-headset"></i> Fale com o suporte</div>
+
+  {% include "lojista/_chat_messages.html" %}
+
+  <form method="POST" action="{{ url_for('lojista.chat_send') }}" class="d-flex gap-2 mt-3" style="border-top: 1px solid var(--card-border); padding-top: 12px;">
+    {{ form.hidden_tag() }}
+    {{ form.body(class="form-control", rows=2, placeholder="Escreva sua mensagem...", style="resize: none;") }}
+    <button type="submit" class="btn btn-chili align-self-end"><i class="bi bi-send"></i></button>
+  </form>
+</div>
+{% endblock %}

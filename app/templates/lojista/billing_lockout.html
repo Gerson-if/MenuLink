@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Pendências — {{ tenant.name }}{% endblock %}
+{% block body_class %}theme-chili{% endblock %}
+
+{% block content %}
+<div class="auth-shell">
+  <a href="{{ url_for('auth.logout') }}" class="auth-back-link"><i class="bi bi-box-arrow-right"></i> Sair</a>
+
+  <div class="auth-panel" style="max-width: 560px;">
+    <div class="text-center mb-4">
+      <div class="brand-mark mx-auto d-flex"><i class="bi bi-exclamation-triangle text-white"></i></div>
+      <h3 class="font-display m-0 mt-2" style="font-size: 1.35rem;">Acesso bloqueado por pendência de pagamento</h3>
+      <p class="text-muted-custom small mt-1 mb-0">
+        O painel de <strong>{{ tenant.name }}</strong> fica indisponível até a fatura em aberto
+        ser paga. Assim que confirmarmos o pagamento, o acesso volta automaticamente.
+      </p>
+    </div>
+
+    {% if open_invoices %}
+    <table class="table table-borderless table-sm mb-0" style="color: var(--card-text);">
+      <thead class="text-muted-custom small text-uppercase"><tr><th>Vencimento</th><th>Valor</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        {% for invoice in open_invoices %}
+        <tr style="border-top: 1px solid var(--card-border);">
+          <td>{{ invoice.due_date.strftime("%d/%m/%Y") }}</td>
+          <td>R$ {{ "%.2f"|format(invoice.amount_cents / 100) }}</td>
+          <td>
+            {% if invoice.status.value == 'overdue' %}<span class="status-badge status-blocked">Vencida</span>
+            {% else %}<span class="status-badge status-trial">Pendente</span>{% endif %}
+          </td>
+          <td class="text-end">
+            {% if invoice.payment_link_url %}
+            <a href="{{ invoice.payment_link_url }}" target="_blank" rel="noopener" class="btn btn-sm btn-chili">
+              <i class="bi bi-box-arrow-up-right"></i> Pagar agora
+            </a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if open_invoices|selectattr("payment_link_url")|list|length == 0 %}
+    <p class="text-muted-custom small mt-3 mb-0">
+      Ainda não há um link de pagamento gerado para essa fatura — entre em
+      contato com o suporte para regularizar.
+    </p>
+    {% endif %}
+    {% else %}
+    <p class="text-muted-custom small mb-0">
+      Não encontramos uma fatura em aberto — entre em contato com o suporte
+      para regularizar o acesso.
+    </p>
+    {% endif %}
+
+    {% if platform_settings and platform_settings.support_whatsapp %}
+    <a href="https://wa.me/{{ platform_settings.support_whatsapp }}" target="_blank" rel="noopener"
+       class="btn btn-sm btn-outline-secondary w-100 mt-3">
+      <i class="bi bi-whatsapp"></i> Falar com o suporte no WhatsApp
+    </a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

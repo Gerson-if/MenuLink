@@ -2,35 +2,61 @@
 {% block title %}Aparência — Comanda Admin{% endblock %}
 {% block page_title %}Aparência do painel{% endblock %}
 
+{% import "admin/settings/_media_dropzone.html" as media %}
+
 {% block panel_content %}
-<p class="text-muted-custom small mb-4">Clique no card abaixo para editar.</p>
+<p class="text-muted-custom small mb-4">Clique num card abaixo para editar.</p>
 
-<div class="settings-option-grid" style="max-width: 480px;">
-  <button type="button" class="settings-option" data-bs-toggle="offcanvas" data-bs-target="#editAppearance" aria-controls="editAppearance">
-    <div class="settings-option-head">
-      <div class="settings-option-icon"><i class="bi bi-palette"></i></div>
-      <span class="settings-option-swatch" style="background: {{ settings.admin_theme_accent or '#E54A36' }};"></span>
-    </div>
-    <div class="settings-option-title">Cor de destaque</div>
-    <div class="settings-option-preview">Usada nos botões, links e destaques deste painel e do painel dos lojistas.</div>
-  </button>
-</div>
+{# Um único <form> por trás dos dois cards (mesmo padrão de
+   admin/settings/landing.html) — os cards só abrem a gaveta
+   correspondente; os campos de cada uma continuam dentro deste mesmo
+   <form>, então salvar em qualquer gaveta envia tudo junto. #}
+<form method="POST" enctype="multipart/form-data" novalidate class="landing-editor">
+  {{ form.hidden_tag() }}
 
-<div class="offcanvas offcanvas-end drawer-narrow" tabindex="-1" id="editAppearance" aria-labelledby="editAppearanceLabel">
-  <div class="offcanvas-header">
-    <h5 class="offcanvas-title" id="editAppearanceLabel"><i class="bi bi-palette me-2"></i>Cor de destaque</h5>
-    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+  <div class="settings-option-grid" style="max-width: 480px;">
+    <button type="button" class="settings-option" data-bs-toggle="offcanvas" data-bs-target="#editAppearance" aria-controls="editAppearance">
+      <div class="settings-option-head">
+        <div class="settings-option-icon"><i class="bi bi-palette"></i></div>
+        <span class="settings-option-swatch" style="background: {{ settings.admin_theme_accent or '#E54A36' }};"></span>
+      </div>
+      <div class="settings-option-title">Cor de destaque</div>
+      <div class="settings-option-preview">Usada nos botões, links e destaques deste painel e do painel dos lojistas.</div>
+    </button>
+
+    <button type="button" class="settings-option" data-bs-toggle="offcanvas" data-bs-target="#editLogo" aria-controls="editLogo">
+      <div class="settings-option-head">
+        <div class="settings-option-icon"><i class="bi bi-image"></i></div>
+      </div>
+      <div class="settings-option-title">Logo do sistema</div>
+      {% if settings.platform_logo %}
+      <img class="settings-option-thumb" src="{{ url_for('static', filename=settings.platform_logo) }}" alt="">
+      {% else %}
+      <div class="settings-option-preview">Nenhuma logo enviada — usando o ícone padrão do Comanda.</div>
+      {% endif %}
+    </button>
+
+    <button type="button" class="settings-option" data-bs-toggle="offcanvas" data-bs-target="#editSuporte" aria-controls="editSuporte">
+      <div class="settings-option-head">
+        <div class="settings-option-icon"><i class="bi bi-whatsapp"></i></div>
+      </div>
+      <div class="settings-option-title">WhatsApp de suporte</div>
+      <div class="settings-option-preview">{{ settings.support_whatsapp if settings.support_whatsapp else "Nenhum número cadastrado" }}</div>
+    </button>
   </div>
-  <div class="offcanvas-body d-flex flex-column">
-    <p class="text-muted-custom small mb-3">
-      Essa cor é usada nos botões, links e destaques deste painel administrativo
-      e também no painel dos lojistas (os dois compartilham a mesma identidade
-      visual interna). Não afeta o cardápio público de cada loja — cada lojista
-      escolhe a própria cor em Configurações &rarr; Aparência no painel dele.
-    </p>
 
-    <form method="POST" novalidate>
-      {{ form.hidden_tag() }}
+  <div class="offcanvas offcanvas-end drawer-narrow" tabindex="-1" id="editAppearance" aria-labelledby="editAppearanceLabel">
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title" id="editAppearanceLabel"><i class="bi bi-palette me-2"></i>Cor de destaque</h5>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+    </div>
+    <div class="offcanvas-body d-flex flex-column">
+      <p class="text-muted-custom small mb-3">
+        Essa cor é usada nos botões, links e destaques deste painel administrativo
+        e também no painel dos lojistas (os dois compartilham a mesma identidade
+        visual interna). Não afeta o cardápio público de cada loja — cada lojista
+        escolhe a própria cor em Configurações &rarr; Aparência no painel dele.
+      </p>
 
       <div class="mb-3 d-flex align-items-center gap-3">
         {{ form.accent_color(class="form-control form-control-color", style="width: 70px; height: 46px; padding: 4px;") }}
@@ -44,7 +70,47 @@
       </div>
 
       <div class="drawer-actions mt-auto">{{ form.submit(class="btn btn-chili w-100") }}</div>
-    </form>
+    </div>
   </div>
-</div>
+
+  <div class="offcanvas offcanvas-end drawer-narrow" tabindex="-1" id="editLogo" aria-labelledby="editLogoLabel">
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title" id="editLogoLabel"><i class="bi bi-image me-2"></i>Logo do sistema</h5>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+    </div>
+    <div class="offcanvas-body d-flex flex-column">
+      <p class="text-muted-custom small mb-3">
+        Aparece na página inicial (landing page), no favicon (aba do navegador)
+        e nas telas de login, cadastro de loja e recuperação de senha. Sem uma
+        logo enviada, essas telas usam o ícone padrão do Comanda. Não afeta a
+        logo de cada loja nem nenhuma tela de configuração do lojista — cada
+        loja mantém a própria logo, configurada no painel dela.
+      </p>
+
+      {{ media.image_dropzone(form.platform_logo, settings.platform_logo, url_for('admin.settings_appearance_remove_logo'), 'Clique para enviar a logo do sistema') }}
+
+      <div class="drawer-actions mt-auto">{{ form.submit(class="btn btn-chili w-100") }}</div>
+    </div>
+  </div>
+
+  <div class="offcanvas offcanvas-end drawer-narrow" tabindex="-1" id="editSuporte" aria-labelledby="editSuporteLabel">
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title" id="editSuporteLabel"><i class="bi bi-whatsapp me-2"></i>WhatsApp de suporte</h5>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+    </div>
+    <div class="offcanvas-body d-flex flex-column">
+      <p class="text-muted-custom small mb-3">
+        Número que aparece pro lojista pedir ajuda — principalmente na
+        página de regularização de pendências (conta bloqueada por
+        inadimplência) e na aba Assinatura do painel dele.
+      </p>
+      <div class="mb-3">
+        {{ form.support_whatsapp.label(class="form-label small fw-semibold") }}
+        {{ form.support_whatsapp(class="form-control") }}
+        {% for error in form.support_whatsapp.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+      </div>
+      <div class="drawer-actions mt-auto">{{ form.submit(class="btn btn-chili w-100") }}</div>
+    </div>
+  </div>
+</form>
 {% endblock %}

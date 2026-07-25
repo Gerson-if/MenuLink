@@ -91,6 +91,11 @@
       <a href="{{ url_for('lojista.reports_dashboard') }}" class="nav-link {{ 'active' if request.endpoint == 'lojista.reports_dashboard' }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Vendas">
         <i class="bi bi-graph-up-arrow"></i><span class="nav-label">Vendas</span>
       </a>
+      <a href="{{ url_for('lojista.chat') }}" class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('lojista.chat') }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Suporte">
+        <i class="bi bi-headset"></i><span class="nav-label">Suporte</span>
+        {% set unread = lojista_unread_chat_count() %}
+        {% if unread %}<span class="status-badge status-blocked ms-1">{{ unread }}</span>{% endif %}
+      </a>
       <a href="{{ url_for('lojista.settings_store') }}" class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('lojista.settings') }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Configurações">
         <i class="bi bi-gear"></i><span class="nav-label">Configurações</span>
       </a>

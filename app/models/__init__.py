@@ -8,6 +8,7 @@ Agrega todos os models para que:
 
 from app.models.tenant import Tenant, Plan, TenantStatus, BillingCycle
 from app.models.user import User, UserRole
+from app.models.user_session import UserSession
 from app.models.category import Category
 from app.models.product import Product, ProductImage, ComplementGroup, ComplementOption
 from app.models.customer import Customer
@@ -21,6 +22,7 @@ from app.models.order import (
 )
 from app.models.billing import Subscription, Invoice, SubscriptionStatus, InvoiceStatus
 from app.models.banner import Banner
+from app.models.chat_message import ChatMessage, ChatSenderRole
 from app.models.platform_settings import PlatformSettings, ASAAS_ENVIRONMENT_CHOICES
 
 __all__ = [
@@ -30,6 +32,7 @@ __all__ = [
     "BillingCycle",
     "User",
     "UserRole",
+    "UserSession",
     "Category",
     "Product",
     "ProductImage",
@@ -47,6 +50,8 @@ __all__ = [
     "SubscriptionStatus",
     "InvoiceStatus",
     "Banner",
+    "ChatMessage",
+    "ChatSenderRole",
     "PlatformSettings",
     "ASAAS_ENVIRONMENT_CHOICES",
 ]

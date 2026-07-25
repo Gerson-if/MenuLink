@@ -27,3 +27,5 @@ from app.controllers.lojista import reports  # noqa: E402,F401
 from app.controllers.lojista import banners  # noqa: E402,F401
 from app.controllers.lojista import settings  # noqa: E402,F401
 from app.controllers.lojista import complements  # noqa: E402,F401
+from app.controllers.lojista import security  # noqa: E402,F401
+from app.controllers.lojista import chat  # noqa: E402,F401

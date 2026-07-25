@@ -1,6 +1,7 @@
 from flask import flash, redirect, render_template, url_for
 
-from app.forms.admin_forms import InvoiceForm
+from app.forms.admin_forms import InvoiceForm, SubscriptionCycleForm
+from app.models import BillingCycle
 from app.services.admin_billing_service import AdminBillingService, BillingError
 from app.services.admin_tenant_service import AdminTenantService
 from app.utils.decorators import super_admin_required
@@ -27,6 +28,46 @@ def invoices_create(tenant_id):
         for field_errors in form.errors.values():
             for error in field_errors:
                 flash(error, "danger")
+
+    return redirect(url_for("admin.tenants_detail", tenant_id=tenant.id))
+
+
+@admin_bp.route("/lojistas/<int:tenant_id>/assinatura/ciclo", methods=["POST"])
+@super_admin_required
+def subscription_update_cycle(tenant_id):
+    tenant = AdminTenantService().get_or_404(tenant_id)
+    form = SubscriptionCycleForm()
+
+    if form.validate_on_submit():
+        service = AdminBillingService()
+        try:
+            subscription = service.get_or_create_subscription(tenant)
+            service.update_subscription_cycle(subscription, BillingCycle(form.billing_cycle.data))
+        except BillingError as exc:
+            flash(str(exc), "danger")
+        else:
+            flash("Ciclo de cobrança desta assinatura atualizado.", "success")
+    else:
+        for field_errors in form.errors.values():
+            for error in field_errors:
+                flash(error, "danger")
+
+    return redirect(url_for("admin.tenants_detail", tenant_id=tenant.id))
+
+
+@admin_bp.route("/lojistas/<int:tenant_id>/assinatura/gerar-proxima-fatura", methods=["POST"])
+@super_admin_required
+def subscription_generate_next_invoice(tenant_id):
+    tenant = AdminTenantService().get_or_404(tenant_id)
+    service = AdminBillingService()
+
+    try:
+        subscription = service.get_or_create_subscription(tenant)
+        invoice = service.generate_next_invoice(subscription)
+    except BillingError as exc:
+        flash(str(exc), "danger")
+    else:
+        flash(f"Próxima fatura gerada: vencimento {invoice.due_date.strftime('%d/%m/%Y')}.", "success")
 
     return redirect(url_for("admin.tenants_detail", tenant_id=tenant.id))
 

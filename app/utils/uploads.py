@@ -46,6 +46,10 @@ IMAGE_QUALITY = 82
 # retina (~2x) do maior tamanho de exibição real.
 LANDING_HERO_IMAGE_DIMENSION = 900
 LANDING_FEATURE_IMAGE_DIMENSION = 160
+# Logo da plataforma (marca-mark da landing, telas de auth e favicon) —
+# nunca é exibida grande (ver marketing/landing.html e layouts/auth.html),
+# então um teto pequeno já cobre até telas retina.
+PLATFORM_LOGO_DIMENSION = 240
 MAX_VIDEO_BYTES = 25 * 1024 * 1024  # 25MB
 # O vídeo do hero toca mudo, em loop, atrás de um degradê escuro
 # (.hero-video-overlay em marketing/landing.html vai até 85% de opacidade) —
@@ -143,15 +147,27 @@ def save_platform_image(subdir: str, file_storage, max_dimension: int = MAX_DIME
     return path
 
 
-def save_platform_video(subdir: str, file_storage) -> str:
+def save_platform_video(subdir: str, file_storage) -> tuple[str, bool]:
     """Vídeo de fundo do hero da landing page. Recomprime de verdade via
     `ffmpeg` (binário do sistema, chamado por subprocess — ver
     _compress_video), removendo o áudio (o <video autoplay muted loop>
-    nunca toca som) e limitando a altura a MAX_VIDEO_HEIGHT sem upscale.
-    `ffmpeg` é uma dependência de SISTEMA (não é `pip install`) — se o
-    binário não estiver disponível no PATH do servidor, ou a compressão
-    falhar/travar por qualquer motivo, cai de volta pro arquivo original
-    sem recomprimir. Nunca bloqueamos um upload por causa disso."""
+    nunca toca som), limitando a altura a MAX_VIDEO_HEIGHT sem upscale, e
+    (importante para não travar ao iniciar) escrevendo o índice do MP4 no
+    começo do arquivo (`+faststart`) — sem isso, o navegador só consegue
+    começar a tocar depois de baixar o arquivo inteiro, o que parece
+    "travado" em conexões mais lentas.
+
+    `ffmpeg` é uma dependência de SISTEMA (não é `pip install` — ver
+    `deploy/install.sh`). Se o binário não estiver disponível no PATH do
+    servidor, ou a compressão falhar/travar por qualquer motivo:
+    - um `.webm` é RECUSADO (não convertido) — sem o ffmpeg não dá pra
+      gerar o `.mp4` que Safari/iOS exige (WebM não tem suporte nativo
+      nenhum no iOS, o vídeo simplesmente não toca);
+    - um `.mp4` é aceito sem recomprimir (mantém o comportamento antigo),
+      mas retorna `compressed=False` para quem chamou avisar o Super
+      Admin que o arquivo pode estar pesado/sem faststart.
+
+    Retorna (caminho_relativo, compressed)."""
     filename = secure_filename(file_storage.filename or "")
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
     if not filename or ext not in ALLOWED_VIDEO_EXTENSIONS:
@@ -163,6 +179,14 @@ def save_platform_video(subdir: str, file_storage) -> str:
     if size > MAX_VIDEO_BYTES:
         raise InvalidVideoError(f"Vídeo muito grande (máximo {MAX_VIDEO_BYTES // (1024 * 1024)}MB). Envie um arquivo já otimizado para web.")
 
+    ffmpeg_available = shutil.which("ffmpeg") is not None
+    if ext == "webm" and not ffmpeg_available:
+        raise InvalidVideoError(
+            "Vídeos .webm exigem o ffmpeg instalado no servidor para serem convertidos para "
+            ".mp4 — sem isso, o vídeo não toca no Safari/iPhone/iPad (sem suporte nativo a "
+            "WebM). Envie um arquivo .mp4, ou peça para instalar o ffmpeg no servidor."
+        )
+
     relative_dir = os.path.join("uploads", "platform", subdir)
     absolute_dir = os.path.join(current_app.config["UPLOAD_FOLDER"], "platform", subdir)
     os.makedirs(absolute_dir, exist_ok=True)
@@ -171,7 +195,7 @@ def save_platform_video(subdir: str, file_storage) -> str:
         tmp_input = os.path.join(tmp_dir, f"input.{ext}")
         file_storage.save(tmp_input)
 
-        compressed_path = _compress_video(tmp_input, tmp_dir)
+        compressed_path = _compress_video(tmp_input, tmp_dir) if ffmpeg_available else None
         if compressed_path:
             new_filename = f"{uuid.uuid4().hex}.mp4"
             shutil.move(compressed_path, os.path.join(absolute_dir, new_filename))
@@ -179,7 +203,8 @@ def save_platform_video(subdir: str, file_storage) -> str:
             new_filename = f"{uuid.uuid4().hex}.{ext}"
             shutil.move(tmp_input, os.path.join(absolute_dir, new_filename))
 
-    return os.path.join(relative_dir, new_filename).replace(os.sep, "/")
+    relative_path = os.path.join(relative_dir, new_filename).replace(os.sep, "/")
+    return relative_path, compressed_path is not None
 
 
 def _compress_video(input_path: str, tmp_dir: str) -> str | None:

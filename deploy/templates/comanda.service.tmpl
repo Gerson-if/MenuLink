@@ -17,11 +17,19 @@ ExecStart=__APP_DIR__/venv/bin/gunicorn \
 Restart=on-failure
 RestartSec=3
 
-# Sandboxing básico (reduz o impacto de uma eventual falha de segurança
-# na aplicação; ajuste se precisar escrever fora destes diretórios).
+# Sandboxing (reduz o impacto de uma eventual falha de segurança na
+# aplicação; ajuste se precisar escrever fora destes diretórios).
 NoNewPrivileges=true
 ProtectSystem=full
 ReadWritePaths=__APP_DIR__
+PrivateTmp=true
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
 
 [Install]
 WantedBy=multi-user.target

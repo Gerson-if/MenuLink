@@ -1,0 +1,2 @@
+{% import "admin/settings/_media_dropzone.html" as media %}
+{{ media.image_dropzone(form.platform_logo, settings.platform_logo, url_for('admin.settings_appearance_remove_logo'), 'Clique para enviar a logo do sistema') }}

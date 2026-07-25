@@ -56,8 +56,11 @@ class PlatformSettingsService:
             raise PaymentGatewayError("Nenhuma chave de API configurada ainda.")
         gateway.ping()
 
-    def update_admin_appearance(self, *, accent_color=None, reset_to_default=False):
+    def update_admin_appearance(
+        self, *, accent_color=None, reset_to_default=False, platform_logo_file=None, support_whatsapp=None,
+    ):
         from app.utils.colors import normalize_hex
+        from app.utils.uploads import PLATFORM_LOGO_DIMENSION, InvalidImageError, delete_product_image_file, save_platform_image
 
         if reset_to_default:
             self.settings.admin_theme_accent = None
@@ -65,12 +68,38 @@ class PlatformSettingsService:
             normalized = normalize_hex(accent_color)
             if normalized:
                 self.settings.admin_theme_accent = normalized
+
+        self.settings.support_whatsapp = (support_whatsapp or "").strip() or None
+
+        if platform_logo_file and platform_logo_file.filename:
+            try:
+                new_logo = save_platform_image("logo", platform_logo_file, max_dimension=PLATFORM_LOGO_DIMENSION)
+            except InvalidImageError:
+                raise
+            else:
+                if self.settings.platform_logo:
+                    delete_product_image_file(self.settings.platform_logo)
+                self.settings.platform_logo = new_logo
+
         db.session.commit()
+        return self.settings
+
+    def remove_platform_logo(self) -> PlatformSettings:
+        """Ação isolada do ícone de remover no dropzone (mesmo padrão de
+        `remove_landing_media`) — efeito imediato, não depende do envio
+        do resto do formulário de Aparência."""
+        from app.utils.uploads import delete_product_image_file
+
+        if self.settings.platform_logo:
+            delete_product_image_file(self.settings.platform_logo)
+            self.settings.platform_logo = None
+            db.session.commit()
         return self.settings
 
     def update_landing_content(
         self, *, hero_title: str, hero_subtitle: str, features: list[dict],
         hero_image_file=None, feature_image_files: list = None,
+        hero_image_opacity: int = 100, hero_image_blur: int = 0,
         hero_video_file=None, theme: str = "chili",
     ) -> PlatformSettings:
         """
@@ -110,15 +139,24 @@ class PlatformSettingsService:
                 hero_image = new_hero_image
 
         hero_video = current.get("hero_video")
+        video_warning = None
         if hero_video_file and hero_video_file.filename:
             try:
-                new_hero_video = save_platform_video("landing", hero_video_file)
+                new_hero_video, compressed = save_platform_video("landing", hero_video_file)
             except InvalidVideoError:
                 raise
             else:
                 if hero_video:
                     delete_product_image_file(hero_video)
                 hero_video = new_hero_video
+                if not compressed:
+                    video_warning = (
+                        "O vídeo foi salvo sem otimização (o servidor não tem o ffmpeg "
+                        "instalado, ou a compressão falhou/expirou) — sem isso o vídeo pode "
+                        "demorar para começar a tocar ou travar em conexões mais lentas. "
+                        "Instale o ffmpeg no servidor (ou rode o instalador de novo) para "
+                        "otimizar automaticamente os próximos vídeos enviados."
+                    )
 
         new_features = []
         for i, f in enumerate(features):
@@ -145,11 +183,17 @@ class PlatformSettingsService:
             "hero_title": hero_title.strip(),
             "hero_subtitle": hero_subtitle.strip(),
             "hero_image": hero_image,
+            "hero_image_opacity": min(max(int(hero_image_opacity or 100), 10), 100),
+            "hero_image_blur": min(max(int(hero_image_blur or 0), 0), 20),
             "hero_video": hero_video,
             "theme": theme if theme in ("chili", "blue", "light") else "chili",
             "features": new_features,
         }
         db.session.commit()
+        # Atributo transiente (não é uma coluna do model, não é persistido)
+        # só para o controller decidir se mostra o aviso de vídeo não
+        # otimizado — ver settings_landing em controllers/admin/settings.py.
+        self.settings.video_compression_warning = video_warning
         return self.settings
 
     LANDING_MEDIA_FIELDS = ("hero_image", "hero_video", "feature1_image", "feature2_image", "feature3_image")

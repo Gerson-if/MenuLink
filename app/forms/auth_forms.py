@@ -2,13 +2,15 @@ from flask_wtf import FlaskForm
 from wtforms import PasswordField, StringField, BooleanField, SubmitField
 from wtforms.validators import DataRequired, Email, Length
 
+from app.utils.validators import bounded_length
+
 
 class LoginForm(FlaskForm):
     email = StringField(
         "E-mail",
         validators=[
             DataRequired(message="Informe o e-mail."),
-            Length(max=180, message="E-mail muito longo (máximo 180 caracteres)."),
+            bounded_length(180, message="E-mail muito longo (máximo 180 caracteres)."),
             Email(message="E-mail inválido."),
         ],
     )

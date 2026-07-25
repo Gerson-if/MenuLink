@@ -4,9 +4,31 @@ Validadores WTForms customizados e reutilizados em vários formulários.
 
 import re
 
-from wtforms.validators import ValidationError
+from wtforms.validators import StopValidation, ValidationError
 
 _PHONE_DIGITS_RE = re.compile(r"\D")
+
+
+def bounded_length(max_chars: int, message: str | None = None):
+    """Corta a validação do campo ANTES de validators mais caros — em
+    especial `Email()`, que usa a lib `email_validator` e fica visivelmente
+    lento (perto de O(n²)) em strings de centenas de milhares de
+    caracteres: um campo de e-mail sem limite antes do Email() deixa
+    /login, /cadastrar e /recuperar-senha (todos públicos, sem login)
+    abertos a alguém travar um worker por vários segundos só colando um
+    texto enorme no campo.
+
+    Use como o PRIMEIRO validator da lista, antes de `Email()` — ao
+    contrário de `wtforms.validators.Length` (que só registra o erro e
+    deixa os validators seguintes rodarem do mesmo jeito), este levanta
+    `StopValidation` e interrompe a cadeia ali mesmo."""
+
+    def _validator(form, field):
+        value = field.data or ""
+        if len(value) > max_chars:
+            raise StopValidation(message or f"Texto muito longo (máximo {max_chars} caracteres).")
+
+    return _validator
 
 
 def phone_number(min_digits: int = 10, max_digits: int = 15):

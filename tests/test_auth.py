@@ -27,6 +27,32 @@ class TestLogin:
         assert resp.status_code == 302
         assert "/login" in resp.headers["Location"]
 
+    def test_next_param_redirects_to_the_originally_requested_page(self, client, login_as):
+        # login_required (Flask-Login) manda pra /login?next=/painel/dashboard
+        # quando um visitante não logado tenta acessar o painel direto —
+        # depois do login, deve voltar pra lá.
+        resp = client.get("/login?next=/painel/dashboard")
+        assert resp.status_code == 200
+
+    def test_open_redirect_via_next_param_is_blocked(self, client):
+        resp = client.post(
+            "/login?next=https://golpe-phishing.example.com",
+            data={"email": "lojista@braseiroecia.com.br", "password": "lojista123"},
+            follow_redirects=False,
+        )
+        assert resp.status_code == 302
+        assert resp.headers["Location"].startswith("/")
+        assert "golpe-phishing" not in resp.headers["Location"]
+
+    def test_protocol_relative_next_param_is_blocked(self, client):
+        resp = client.post(
+            "/login?next=//golpe-phishing.example.com",
+            data={"email": "lojista@braseiroecia.com.br", "password": "lojista123"},
+            follow_redirects=False,
+        )
+        assert resp.status_code == 302
+        assert "golpe-phishing" not in resp.headers["Location"]
+
 
 class TestAuthorization:
     def test_super_admin_cannot_access_lojista_panel(self, client, login_as):
@@ -39,7 +65,11 @@ class TestAuthorization:
         resp = client.get("/admin/dashboard")
         assert resp.status_code == 403
 
-    def test_blocked_tenant_cannot_login(self, app, client, login_as):
+    def test_blocked_payment_tenant_can_login_but_only_reaches_lockout_page(self, app, client, login_as):
+        # BLOCKED_PAYMENT é um caso especial: login é permitido, mas cai
+        # direto na página de regularização de pendências (ver
+        # tests/test_billing_lockout.py para a cobertura completa desse
+        # fluxo) — nunca no painel normal.
         with app.app_context():
             tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
             tenant.status = TenantStatus.BLOCKED_PAYMENT
@@ -47,8 +77,19 @@ class TestAuthorization:
 
         resp = login_as(client, "lojista@braseiroecia.com.br", "lojista123")
         body = resp.get_data(as_text=True)
-        assert "bloqueada por pendência de pagamento" in body
+        assert "Acesso bloqueado por pend" in body
         # não deve ter acessado o dashboard
+        assert "Categorias" not in body
+
+    def test_suspended_tenant_cannot_login(self, app, client, login_as):
+        with app.app_context():
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            tenant.status = TenantStatus.SUSPENDED
+            db.session.commit()
+
+        resp = login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        body = resp.get_data(as_text=True)
+        assert "suspensa" in body
         assert "Categorias" not in body
 
     def test_blocked_tenant_public_menu_returns_404(self, app, client):

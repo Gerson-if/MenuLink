@@ -1,9 +1,12 @@
 from flask import flash, make_response, redirect, render_template, request, url_for
 
-from app.forms.admin_forms import TenantCreateForm, TenantEditForm, TenantStatusReasonForm
+from app.forms.admin_forms import SubscriptionCycleForm, TenantCreateForm, TenantEditForm, TenantStatusReasonForm
+from app.forms.chat_forms import ChatMessageForm
+from app.models import ChatSenderRole
 from app.repositories.plan_repository import PlanRepository
 from app.services.admin_billing_service import AdminBillingService
 from app.services.admin_tenant_service import AdminTenantService, TenantAdminError
+from app.services.chat_service import ChatService
 from app.utils.decorators import super_admin_required
 
 from app.controllers.admin import admin_bp
@@ -49,6 +52,7 @@ def tenants_list():
         pagination=pagination,
         term=term,
         status=status,
+        unread_chat_tenant_ids=ChatService.tenant_ids_with_unread_messages_for_admin(),
     )
 
 
@@ -104,6 +108,14 @@ def tenants_detail(tenant_id):
     billing_service = AdminBillingService()
     invoices = billing_service.list_invoices_for_tenant(tenant.id)
     reason_form = TenantStatusReasonForm()
+    subscription = billing_service.get_subscription_for_tenant(tenant.id)
+
+    cycle_form = SubscriptionCycleForm()
+    if subscription is not None:
+        cycle_form.billing_cycle.data = subscription.billing_cycle.value
+
+    chat_service = ChatService(tenant.id)
+    chat_service.mark_read(reader_role=ChatSenderRole.SUPER_ADMIN)
 
     return render_template(
         "admin/tenants/detail.html",
@@ -111,6 +123,10 @@ def tenants_detail(tenant_id):
         invoices=invoices,
         reason_form=reason_form,
         asaas_configured=billing_service.is_asaas_configured(),
+        subscription=subscription,
+        cycle_form=cycle_form,
+        chat_messages=chat_service.list_messages(),
+        chat_form=ChatMessageForm(),
     )
 
 

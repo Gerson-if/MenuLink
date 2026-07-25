@@ -3,6 +3,8 @@ Autenticação — login único por e-mail/senha, auto-cadastro de lojista e
 recuperação de senha.
 """
 
+from urllib.parse import urlparse
+
 from flask import Blueprint, flash, redirect, render_template, url_for, request
 from flask_login import current_user, login_user, logout_user, login_required
 
@@ -10,8 +12,10 @@ from app.extensions import limiter
 from app.forms.auth_forms import LoginForm
 from app.forms.registration_forms import RegistrationForm
 from app.forms.password_reset_forms import ForgotPasswordForm, ResetPasswordForm
+from app.models import TenantStatus
 from app.services.auth_service import AuthService, AuthError
 from app.services.admin_tenant_service import AdminTenantService, TenantAdminError
+from app.services.session_service import SessionService
 from app.repositories.user_repository import UserRepository
 from app.utils.tokens import generate_reset_token, verify_reset_token
 from app.utils.mailer import send_password_reset_email
@@ -19,9 +23,25 @@ from app.utils.mailer import send_password_reset_email
 auth_bp = Blueprint("auth", __name__)
 
 
+def _is_safe_redirect_target(target: str | None) -> bool:
+    """`?next=` só é seguro se apontar pra um caminho relativo dentro do
+    próprio site — sem isso, um link tipo /login?next=https://golpe.com
+    (ou o equivalente "//golpe.com", que os navegadores tratam como
+    absoluto também) usaria o domínio real do Comanda pra redirecionar,
+    depois do login de verdade, pra um site de phishing."""
+    if not target:
+        return False
+    if not target.startswith("/") or target.startswith("//"):
+        return False
+    parsed = urlparse(target)
+    return not parsed.scheme and not parsed.netloc
+
+
 def _redirect_url_for_user(user) -> str:
     if user.is_super_admin:
         return url_for("admin.dashboard")
+    if user.tenant and user.tenant.status == TenantStatus.BLOCKED_PAYMENT:
+        return url_for("lojista.billing_lockout")
     return url_for("lojista.dashboard")
 
 
@@ -40,9 +60,12 @@ def login():
             flash(str(exc), "danger")
         else:
             login_user(user, remember=form.remember_me.data)
+            SessionService().start_session(user)
             flash(f"Bem-vindo(a), {user.name}!", "success")
             next_url = request.args.get("next")
-            return redirect(next_url or _redirect_url_for_user(user))
+            if _is_safe_redirect_target(next_url):
+                return redirect(next_url)
+            return redirect(_redirect_url_for_user(user))
 
     return render_template("auth/login.html", form=form)
 
@@ -50,6 +73,7 @@ def login():
 @auth_bp.route("/logout")
 @login_required
 def logout():
+    SessionService().revoke_current_session()
     logout_user()
     flash("Você saiu da sua conta.", "info")
     return redirect(url_for("auth.login"))
@@ -84,6 +108,7 @@ def register():
             # precisar logar de novo logo após se cadastrar.
             owner = UserRepository().get_by_email(form.email.data)
             login_user(owner)
+            SessionService().start_session(owner)
             flash(f"Loja '{tenant.name}' criada com sucesso! Bem-vindo(a) à Comanda.", "success")
             return redirect(url_for("lojista.dashboard"))
 

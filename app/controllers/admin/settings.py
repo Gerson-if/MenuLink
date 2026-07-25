@@ -83,15 +83,39 @@ def settings_appearance():
 
     if not form.is_submitted():
         form.accent_color.data = settings.admin_theme_accent or "#E54A36"
+        form.support_whatsapp.data = settings.support_whatsapp or ""
 
     if form.validate_on_submit():
-        service.update_admin_appearance(
-            accent_color=form.accent_color.data, reset_to_default=form.reset_to_default.data,
-        )
-        flash("Aparência do painel atualizada.", "success")
-        return redirect(url_for("admin.settings_appearance"))
+        try:
+            service.update_admin_appearance(
+                accent_color=form.accent_color.data, reset_to_default=form.reset_to_default.data,
+                platform_logo_file=form.platform_logo.data, support_whatsapp=form.support_whatsapp.data,
+            )
+        except InvalidImageError as exc:
+            flash(str(exc), "danger")
+        else:
+            flash("Aparência do painel atualizada.", "success")
+            return redirect(url_for("admin.settings_appearance"))
 
     return render_template("admin/settings/appearance.html", form=form, settings=settings)
+
+
+@admin_bp.route("/configuracoes/aparencia/logo/remover", methods=["POST"])
+@super_admin_required
+def settings_appearance_remove_logo():
+    """Ação isolada do ícone de remover no dropzone da logo do sistema —
+    efeito imediato, não depende do envio do resto do form de Aparência
+    (mesmo padrão de settings_landing_remove_media)."""
+    if not request.headers.get("HX-Request"):
+        return "", 400
+
+    service = PlatformSettingsService()
+    service.remove_platform_logo()
+    settings = service.settings
+
+    form = AdminAppearanceForm()
+    html = render_template("admin/settings/_logo_dropzone_fragment.html", form=form, settings=settings)
+    return make_response(html)
 
 
 @admin_bp.route("/configuracoes/landing", methods=["GET", "POST"])
@@ -105,6 +129,8 @@ def settings_landing():
         content = settings.landing_content_or_default
         form.hero_title.data = content["hero_title"]
         form.hero_subtitle.data = content["hero_subtitle"]
+        form.hero_image_opacity.data = content.get("hero_image_opacity", 100)
+        form.hero_image_blur.data = content.get("hero_image_blur", 0)
         form.theme.data = content.get("theme", "chili")
         features = content["features"]
         for i in range(3):
@@ -119,6 +145,8 @@ def settings_landing():
                 hero_title=form.hero_title.data,
                 hero_subtitle=form.hero_subtitle.data,
                 hero_image_file=form.hero_image.data,
+                hero_image_opacity=form.hero_image_opacity.data,
+                hero_image_blur=form.hero_image_blur.data,
                 hero_video_file=form.hero_video.data,
                 theme=form.theme.data,
                 features=[
@@ -135,6 +163,8 @@ def settings_landing():
             flash(str(exc), "danger")
         else:
             flash("Landing page atualizada.", "success")
+            if getattr(settings, "video_compression_warning", None):
+                flash(settings.video_compression_warning, "warning")
             return redirect(url_for("admin.settings_landing"))
 
     return render_template("admin/settings/landing.html", form=form, settings=settings)

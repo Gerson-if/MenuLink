@@ -1,0 +1,89 @@
+{% extends "layouts/lojista_panel.html" %}
+{% block title %}Configurações — Segurança{% endblock %}
+{% block page_title %}Configurações{% endblock %}
+
+{% block panel_content %}
+{% include "lojista/settings/_tabs.html" %}
+
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="panel mb-4">
+      <div class="panel-title"><i class="bi bi-person"></i> Meus dados</div>
+      <form method="POST" action="{{ url_for('lojista.settings_security_update_profile') }}" novalidate>
+        {{ profile_form.hidden_tag() }}
+        <div class="mb-3">
+          {{ profile_form.name.label(class="form-label small fw-semibold") }}
+          {{ profile_form.name(class="form-control") }}
+        </div>
+        <div class="mb-3">
+          {{ profile_form.email.label(class="form-label small fw-semibold") }}
+          {{ profile_form.email(class="form-control") }}
+          <p class="upload-meta mt-1 mb-0">Este é o e-mail usado para entrar no painel.</p>
+        </div>
+        {{ profile_form.submit(class="btn btn-sm btn-outline-secondary") }}
+      </form>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title"><i class="bi bi-key"></i> Trocar senha</div>
+      <p class="text-muted-custom small mb-3">
+        Notou algo estranho na sua conta? Troque a senha e encerre as
+        outras sessões ao lado — isso derruba imediatamente qualquer
+        acesso que não seja seu.
+      </p>
+      <form method="POST" action="{{ url_for('lojista.settings_security_change_password') }}" novalidate>
+        {{ password_form.hidden_tag() }}
+        <div class="mb-3">
+          {{ password_form.current_password.label(class="form-label small fw-semibold") }}
+          {{ password_form.current_password(class="form-control") }}
+        </div>
+        <div class="mb-3">
+          {{ password_form.new_password.label(class="form-label small fw-semibold") }}
+          {{ password_form.new_password(class="form-control") }}
+        </div>
+        <div class="mb-3">
+          {{ password_form.confirm_password.label(class="form-label small fw-semibold") }}
+          {{ password_form.confirm_password(class="form-control") }}
+        </div>
+        {{ password_form.submit(class="btn btn-sm btn-chili") }}
+      </form>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="panel">
+      <div class="panel-title"><i class="bi bi-laptop"></i> Sessões ativas</div>
+      <p class="text-muted-custom small mb-3">Dispositivos/locais com login ativo no momento nesta conta.</p>
+
+      {% if sessions %}
+      <ul class="list-unstyled mb-3">
+        {% for s in sessions %}
+        <li class="d-flex justify-content-between align-items-center gap-2 py-2" style="border-top: 1px solid var(--card-border);">
+          <div class="small">
+            <div class="text-white">
+              {{ s.user_agent[:60] if s.user_agent else "Dispositivo desconhecido" }}
+              {% if s.id == current_session_id %}<span class="status-badge status-active ms-1">Este dispositivo</span>{% endif %}
+            </div>
+            <div class="text-muted-custom">{{ s.ip_address or "IP desconhecido" }} — último acesso {{ s.last_seen_at.strftime("%d/%m/%Y %H:%M") }}</div>
+          </div>
+          <form method="POST" action="{{ url_for('lojista.settings_security_revoke_session', session_id=s.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-sm btn-outline-danger">{{ "Sair" if s.id == current_session_id else "Encerrar" }}</button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="text-muted-custom small mb-3">Nenhuma sessão rastreada ainda.</p>
+      {% endif %}
+
+      {% if sessions|length > 1 %}
+      <form method="POST" action="{{ url_for('lojista.settings_security_revoke_other_sessions') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-sm btn-outline-danger w-100">Encerrar todas as outras sessões</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

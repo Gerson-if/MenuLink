@@ -131,7 +131,10 @@ class TestTenantStatusTransitions:
 
         client.get("/logout")
         resp = login_as(client, "lojista@braseiroecia.com.br", "lojista123")
-        assert "bloqueada por pendência de pagamento" in resp.get_data(as_text=True)
+        # BLOCKED_PAYMENT permite login, mas só chega na página de
+        # regularização de pendências — nunca no painel normal.
+        assert "Acesso bloqueado por pend" in resp.get_data(as_text=True)
+        assert "Categorias" not in resp.get_data(as_text=True)
 
         client.get("/logout")
         login_as(client, "admin@cardapio.saas", "admin123")

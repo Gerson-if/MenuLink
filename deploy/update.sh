@@ -4,8 +4,25 @@
 # aplica migrations e reinicia a aplicação — com backup do banco e
 # rollback automático se algo der errado no caminho.
 #
+# O que este script garante antes de mexer em qualquer coisa:
+#   - só uma atualização roda por vez (trava com flock);
+#   - não há mudanças locais não commitadas no servidor que poderiam ser
+#     perdidas ou causar um merge inesperado;
+#   - há espaço em disco suficiente para o backup e a atualização;
+#   - o backup do banco foi feito com sucesso (por padrão, aborta a
+#     atualização se o backup falhar — veja ALLOW_UPDATE_WITHOUT_BACKUP
+#     abaixo para forçar mesmo assim).
+#
+# Se qualquer passo depois disso falhar (dependências, migrations, ou a
+# aplicação não voltar a responder), o script reverte sozinho: código,
+# banco de dados e serviço voltam ao estado de antes da atualização.
+#
 # Uso:
 #   sudo bash deploy/update.sh
+#
+#   ALLOW_UPDATE_WITHOUT_BACKUP=1 sudo -E bash deploy/update.sh
+#       Prossegue mesmo se o backup do banco falhar (não recomendado —
+#       um rollback sem backup não consegue restaurar os dados).
 #
 # Pré-requisito: a máquina já configurada por deploy/install.sh (existe
 # deploy/.deploy.conf) e o git remoto já com acesso configurado (SSH ou
@@ -13,9 +30,11 @@
 # `git fetch` / `git pull` — não lida com autenticação.
 
 set -euo pipefail
+umask 077
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONF_FILE="${SCRIPT_DIR}/.deploy.conf"
+LOCK_FILE="${SCRIPT_DIR}/.update.lock"
 
 C_RESET="\033[0m"; C_BOLD="\033[1m"; C_GREEN="\033[32m"; C_YELLOW="\033[33m"; C_RED="\033[31m"
 log()  { echo -e "${C_GREEN}==>${C_RESET} ${C_BOLD}$*${C_RESET}"; }
@@ -27,6 +46,13 @@ die()  { err "$*"; exit 1; }
 [ "$(id -u)" -eq 0 ] || die "Rode este script como root (ex: sudo bash deploy/update.sh)."
 [ -f "$CONF_FILE" ] || die "Não encontrei ${CONF_FILE}. Rode deploy/install.sh primeiro."
 
+# Impede duas atualizações rodando ao mesmo tempo (ex: cron sobrepondo uma
+# execução manual) — o que poderia deixar o serviço num estado inconsistente.
+exec 9>"$LOCK_FILE"
+if ! flock -n 9; then
+    die "Já existe uma atualização em andamento (trava em ${LOCK_FILE}). Aguarde ela terminar."
+fi
+
 # shellcheck disable=SC1090
 source "$CONF_FILE"
 
@@ -35,6 +61,7 @@ SERVICE_USER="${SERVICE_USER:?}"
 SERVICE_NAME="${SERVICE_NAME:-comanda}"
 APP_PORT="${APP_PORT:-8000}"
 DB_ENGINE="${DB_ENGINE:-postgres_local}"
+ALLOW_UPDATE_WITHOUT_BACKUP="${ALLOW_UPDATE_WITHOUT_BACKUP:-0}"
 
 BACKUP_DIR="${APP_DIR}/deploy/backups"
 KEEP_BACKUPS=5
@@ -46,36 +73,77 @@ get_database_url() {
     grep -m1 '^DATABASE_URL=' "${APP_DIR}/.env" | cut -d= -f2- || true
 }
 
+check_local_changes() {
+    # Um servidor de produção não deve ter edições manuais não commitadas:
+    # elas seriam perdidas (ou causariam um merge inesperado) na atualização.
+    local dirty
+    dirty="$(run_as_app_user "cd '${APP_DIR}' && git status --porcelain")"
+    if [ -n "$dirty" ]; then
+        err "Há mudanças locais não commitadas em ${APP_DIR}:"
+        echo "$dirty" | sed 's/^/    /' >&2
+        die "Resolva isso antes (commit, descarte ou stash) — nada foi alterado."
+    fi
+}
+
+check_disk_space() {
+    # Backup + atualização de dependências precisam de espaço livre; evita
+    # deixar o banco de dados pela metade por falta de espaço em disco.
+    local min_kb=524288  # 512 MB
+    local free_kb
+    free_kb="$(df -Pk "${APP_DIR}" | awk 'NR==2 {print $4}')"
+    if [ -n "$free_kb" ] && [ "$free_kb" -lt "$min_kb" ]; then
+        die "Pouco espaço em disco livre em ${APP_DIR} ($((free_kb / 1024)) MB). Libere espaço antes de atualizar."
+    fi
+}
+
 backup_database() {
     mkdir -p "$BACKUP_DIR"
+    chmod 700 "$BACKUP_DIR"
     local db_url; db_url="$(get_database_url)"
     case "$db_url" in
         postgres*)
             log "Fazendo backup do PostgreSQL..."
-            if run_as_app_user "pg_dump --clean --if-exists '${db_url}' > '${BACKUP_DIR}/db_${STAMP}.sql'"; then
+            if run_as_app_user "pg_dump --clean --if-exists '${db_url}' > '${BACKUP_DIR}/db_${STAMP}.sql'" \
+                && [ -s "${BACKUP_DIR}/db_${STAMP}.sql" ]; then
+                chmod 600 "${BACKUP_DIR}/db_${STAMP}.sql"
                 echo "${BACKUP_DIR}/db_${STAMP}.sql" > "${BACKUP_DIR}/.last_backup"
                 info "Backup salvo em ${BACKUP_DIR}/db_${STAMP}.sql"
             else
-                warn "Falha ao gerar backup do banco — continuando mesmo assim, mas sem rede de segurança para o banco."
-                rm -f "${BACKUP_DIR}/.last_backup"
+                rm -f "${BACKUP_DIR}/db_${STAMP}.sql" "${BACKUP_DIR}/.last_backup"
+                if [ "$ALLOW_UPDATE_WITHOUT_BACKUP" = "1" ]; then
+                    warn "Falha ao gerar backup do banco — continuando mesmo assim porque ALLOW_UPDATE_WITHOUT_BACKUP=1 (sem rede de segurança para o banco em caso de rollback)."
+                else
+                    die "Falha ao gerar backup do banco — abortando antes de mexer em qualquer coisa (nada foi alterado). Para prosseguir mesmo assim (não recomendado): ALLOW_UPDATE_WITHOUT_BACKUP=1 sudo -E bash deploy/update.sh"
+                fi
             fi
             ;;
         sqlite*)
+            warn "DATABASE_URL usa SQLite — suportado aqui só por compatibilidade com instalações antigas."
+            warn "deploy/install.sh não oferece mais SQLite; considere migrar para PostgreSQL."
             log "Fazendo backup do SQLite..."
             local db_path="${db_url#sqlite:///}"
             db_path="/${db_path#/}"
             if [ -f "$db_path" ]; then
                 cp "$db_path" "${BACKUP_DIR}/db_${STAMP}.sqlite3"
+                chmod 600 "${BACKUP_DIR}/db_${STAMP}.sqlite3"
                 echo "${BACKUP_DIR}/db_${STAMP}.sqlite3" > "${BACKUP_DIR}/.last_backup"
                 info "Backup salvo em ${BACKUP_DIR}/db_${STAMP}.sqlite3"
             else
-                warn "Arquivo SQLite não encontrado em ${db_path} — pulando backup."
                 rm -f "${BACKUP_DIR}/.last_backup"
+                if [ "$ALLOW_UPDATE_WITHOUT_BACKUP" = "1" ]; then
+                    warn "Arquivo SQLite não encontrado em ${db_path} — continuando mesmo assim (ALLOW_UPDATE_WITHOUT_BACKUP=1)."
+                else
+                    die "Arquivo SQLite não encontrado em ${db_path} — abortando (nada foi alterado). Para prosseguir mesmo assim: ALLOW_UPDATE_WITHOUT_BACKUP=1 sudo -E bash deploy/update.sh"
+                fi
             fi
             ;;
         *)
-            warn "Não reconheci o tipo de DATABASE_URL — pulando backup do banco."
             rm -f "${BACKUP_DIR}/.last_backup"
+            if [ "$ALLOW_UPDATE_WITHOUT_BACKUP" = "1" ]; then
+                warn "Não reconheci o tipo de DATABASE_URL — pulando backup do banco (ALLOW_UPDATE_WITHOUT_BACKUP=1)."
+            else
+                die "Não reconheci o tipo de DATABASE_URL — abortando por segurança (nada foi alterado). Para prosseguir mesmo assim: ALLOW_UPDATE_WITHOUT_BACKUP=1 sudo -E bash deploy/update.sh"
+            fi
             ;;
     esac
 
@@ -136,6 +204,8 @@ rollback() {
 
 cd "$APP_DIR"
 
+check_disk_space
+
 log "Verificando atualizações..."
 run_as_app_user "cd '${APP_DIR}' && git fetch --quiet origin"
 
@@ -154,6 +224,7 @@ fi
 info "Versão atual : ${PREVIOUS_COMMIT:0:7}"
 info "Nova versão  : ${REMOTE_COMMIT:0:7}"
 
+check_local_changes
 backup_database
 
 log "Baixando a nova versão (fast-forward)..."

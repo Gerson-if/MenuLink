@@ -32,6 +32,44 @@
     </div>
     </div>
 
+    <div class="panel mb-4">
+      <div class="panel-title"><i class="bi bi-arrow-repeat"></i> Assinatura e recorrência</div>
+      {% if tenant.plan %}
+      <div class="d-flex flex-wrap align-items-end gap-4">
+        <div>
+          <p class="text-muted-custom small mb-1">Ciclo de cobrança desta loja (independente do plano — o plano só define o padrão para lojas novas)</p>
+          <form method="POST" action="{{ url_for('admin.subscription_update_cycle', tenant_id=tenant.id) }}" class="d-flex align-items-center gap-2">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {{ cycle_form.billing_cycle(class="form-select form-select-sm", style="width: auto;") }}
+            <button type="submit" class="btn btn-sm btn-outline-secondary">Salvar</button>
+          </form>
+        </div>
+        {% if subscription %}
+        <div class="text-muted-custom small">
+          Período atual: {{ subscription.current_period_start.strftime("%d/%m/%Y") }} até {{ subscription.current_period_end.strftime("%d/%m/%Y") }}
+        </div>
+        {% endif %}
+      </div>
+
+      {% set has_open_invoice = invoices|selectattr("status.value", "in", ["pending", "overdue"])|list|length > 0 %}
+      <div class="mt-3" style="border-top: 1px solid var(--card-border); padding-top: 12px;">
+        <form method="POST" action="{{ url_for('admin.subscription_generate_next_invoice', tenant_id=tenant.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-sm btn-chili" {{ "disabled" if has_open_invoice }}>
+            <i class="bi bi-lightning-charge"></i> Gerar próxima fatura automaticamente
+          </button>
+        </form>
+        {% if has_open_invoice %}
+        <p class="text-muted-custom small mt-2 mb-0">Já existe uma fatura em aberto abaixo — resolva-a (pague, cancele ou marque vencida) antes de gerar a próxima.</p>
+        {% else %}
+        <p class="text-muted-custom small mt-2 mb-0">Usa o preço atual do plano ({{ "R$ %.2f"|format(tenant.plan.price_cents / 100) }}) e calcula o vencimento a partir do ciclo acima. Prefere lançar manual? Use o formulário no fim da lista de faturas.</p>
+        {% endif %}
+      </div>
+      {% else %}
+      <p class="text-muted-custom small mb-0">Esta loja não tem plano associado — defina um plano em "Editar dados" para habilitar a recorrência automática.</p>
+      {% endif %}
+    </div>
+
     <div class="panel">
       <div class="panel-title"><i class="bi bi-receipt-cutoff"></i> Faturas</div>
 
@@ -106,6 +144,18 @@
         <div><label class="form-label small">Valor (R$)</label><input type="number" step="0.01" min="0.01" name="amount" class="form-control form-control-sm" style="width: 140px;" required></div>
         <div><label class="form-label small">Vencimento</label><input type="date" name="due_date" class="form-control form-control-sm" required></div>
         <button type="submit" class="btn btn-sm btn-outline-secondary">Lançar fatura</button>
+      </form>
+    </div>
+
+    <div class="panel chat-panel mt-4" id="chat">
+      <div class="panel-title"><i class="bi bi-headset"></i> Conversa com {{ tenant.name }}</div>
+
+      {% include "admin/tenants/_chat_messages.html" %}
+
+      <form method="POST" action="{{ url_for('admin.chat_send', tenant_id=tenant.id) }}" class="d-flex gap-2 mt-3" style="border-top: 1px solid var(--card-border); padding-top: 12px;">
+        {{ chat_form.hidden_tag() }}
+        {{ chat_form.body(class="form-control", rows=2, placeholder="Escreva uma mensagem...", style="resize: none;") }}
+        <button type="submit" class="btn btn-chili align-self-end"><i class="bi bi-send"></i></button>
       </form>
     </div>
   </div>

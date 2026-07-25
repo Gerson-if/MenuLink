@@ -29,6 +29,7 @@ from sqlalchemy.orm import relationship
 
 from app.extensions import db
 from app.models.base import TenantScopedMixin, TimestampMixin, str_enum
+from app.models.tenant import BillingCycle
 
 
 class SubscriptionStatus(str, enum.Enum):
@@ -53,6 +54,14 @@ class Subscription(db.Model, TenantScopedMixin, TimestampMixin):
     status = Column(str_enum(SubscriptionStatus, "subscription_status"), nullable=False, default=SubscriptionStatus.ACTIVE)
     current_period_start = Column(Date, nullable=False)
     current_period_end = Column(Date, nullable=False)
+
+    # Ciclo de cobrança desta assinatura — copiado do Plan no momento em
+    # que a Subscription é criada, mas o Super Admin pode depois
+    # sobrescrever por tenant (ver AdminBillingService.update_subscription_cycle),
+    # sem afetar o Plan (que continua valendo como padrão para novas
+    # assinaturas). É este campo, não `plan.billing_cycle`, que
+    # `generate_next_invoice` usa para calcular a próxima fatura.
+    billing_cycle = Column(str_enum(BillingCycle, "billing_cycle"), nullable=False, default=BillingCycle.MONTHLY)
 
     tenant = relationship("Tenant", back_populates="subscriptions")
     plan = relationship("Plan")

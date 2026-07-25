@@ -6,7 +6,7 @@ Cardápio público — acessível sem login, por slug (/loja/<slug>).
                                  WhatsApp para o cliente finalizar o envio
 """
 
-from flask import Blueprint, current_app, jsonify, render_template, request, session
+from flask import Blueprint, abort, current_app, g, jsonify, render_template, request, session
 from flask_wtf.csrf import validate_csrf, CSRFError
 from marshmallow import ValidationError
 from sqlalchemy.exc import IntegrityError
@@ -14,7 +14,7 @@ from sqlalchemy.orm import selectinload
 
 from app.controllers.lojista.orders import STATUS_LABELS
 from app.extensions import csrf, db, limiter
-from app.models import Category, ComplementGroup, Order, OrderItem, Product
+from app.models import Category, ComplementGroup, Order, OrderItem, Product, Tenant, TenantStatus
 from app.repositories.customer_repository import CustomerRepository
 from app.schemas.checkout_schema import CheckoutSchema
 from app.services.order_service import OrderService, OrderValidationError
@@ -170,7 +170,18 @@ def _build_menu_data(tenant):
 
 @public_bp.route("/<slug>")
 def store_home(slug):
-    tenant = resolve_tenant_by_slug(slug)
+    tenant = Tenant.query.filter_by(slug=slug).first()
+    if tenant is None:
+        abort(404)
+    if tenant.status not in (TenantStatus.TRIAL, TenantStatus.ACTIVE):
+        # Página amigável e específica de "loja indisponível" — não a
+        # página genérica de 404 (que fala em "link" e confundiria quem
+        # chegou aqui pelo link certo do cardápio) e, de propósito, sem
+        # dizer POR QUE está indisponível (pendência de pagamento,
+        # suspensão, etc.) — isso é assunto entre a loja e o Comanda, não
+        # algo que o cliente final precise ou deva saber.
+        return render_template("public/store_unavailable.html", tenant_name=tenant.name), 404
+    g.tenant = tenant
     menu_data = _build_menu_data(tenant)
 
     from app.services.banner_service import BannerService

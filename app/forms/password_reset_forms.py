@@ -2,11 +2,17 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired, Email, Length, EqualTo
 
+from app.utils.validators import bounded_length
+
 
 class ForgotPasswordForm(FlaskForm):
     email = StringField(
         "E-mail cadastrado",
-        validators=[DataRequired(message="Informe o e-mail."), Email(message="E-mail inválido."), Length(max=180)],
+        validators=[
+            DataRequired(message="Informe o e-mail."),
+            bounded_length(180),
+            Email(message="E-mail inválido."),
+        ],
     )
     submit = SubmitField("Enviar link de recuperação")
 

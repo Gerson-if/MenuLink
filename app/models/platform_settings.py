@@ -40,6 +40,8 @@ DEFAULT_LANDING_CONTENT = {
         "pelo link e receba tudo organizado no WhatsApp — sem comissão por pedido."
     ),
     "hero_image": None,
+    "hero_image_opacity": 100,
+    "hero_image_blur": 0,
     "hero_video": None,
     "theme": "chili",
     "features": [
@@ -78,6 +80,21 @@ class PlatformSettings(db.Model, TimestampMixin):
     # lojista compartilham o mesmo design system "chili"). Se vazio, usa
     # o vermelho-tijolo padrão da marca — nunca fica sem cor definida.
     admin_theme_accent = Column(String(7), nullable=True)
+
+    # Logo da própria plataforma (não confundir com Tenant.logo_path, a
+    # logo de cada loja) — usada na landing page, no favicon padrão do
+    # site e nas telas de autenticação (login, cadastro, recuperação de
+    # senha). Se vazio, usa o ícone/marca padrão do Comanda. Não aparece
+    # em nenhuma tela de configuração do lojista nem no cardápio público
+    # de cada loja — essas continuam só com a própria logo do tenant.
+    platform_logo = Column(String(255), nullable=True)
+
+    # WhatsApp de suporte da PLATAFORMA (diferente do whatsapp de cada
+    # loja) — mostrado ao lojista na página de assinatura e, principalmente,
+    # na página de conta bloqueada por inadimplência (ver
+    # lojista/billing_lockout.html), pra ele conseguir ajuda sem precisar
+    # já saber o contato de cor. Dígitos com DDI+DDD, ex: 5567999998888.
+    support_whatsapp = Column(String(20), nullable=True)
 
     # Conteúdo editável da landing page (marketing/landing.html) — JSON
     # pra caber título/subtítulo do hero + lista de features sem exigir

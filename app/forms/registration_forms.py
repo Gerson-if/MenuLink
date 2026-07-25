@@ -2,7 +2,7 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired, Email, Length, Regexp
 
-from app.utils.validators import not_blank, phone_number
+from app.utils.validators import bounded_length, not_blank, phone_number
 
 
 class RegistrationForm(FlaskForm):
@@ -27,7 +27,11 @@ class RegistrationForm(FlaskForm):
     )
     email = StringField(
         "E-mail corporativo",
-        validators=[DataRequired(message="Informe o e-mail."), Email(message="E-mail inválido."), Length(max=180)],
+        validators=[
+            DataRequired(message="Informe o e-mail."),
+            bounded_length(180),
+            Email(message="E-mail inválido."),
+        ],
     )
     password = PasswordField(
         "Criar senha de acesso",

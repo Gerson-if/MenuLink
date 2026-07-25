@@ -27,9 +27,35 @@ demais.
   contexto multi-tenant resolvido automaticamente e autorização por
   papel (`@super_admin_required` / `@lojista_required`, bloqueando com
   403 o acesso cruzado entre papéis).
-- Bloqueio de contas suspensas ou inadimplentes.
+- **Bloqueio de contas suspensas ou inadimplentes.** Suspensa/cancelada
+  não consegue logar. Bloqueada por inadimplência (`BLOCKED_PAYMENT`) é
+  um caso à parte: o login É permitido, mas cai direto numa página
+  restrita só com as faturas em aberto (com link "Pagar agora" quando
+  há cobrança Asaas gerada) e um atalho pro WhatsApp de suporte — sem
+  acessar o resto do painel — pra conseguir regularizar sozinha, sem
+  precisar acionar o suporte. O cardápio público da loja mostra uma
+  página amigável de "indisponível no momento" nesse caso, sem revelar
+  o motivo ao cliente final (ver `public/store_unavailable.html`).
+- **Segurança da própria conta** (`/configuracoes/segurança`, tanto
+  para o lojista quanto para o Super Admin): trocar a senha (exige a
+  atual), editar nome/e-mail de login, e ver/encerrar sessões ativas
+  (com IP, dispositivo e data do último acesso) — encerrar uma sessão
+  específica ou "todas as outras de uma vez" derruba o acesso
+  correspondente no próximo request dele (`UserSession` +
+  `session_guard.py`, checado a cada requisição autenticada). Trocar a
+  senha já encerra automaticamente todas as outras sessões sozinho.
 - CSRF em todos os formulários e no endpoint JSON de checkout.
-- Rate limiting no login (10 tentativas por minuto por IP).
+- Rate limiting no login, cadastro, recuperação e troca de senha (10
+  tentativas por minuto por IP).
+- Proteção contra *open redirect* no parâmetro `?next=` do login — só
+  aceita caminhos internos (`/algo`), nunca uma URL completa ou
+  protocol-relative (`//site.com`) que mandaria o usuário, já
+  autenticado de verdade, pra um site de phishing.
+- Validação de e-mail/senha protegida contra *ReDoS*: um valor
+  absurdamente longo em qualquer um dos dois campos é recusado
+  ANTES do validador de e-mail rodar (`bounded_length`, ver
+  `app/utils/validators.py`) — sem isso, colar um texto muito grande no
+  campo de e-mail deixava a validação visivelmente lenta (quase O(n²)).
 - **Auto-cadastro público do lojista** (`/cadastro`): qualquer pessoa
   cria sua própria loja (status `trial`) e já entra logada no painel,
   com checagem de disponibilidade do endereço do cardápio em tempo
@@ -70,11 +96,19 @@ demais.
 - **Configurações da loja** organizadas em abas: dados da loja (nome,
   WhatsApp, logo), cardápio/link (slug editável, retirada/entrega),
   checkout (taxa de entrega, com isenção configurável acima de um
-  valor mínimo), e assinatura (plano atual + histórico de faturas,
-  somente leitura).
+  valor mínimo), assinatura (plano atual, ciclo de cobrança, faturas
+  com link de pagamento quando há cobrança Asaas gerada, e atalho pro
+  WhatsApp de suporte) e segurança (senha, dados de login, sessões
+  ativas).
 - **Limites de plano**: `Plan.max_categories` / `Plan.max_products`
   checados na criação.
 - **Link do cardápio** exibido no dashboard com botão "Copiar link".
+- **Suporte** (`/painel/suporte`): chat direto com o Super Admin, um
+  fio de conversa por loja — mensagem nova aparece com um selo na
+  sidebar e a lista atualiza sozinha (polling HTMX a cada 5s, sem
+  WebSocket). O Super Admin responde pela própria tela de detalhe do
+  lojista (`/admin/lojistas/<id>`), que também sinaliza mensagem nova
+  na listagem de lojistas.
 
 ### Cardápio público e checkout
 
@@ -148,17 +182,35 @@ demais.
   banco).
 - **Transições de status da conta**, cada uma com motivo opcional
   registrado (`Tenant.blocked_reason` / `blocked_at`): ativar,
-  suspender, bloquear por inadimplência (`TenantStatus.BLOCKED_PAYMENT`,
-  que impede login do lojista e derruba o cardápio público para 404) e
+  suspender, bloquear por inadimplência (`TenantStatus.BLOCKED_PAYMENT`
+  — o lojista continua conseguindo logar, só que confinado a uma
+  página de regularização de pendências; o cardápio público mostra uma
+  mensagem amigável de indisponibilidade, sem expor o motivo) e
   cancelar.
 - **Planos**: CRUD completo (nome, preço, ciclo mensal/anual, limites
   de categorias/produtos/imagens), com ativar/desativar via clique no
   badge (HTMX).
-- **Cobrança (faturas)**: o Super Admin lança faturas manualmente para
-  um lojista. Uma `Subscription` ativa é criada automaticamente na
-  primeira fatura, com o período calculado a partir do ciclo do plano.
+- **Cobrança e recorrência**: fatura manual (valor e vencimento livres,
+  sempre disponível) ou **"Gerar próxima fatura automaticamente"** —
+  calcula o valor a partir do preço atual do plano e o vencimento a
+  partir do ciclo da assinatura (respeitando calendário de verdade:
+  "mensal" a partir de 31/jan cai em 28 ou 29/fev, não em 3/mar),
+  recusando gerar se já existe uma fatura em aberto ou se o plano não
+  tem preço definido. O **ciclo de cobrança é por assinatura** (não só
+  por plano): o Super Admin pode sobrescrever mensal/anual pra uma loja
+  específica sem mudar o plano dela nem afetar as demais. Uma
+  `Subscription` ativa é criada automaticamente na primeira fatura.
   Marcar uma fatura como paga libera automaticamente um lojista
   bloqueado por inadimplência.
+- **Aparência da plataforma** (`/admin/configuracoes/aparencia`): cor
+  de destaque do back-office, logo do sistema (aparece na landing page,
+  no favicon e nas telas de login/cadastro/recuperação de senha — nunca
+  no painel do lojista nem no cardápio de cada loja, que têm identidade
+  própria) e o WhatsApp de suporte mostrado ao lojista (assinatura e
+  página de conta bloqueada).
+- **Landing page** (`/admin/configuracoes/landing`): além dos textos e
+  dos "3 destaques" já existentes, a arte de destaque do hero agora tem
+  controles de opacidade e desfoque com pré-visualização ao vivo.
 - Todas as rotas protegidas por `@super_admin_required`.
 
 ### Integração com Asaas (cobrança de faturas)
@@ -193,6 +245,15 @@ Como funciona:
   lojista (`/admin/lojistas/<id>`) ganha um botão "Gerar cobrança
   Asaas", que cria (ou reaproveita) um cliente no Asaas vinculado ao
   tenant e gera uma cobrança com Pix/boleto/cartão.
+- **Validações antes de chamar o Asaas** (evitam um erro genérico da
+  API — ou pior, uma cobrança quebrada — por um problema que dava pra
+  pegar antes): recusa se a fatura já tem cobrança gerada, se não está
+  pendente/vencida (ex: já paga ou cancelada), se o vencimento já
+  passou (o Asaas não aceita data retroativa), ou se a loja não tem
+  e-mail cadastrado (exigido pra criar o cliente no Asaas). O valor
+  lançado manualmente também tem limites sãos (entre R$ 0,01 e R$
+  100.000,00, vencimento até 2 anos à frente) pra pegar erro de
+  digitação antes de virar cobrança real.
 - **Webhook de confirmação**: configure no painel do Asaas a URL
   `https://SEU-DOMINIO/webhooks/asaas` com o token gerado na tela de
   configurações (ou definido em `ASAAS_WEBHOOK_TOKEN`), para que
@@ -331,21 +392,38 @@ interações HTMX; painel do Super Admin (CRUD de lojistas e planos,
 transições de status, ciclo completo de bloqueio/fatura/liberação);
 pedidos e relatórios (transições de status, cálculo de receita,
 ranking de produtos); auto-cadastro e recuperação de senha; CRUD de
-banners e de grupos/opções de complemento; cálculo de margem; e testes
-de produção (assets críticos servidos localmente sem depender de CDN,
-variáveis de ambiente obrigatórias validadas, QR Code gerado
-localmente).
+banners e de grupos/opções de complemento; cálculo de margem; recorrência
+de cobrança (cálculo de ciclo mensal/anual respeitando calendário,
+geração automática da próxima fatura e suas validações, validações
+extras antes de gerar cobrança Asaas); conta bloqueada por
+inadimplência (login permitido só até a página de pendências, página
+amigável no cardápio público); segurança de sessão (rastreamento e
+revogação de sessões ativas, troca de senha derrubando as demais
+sessões, proteção contra open redirect no `?next=` do login); chat
+lojista↔Super Admin; e testes de produção (assets críticos servidos
+localmente sem depender de CDN, variáveis de ambiente obrigatórias
+validadas, QR Code gerado localmente).
 
 ## Como rodar localmente (SQLite)
 
-> **Dependência de sistema opcional — `ffmpeg`**: o upload de vídeo de
-> fundo da landing page (Super Admin → Landing Page → Vídeo de fundo do
-> hero) é recomprimido automaticamente via o binário `ffmpeg` (não é
-> `pip install`, precisa estar no `PATH`). Sem ele, o upload continua
-> funcionando normalmente, só que sem a recompressão — o arquivo
-> original enviado é salvo como está. Em produção, instale o pacote
-> `ffmpeg` da distribuição (ex: `apt install ffmpeg`) ou inclua-o na
-> imagem/buildpack de deploy.
+> **Dependência de sistema — `ffmpeg`**: o upload de vídeo de fundo da
+> landing page (Super Admin → Landing Page → Vídeo de fundo do hero) é
+> recomprimido via o binário `ffmpeg` (não é `pip install`, precisa
+> estar no `PATH`) — sem isso o navegador só consegue começar a tocar o
+> vídeo depois de baixá-lo inteiro, o que parece "travado" em conexões
+> mais lentas, e um `.webm` sem recompressão simplesmente **não toca**
+> no Safari/iPhone/iPad (sem suporte nativo a WebM). Por isso:
+> - Um `.webm` enviado sem `ffmpeg` disponível é **recusado** (peça pra
+>   instalar o `ffmpeg` ou envie `.mp4` diretamente).
+> - Um `.mp4` enviado sem `ffmpeg` é aceito sem recomprimir, mas o
+>   Super Admin recebe um aviso na hora avisando que o vídeo não foi
+>   otimizado.
+>
+> `deploy/install.sh` já instala `ffmpeg` automaticamente em servidores
+> novos. Localmente, instale o pacote da distribuição (ex:
+> `apt install ffmpeg`, ou `choco install ffmpeg` no Windows) — sem ele,
+> o upload de vídeo na landing continua funcionando dentro das
+> limitações acima, nada quebra.
 
 ```bash
 # 1. Ambiente virtual
@@ -424,34 +502,53 @@ domínio, certificado SSL gratuito com renovação automática.
 sudo bash deploy/install.sh
 ```
 
-O script pergunta, em ordem:
+O script pergunta, em ordem, e explica cada decisão antes de perguntar:
 
-1. **Domínio ou IP** — informe um domínio (ex: `cardapio.seusite.com.br`)
-   ou deixe em branco para acessar direto pelo IP do servidor.
+1. **Domínio** — informe um domínio (ex: `cardapio.seusite.com.br`) ou
+   deixe em branco para acessar direto pelo IP do servidor. Se
+   informar, o script pergunta se `www.` também deve funcionar (e
+   configura o Nginx e o certificado SSL para os dois nomes).
 2. **SSL** (só se você informou um domínio) — se quer configurar
    HTTPS agora, e com qual autoridade certificadora gratuita:
    **Let's Encrypt** (via `certbot`, recomendado) ou **ZeroSSL** (via
    `acme.sh`). Sem domínio, a aplicação sobe em HTTP simples — você
    pode rodar o instalador de novo mais tarde, depois de configurar um
    domínio, para habilitar o SSL.
-3. **Banco de dados** — PostgreSQL local (o script instala e configura
-   sozinho, recomendado), SQLite (mais simples, sem serviço extra, ok
-   para pouco tráfego) ou uma `DATABASE_URL` externa que você já tenha
-   (RDS, Supabase, etc.).
+3. **Banco de dados** — só PostgreSQL em produção (local, com o script
+   criando o banco e o usuário para você, ou uma `DATABASE_URL`
+   externa que você já tenha — RDS, Supabase, Neon, etc.). **SQLite
+   não é oferecido aqui de propósito** — trava sob concorrência e não
+   segura múltiplos lojistas gravando ao mesmo tempo; continua sendo a
+   opção usada só no desenvolvimento local. Escolhendo PostgreSQL
+   local, você define o nome do banco, o usuário e a senha (ou deixa o
+   script gerar uma senha forte sozinho) — essas credenciais são
+   geradas de forma independente a cada instalação, para que o vazamento
+   de uma não comprometa outro servidor, e são mostradas (uma única
+   vez) ao final da instalação.
 4. **Usuário de sistema** que vai rodar a aplicação (criado
    automaticamente, sem privilégios de root).
+5. **Firewall (ufw)**, opcional — libera só SSH (a porta é detectada
+   automaticamente), HTTP e HTTPS, bloqueando o resto.
 
 A partir daí é tudo automático: instala os pacotes necessários, cria o
 ambiente virtual e instala as dependências Python, gera uma
-`SECRET_KEY` aleatória e o arquivo `.env` de produção, roda as
-migrations, oferece para criar o Super Admin (`flask create-admin`,
-interativo), sobe o Gunicorn como serviço systemd (reinicia sozinho se
-cair ou se o servidor reiniciar) e configura o Nginx como proxy
-reverso — com certificado SSL já instalado, se você escolheu essa
-opção.
+`SECRET_KEY` aleatória e o arquivo `.env` de produção (permissão 600),
+roda as migrations, oferece para criar o Super Admin
+(`flask create-admin`, interativo), sobe o Gunicorn como serviço
+systemd com um sandboxing básico (reinicia sozinho se cair ou se o
+servidor reiniciar) e configura o Nginx como proxy reverso — com
+certificado SSL já instalado, se você escolheu essa opção.
 
-Ao final, o script mostra a URL de acesso e os comandos mais usados
-(ver logs, reiniciar, atualizar).
+Ao final, o script mostra a URL de acesso, os comandos mais usados
+(ver logs, reiniciar, atualizar) e — se criou um PostgreSQL local — o
+nome do banco, o usuário e a senha gerados, além de salvar essa mesma
+informação uma única vez em `/root/comanda-db-credentials-<data>.txt`
+(permissão 600, só o root lê), para você guardar num gerenciador de
+senhas e depois apagar o arquivo.
+
+É seguro rodar o instalador de novo (ex: para reconfigurar Nginx/SSL
+depois de apontar um domínio) — ele avisa antes de sobrescrever o que
+já existe e nunca apaga dados do banco.
 
 ### Atualizando para uma versão mais nova
 
@@ -462,18 +559,30 @@ sudo bash deploy/update.sh
 Esse script busca a versão mais recente do repositório e aplica a
 atualização com segurança:
 
-1. Faz backup do banco de dados (dump do PostgreSQL ou cópia do arquivo
-   SQLite) antes de mudar qualquer coisa.
-2. Atualiza o código só por *fast-forward* — se houver alterações
-   locais divergentes no servidor, ele para sem tocar em nada, em vez
-   de arriscar um merge malfeito.
-3. Atualiza as dependências Python e roda as migrations pendentes.
-4. Reinicia o serviço e confere se a aplicação voltou a responder
+1. Garante que só uma atualização roda por vez (trava com `flock`) e
+   que não há espaço em disco insuficiente para o backup.
+2. Confere que não há mudanças locais não commitadas no servidor (ex:
+   alguém editou um arquivo manualmente por SSH) — se houver, para
+   sem tocar em nada, para não perder essas mudanças nem arriscar um
+   merge malfeito.
+3. Faz backup do banco de dados (dump do PostgreSQL, ou cópia do
+   arquivo se for uma instalação antiga em SQLite) antes de mudar
+   qualquer coisa. **Por padrão, se o backup falhar a atualização é
+   abortada** — sem backup, um rollback não teria como restaurar os
+   dados. Para forçar mesmo assim (não recomendado):
+   `ALLOW_UPDATE_WITHOUT_BACKUP=1 sudo -E bash deploy/update.sh`.
+4. Atualiza o código só por *fast-forward*.
+5. Atualiza as dependências Python e roda as migrations pendentes.
+6. Reinicia o serviço e confere se a aplicação voltou a responder
    (`GET /healthz`).
-5. **Se qualquer passo falhar**, reverte automaticamente o código para
-   a versão anterior, restaura o backup do banco e reinicia o serviço
-   — a aplicação não fica fora do ar por causa de uma atualização
-   quebrada.
+7. **Se qualquer passo a partir do 4 falhar**, reverte automaticamente
+   o código para a versão anterior, restaura o backup do banco e
+   reinicia o serviço — a aplicação não fica fora do ar por causa de
+   uma atualização quebrada.
+
+Os backups ficam em `deploy/backups/` (diretório e arquivos com
+permissão restrita, só o usuário de sistema e o root leem — um dump
+do banco contém dados de todos os lojistas).
 
 Programe-o para rodar sozinho (ex: `cron` semanal) se quiser manter o
 servidor sempre atualizado sem intervenção manual:

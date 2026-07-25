@@ -3,13 +3,33 @@ from flask import flash, make_response, redirect, render_template, request, url_
 from app.forms.tenant_settings_forms import (
     AppearanceSettingsForm, CheckoutSettingsForm, MenuSettingsForm, OpeningHoursForm, StoreInfoForm,
 )
+from app.models import InvoiceStatus, TenantStatus
 from app.services.admin_billing_service import AdminBillingService
 from app.services.tenant_settings_service import TenantSettingsError, TenantSettingsService
-from app.utils.decorators import lojista_required
+from app.utils.decorators import lojista_login_required, lojista_required
 from app.utils.tenant_context import get_current_tenant
 from app.utils.uploads import InvalidImageError
 
 from app.controllers.lojista import lojista_bp
+
+
+@lojista_bp.route("/conta-bloqueada")
+@lojista_login_required
+def billing_lockout():
+    """Única página acessível por uma conta BLOCKED_PAYMENT (ver
+    `lojista_required`, que redireciona pra cá) — mostra só as faturas em
+    aberto, pra regularizar sem precisar do suporte. Uma conta que NÃO
+    está bloqueada e cair aqui (ex: link salvo de quando esteve
+    bloqueada) volta direto pro painel normal."""
+    tenant = get_current_tenant()
+    if tenant.status != TenantStatus.BLOCKED_PAYMENT:
+        return redirect(url_for("lojista.dashboard"))
+
+    invoices = AdminBillingService().list_invoices_for_tenant(tenant.id)
+    open_invoices = [inv for inv in invoices if inv.status in (InvoiceStatus.PENDING, InvoiceStatus.OVERDUE)]
+    return render_template(
+        "lojista/billing_lockout.html", tenant=tenant, open_invoices=open_invoices,
+    )
 
 
 @lojista_bp.route("/configuracoes/loja", methods=["GET", "POST"])
@@ -200,5 +220,9 @@ def settings_appearance():
 @lojista_required
 def settings_subscription():
     tenant = get_current_tenant()
-    invoices = AdminBillingService().list_invoices_for_tenant(tenant.id)
-    return render_template("lojista/settings/subscription.html", tenant=tenant, invoices=invoices)
+    service = AdminBillingService()
+    invoices = service.list_invoices_for_tenant(tenant.id)
+    subscription = service.get_subscription_for_tenant(tenant.id)
+    return render_template(
+        "lojista/settings/subscription.html", tenant=tenant, invoices=invoices, subscription=subscription,
+    )
