@@ -596,6 +596,15 @@ body:has(.app-shell) .toast-flash-stack { top: 84px; }
   /* Espaço reservado embaixo do conteúdo pra barra fixa não tapar o
      final da página (botões de salvar, última linha de tabela, etc). */
   .content { padding-bottom: 82px; }
+
+  /* Evita duplicar na gaveta lateral os destinos que já estão na barra
+     inferior — o "Mais" da barra abre essa mesma gaveta, então só faz
+     sentido ela trazer o que NÃO está embaixo (relatórios, config.,
+     pedidos novos/histórico, etc). Marcadas com .nav-mobile-hide no
+     template. Só entra nesse breakpoint (onde a sidebar vira gaveta);
+     no desktop (sidebar fixa, sem a barra inferior) esses itens seguem
+     aparecendo normalmente. */
+  .nav-food .nav-mobile-hide { display: none; }
 }
 
 /* Botão sol/lua de alternar claro/escuro (topbar dos painéis) — mesma
@@ -619,12 +628,18 @@ body:has(.app-shell) .toast-flash-stack { top: 84px; }
 
 @media (max-width: 991.98px) {
   .topbar { padding: 14px 20px; }
-  .content { padding: 16px; }
+  /* padding-bottom fica de fora do shorthand acima de propósito: esse
+     `.content` mais específico (mesmo media query, mas escrito depois no
+     arquivo) vencia a cascata e zerava o espaço reservado pra barra
+     inferior fixa (regra logo acima, ".bottom-tab-bar"), fazendo o fim
+     de várias páginas (botão salvar, última linha de tabela/cardápio)
+     ficar escondido atrás dos ícones sem dar pra rolar até lá. */
+  .content { padding: 16px; padding-bottom: 82px; }
   .kpi-card .kpi-value { font-size: 1.4rem; }
 }
 @media (max-width: 575.98px) {
   .topbar h1 { font-size: 1.05rem; }
-  .content { padding: 12px; }
+  .content { padding: 12px; padding-bottom: 82px; }
   .panel { padding: 16px; }
 
   /* Chat no celular: cabeçalho mais compacto (o link "Ver dados da loja"

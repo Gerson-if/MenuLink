@@ -42,13 +42,13 @@
         <span class="nav-label" x-text="collapsed ? 'Expandir menu' : 'Recolher menu'"></span>
       </button>
 
-      <a href="{{ url_for('admin.dashboard') }}" class="nav-link {{ 'active' if request.endpoint == 'admin.dashboard' }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Métricas Core">
+      <a href="{{ url_for('admin.dashboard') }}" class="nav-link nav-mobile-hide {{ 'active' if request.endpoint == 'admin.dashboard' }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Métricas Core">
         <i class="bi bi-speedometer2"></i><span class="nav-label">Métricas Core</span>
       </a>
-      <a href="{{ url_for('admin.tenants_list') }}" class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.tenants') }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Gerenciar Lojistas">
+      <a href="{{ url_for('admin.tenants_list') }}" class="nav-link nav-mobile-hide {{ 'active' if request.endpoint and request.endpoint.startswith('admin.tenants') }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Gerenciar Lojistas">
         <i class="bi bi-shop"></i><span class="nav-label">Gerenciar Lojistas</span>
       </a>
-      <a href="{{ url_for('admin.plans_list') }}" class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.plans') }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Planos &amp; Limites">
+      <a href="{{ url_for('admin.plans_list') }}" class="nav-link nav-mobile-hide {{ 'active' if request.endpoint and request.endpoint.startswith('admin.plans') }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Planos &amp; Limites">
         <i class="bi bi-sliders"></i><span class="nav-label">Planos &amp; Limites</span>
       </a>
       <a href="{{ url_for('admin.settings_asaas') }}" class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.settings_asaas') }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Cobrança (Asaas)">
@@ -69,7 +69,7 @@
       <a href="{{ url_for('admin.settings_legal') }}" class="nav-link {{ 'active' if request.endpoint == 'admin.settings_legal' }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Termos &amp; Privacidade">
         <i class="bi bi-file-earmark-text"></i><span class="nav-label">Termos &amp; Privacidade</span>
       </a>
-      <a href="{{ url_for('admin.support_inbox') }}" class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.support_inbox') }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Central de Suporte">
+      <a href="{{ url_for('admin.support_inbox') }}" class="nav-link nav-mobile-hide {{ 'active' if request.endpoint and request.endpoint.startswith('admin.support_inbox') }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Central de Suporte">
         <i class="bi bi-headset"></i><span class="nav-label">Central de Suporte</span>
         {% set unread = admin_unread_chat_count() %}
         {% if unread %}<span class="status-badge status-blocked ms-1">{{ unread }}</span>{% endif %}
