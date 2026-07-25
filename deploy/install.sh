@@ -157,6 +157,161 @@ run_as_app_user() {
 }
 
 # --------------------------------------------------------------------------
+# Menu principal — só aparece quando já existe uma instalação anterior
+# (deploy/.deploy.conf). Numa instalação nova o script segue direto para o
+# fluxo guiado de sempre (seções 1 em diante). As funções abaixo usam as
+# variáveis carregadas do CONF_FILE (APP_DIR, SERVICE_USER, SERVICE_NAME,
+# APP_PORT, DOMAIN, WWW_ALIAS, SSL_ENABLED, DB_ENGINE) — por isso só são
+# chamadas depois do "source $CONF_FILE" feito na seção 0.
+# --------------------------------------------------------------------------
+
+manage_super_admin_menu() {
+    while true; do
+        echo
+        log "Gerenciar Super Admin"
+        run_as_app_user "cd '${APP_DIR}' && venv/bin/flask list-admins" \
+            || warn "Não consegui listar os Super Admins agora (veja o erro acima)."
+        echo
+        echo "  1) Criar um novo Super Admin (ou redefinir a senha de um já existente)"
+        echo "  2) Trocar o e-mail de um Super Admin existente"
+        echo "  3) Remover um Super Admin"
+        echo "  4) Voltar ao menu principal"
+        ask "Escolha uma opção [1-4]" "4"
+        case "$REPLY_VALUE" in
+            1)
+                info "Se o e-mail informado já existir, só a senha dele é atualizada (o cadastro não é duplicado)."
+                run_as_app_user "cd '${APP_DIR}' && venv/bin/flask create-admin" \
+                    || warn "Não consegui criar/atualizar o Super Admin agora (veja o erro acima)."
+                ;;
+            2)
+                ask "E-mail ATUAL do Super Admin" ""
+                admin_old_email="$REPLY_VALUE"
+                [ -n "$admin_old_email" ] || { warn "E-mail em branco, operação cancelada."; continue; }
+                ask "NOVO e-mail" ""
+                admin_new_email="$REPLY_VALUE"
+                [ -n "$admin_new_email" ] || { warn "E-mail em branco, operação cancelada."; continue; }
+                run_as_app_user "cd '${APP_DIR}' && venv/bin/flask update-admin-email --old '${admin_old_email}' --new '${admin_new_email}'" \
+                    || warn "Não consegui trocar o e-mail agora (veja o erro acima)."
+                ;;
+            3)
+                ask "E-mail do Super Admin a remover" ""
+                admin_del_email="$REPLY_VALUE"
+                [ -n "$admin_del_email" ] || { warn "E-mail em branco, operação cancelada."; continue; }
+                warn "Isso remove o acesso desse Super Admin imediatamente e não pode ser desfeito."
+                if confirm "Confirma a remoção de '${admin_del_email}'?" "n"; then
+                    run_as_app_user "cd '${APP_DIR}' && venv/bin/flask remove-admin --email '${admin_del_email}' --yes" \
+                        || warn "Não consegui remover o Super Admin agora (veja o erro acima)."
+                else
+                    info "Remoção cancelada."
+                fi
+                ;;
+            4|*) return 0 ;;
+        esac
+    done
+}
+
+run_verificacoes() {
+    echo
+    log "Verificações do sistema"
+
+    if systemctl is-active --quiet "${SERVICE_NAME}" 2>/dev/null; then
+        info "✔ Serviço '${SERVICE_NAME}' está ativo."
+    else
+        warn "✘ Serviço '${SERVICE_NAME}' NÃO está ativo. Diagnóstico: systemctl status ${SERVICE_NAME}"
+    fi
+
+    if command -v nginx >/dev/null 2>&1; then
+        if nginx -t >/dev/null 2>&1; then
+            info "✔ Configuração do Nginx é válida."
+        else
+            warn "✘ 'nginx -t' encontrou um problema na configuração atual (rode 'nginx -t' para ver o erro)."
+        fi
+        if systemctl is-active --quiet nginx 2>/dev/null; then
+            info "✔ Nginx está ativo."
+        else
+            warn "✘ Nginx NÃO está ativo."
+        fi
+    fi
+
+    if command -v curl >/dev/null 2>&1; then
+        http_code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "http://127.0.0.1:${APP_PORT}/" 2>/dev/null || echo "000")"
+        if [ "$http_code" != "000" ]; then
+            info "✔ Aplicação responde localmente na porta ${APP_PORT} (HTTP ${http_code})."
+        else
+            warn "✘ Aplicação não respondeu localmente na porta ${APP_PORT} — diagnóstico: journalctl -u ${SERVICE_NAME} -n 50"
+        fi
+    fi
+
+    if run_as_app_user "cd '${APP_DIR}' && venv/bin/flask check-db" >/dev/null 2>&1; then
+        info "✔ Conexão com o banco de dados OK."
+    else
+        warn "✘ Não consegui confirmar a conexão com o banco de dados — diagnóstico: sudo -u ${SERVICE_USER} bash -lc \"cd ${APP_DIR} && venv/bin/flask check-db\""
+    fi
+
+    if [ "${SSL_ENABLED:-n}" = "s" ] && [ -n "${DOMAIN:-}" ] && command -v openssl >/dev/null 2>&1; then
+        cert_expiry="$(echo | timeout 5 openssl s_client -servername "${DOMAIN}" -connect "${DOMAIN}:443" 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)"
+        if [ -n "$cert_expiry" ]; then
+            info "✔ Certificado SSL de ${DOMAIN} válido até: ${cert_expiry}"
+        else
+            warn "✘ Não consegui confirmar o certificado SSL de ${DOMAIN} (porta 443 pode estar bloqueada ou o certificado ainda não foi emitido)."
+        fi
+    fi
+
+    if [ -d "${APP_DIR}" ]; then
+        disk_info="$(df -h "${APP_DIR}" 2>/dev/null | awk 'NR==2{print $4" livres de "$2" ("$5" em uso)"}')"
+        [ -n "$disk_info" ] && info "Espaço em disco em ${APP_DIR}: ${disk_info}"
+    fi
+
+    echo
+    ask "Pressione Enter para voltar ao menu" ""
+}
+
+run_update_script() {
+    echo
+    log "Rodando deploy/update.sh..."
+    if bash "${SCRIPT_DIR}/update.sh"; then
+        info "deploy/update.sh terminou (veja o resumo/STATUS acima para o resultado exato)."
+    else
+        update_rc=$?
+        warn "deploy/update.sh terminou com código de saída ${update_rc} — veja as mensagens acima (linha STATUS=...) para entender o que aconteceu."
+    fi
+    echo
+    ask "Pressione Enter para voltar ao menu" ""
+}
+
+main_menu() {
+    while true; do
+        echo
+        log "O que você quer fazer?"
+        if [ -f "$CONF_FILE" ]; then
+            echo "  1) Rodar atualização (buscar e aplicar a versão mais nova do repositório)"
+            echo "  2) Verificações do sistema (serviço, Nginx, banco de dados, SSL...)"
+            echo "  3) Gerenciar Super Admin (criar, redefinir senha, trocar e-mail, remover)"
+            echo "  4) Reconfigurar esta instalação (domínio, SSL, banco, systemd, Nginx...)"
+            echo "  5) Sair"
+            ask "Escolha uma opção [1-5]" "5"
+            case "$REPLY_VALUE" in
+                1) run_update_script ;;
+                2) run_verificacoes ;;
+                3) manage_super_admin_menu ;;
+                4) return 0 ;;
+                5) echo "Até mais!"; exit 0 ;;
+                *) warn "Opção inválida." ;;
+            esac
+        else
+            echo "  1) Instalar o Comanda agora (fluxo guiado completo)"
+            echo "  2) Sair"
+            ask "Escolha uma opção [1-2]" "1"
+            case "$REPLY_VALUE" in
+                1) return 0 ;;
+                2) echo "Até mais!"; exit 0 ;;
+                *) warn "Opção inválida." ;;
+            esac
+        fi
+    done
+}
+
+# --------------------------------------------------------------------------
 # 0. Checagens iniciais
 # --------------------------------------------------------------------------
 
@@ -177,9 +332,16 @@ echo "Diretório do projeto: ${APP_DIR}"
 echo
 
 if [ -f "$CONF_FILE" ]; then
-    warn "Já existe uma configuração de deploy anterior em ${CONF_FILE}."
-    if ! confirm "Deseja reconfigurar (isso pode sobrescrever .env, Nginx e o serviço systemd)?" "n"; then
-        die "Instalação cancelada. Use deploy/update.sh para apenas atualizar uma instalação existente."
+    # shellcheck source=/dev/null
+    source "$CONF_FILE"
+fi
+
+main_menu   # só retorna (sem sair do script) quando o usuário decide instalar ou reconfigurar
+
+if [ -f "$CONF_FILE" ]; then
+    warn "Reconfigurando uma instalação existente em ${CONF_FILE} — isso pode sobrescrever .env, Nginx e o serviço systemd (os dados do banco não são apagados)."
+    if ! confirm "Continuar com a reconfiguração?" "n"; then
+        die "Reconfiguração cancelada. Use a opção 'Sair' do menu se só queria consultar algo."
     fi
 fi
 
