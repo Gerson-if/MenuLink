@@ -32,9 +32,16 @@
         <li>Produtos: {{ plan.max_products if plan.max_products is not none else "ilimitado" }}</li>
         <li>Imagens por produto: {{ plan.max_images_per_product }}</li>
       </ul>
-      <button type="button" class="btn btn-sm btn-outline-secondary"
-              hx-get="{{ url_for('admin.plans_edit', plan_id=plan.id) }}" hx-target="#plan-drawer-body" hx-swap="innerHTML"
-              data-bs-toggle="offcanvas" data-bs-target="#planDrawer">Editar</button>
+      <div class="d-flex gap-2">
+        <button type="button" class="btn btn-sm btn-outline-secondary"
+                hx-get="{{ url_for('admin.plans_edit', plan_id=plan.id) }}" hx-target="#plan-drawer-body" hx-swap="innerHTML"
+                data-bs-toggle="offcanvas" data-bs-target="#planDrawer">Editar</button>
+        <form method="POST" action="{{ url_for('admin.plans_delete', plan_id=plan.id) }}" hx-boost="false"
+              data-confirm-message="Excluir o plano '{{ plan.name }}'? Só é possível se nenhuma loja estiver usando ele.">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-sm btn-outline-danger">Excluir</button>
+        </form>
+      </div>
     </div>
   </div>
   {% endfor %}

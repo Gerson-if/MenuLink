@@ -1,7 +1,11 @@
 from app.extensions import db
-from app.models import Plan
+from app.models import Plan, Subscription, Tenant
 from app.repositories.plan_repository import PlanRepository
 from app.utils.slugs import generate_unique_slug
+
+
+class PlanAdminError(Exception):
+    """Erro de regra de negócio, com mensagem segura para exibir ao Super Admin."""
 
 
 class AdminPlanService:
@@ -60,3 +64,32 @@ class AdminPlanService:
         plan.is_active = not plan.is_active
         db.session.commit()
         return plan
+
+    def delete(self, plan: Plan) -> None:
+        """Exclui um plano permanentemente — só quando ele está
+        completamente sem uso (nenhuma loja nele, nenhuma assinatura no
+        histórico), pra nunca chegar a violar a foreign key de
+        tenants.plan_id / subscriptions.plan_id (nenhuma delas tem
+        `ondelete` definido, então o banco recusaria com IntegrityError).
+        Se estiver em uso, recusa com uma mensagem clara em vez de deixar
+        o erro do banco estourar — quem quiser excluir mesmo assim
+        precisa primeiro migrar as lojas para outro plano (editando cada
+        uma) ou simplesmente desativar o plano (ver toggle_active), que
+        já impede que ele seja escolhido em lojas novas sem apagar o
+        histórico de quem já está nele."""
+        tenants_count = Tenant.query.filter_by(plan_id=plan.id).count()
+        subscriptions_count = Subscription.query.filter_by(plan_id=plan.id).count()
+        if tenants_count or subscriptions_count:
+            parts = []
+            if tenants_count:
+                parts.append(f"{tenants_count} loja(s) atualmente")
+            if subscriptions_count:
+                parts.append(f"{subscriptions_count} assinatura(s) no histórico de cobrança")
+            raise PlanAdminError(
+                "Não é possível excluir: este plano ainda está em uso por "
+                + " e ".join(parts)
+                + ". Mude essas lojas para outro plano antes de excluir, ou apenas desative o plano "
+                "(assim ele some das opções para lojas novas, sem apagar nada de quem já usa ele)."
+            )
+        db.session.delete(plan)
+        db.session.commit()

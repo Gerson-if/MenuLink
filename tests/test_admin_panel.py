@@ -278,6 +278,36 @@ class TestPlanManagement:
         resp = client.get("/admin/planos")
         assert resp.status_code == 403
 
+    def test_can_delete_unused_plan(self, app, client, login_as):
+        login_as(client, "admin@cardapio.saas", "admin123")
+
+        from app.models import Plan as PlanModel
+
+        with app.app_context():
+            plan = PlanModel(name="Descartável", slug="descartavel-plano", price_cents=1000, billing_cycle="monthly")
+            db.session.add(plan)
+            db.session.commit()
+            plan_id = plan.id
+
+        resp = client.post(f"/admin/planos/{plan_id}/excluir", follow_redirects=True)
+        assert "excluído com sucesso" in resp.get_data(as_text=True)
+        with app.app_context():
+            assert db.session.get(PlanModel, plan_id) is None
+
+    def test_cannot_delete_plan_in_use_by_tenant(self, app, client, login_as):
+        login_as(client, "admin@cardapio.saas", "admin123")
+        with app.app_context():
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            plan_id = tenant.plan_id
+            assert plan_id is not None
+
+        resp = client.post(f"/admin/planos/{plan_id}/excluir", follow_redirects=True)
+        assert "Não é possível excluir" in resp.get_data(as_text=True)
+        with app.app_context():
+            from app.models import Plan as PlanModel
+
+            assert db.session.get(PlanModel, plan_id) is not None  # não foi excluído
+
 
 class TestBilling:
     def test_create_invoice_and_mark_paid_unblocks_tenant(self, app, client, login_as):

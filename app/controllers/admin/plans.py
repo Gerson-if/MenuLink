@@ -1,7 +1,7 @@
 from flask import flash, redirect, render_template, request, url_for
 
 from app.forms.admin_forms import PlanForm
-from app.services.admin_plan_service import AdminPlanService
+from app.services.admin_plan_service import AdminPlanService, PlanAdminError
 from app.utils.decorators import super_admin_required
 from app.utils.htmx import hx_fragment_response
 
@@ -110,3 +110,18 @@ def plans_toggle(plan_id):
     plan = service.get_or_404(plan_id)
     service.toggle_active(plan)
     return render_template("admin/plans/_status_badge.html", plan=plan)
+
+
+@admin_bp.route("/planos/<int:plan_id>/excluir", methods=["POST"])
+@super_admin_required
+def plans_delete(plan_id):
+    service = AdminPlanService()
+    plan = service.get_or_404(plan_id)
+    name = plan.name
+    try:
+        service.delete(plan)
+    except PlanAdminError as exc:
+        flash(str(exc), "danger")
+    else:
+        flash(f"Plano '{name}' excluído com sucesso.", "success")
+    return redirect(url_for("admin.plans_list"))
