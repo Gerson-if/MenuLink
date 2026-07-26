@@ -40,8 +40,7 @@ from app.models import (
     User,
     UserRole,
 )
-from app.utils.demo_media import generate_banner, generate_logo, generate_product_card
-from app.utils.uploads import dominant_edge_color
+from app.utils.demo_media import generate_banner, generate_logo, generate_product_card, save_generated_image
 
 # Categoria (pelo slug, ver _seed_demo_catalog) -> "glifo" usado para
 # desenhar a foto de demonstração dos produtos dela (ver _seed_demo_media
@@ -134,6 +133,25 @@ def seed_db():
     else:
         click.echo("• Loja demo já existia, pulando.")
 
+    # --- Horário de funcionamento demo ---
+    # Idempotente e também serve de backfill (assim como o cardápio e as
+    # imagens abaixo) — uma churrascaria abre à noite, fechada às
+    # segundas. Preenchido pra explorar o status "aberto agora"/"fecha
+    # em breve" do cardápio público (ver Tenant.opening_status).
+    if not tenant.opening_hours:
+        tenant.opening_hours = {
+            "mon": {"closed": True},
+            "tue": {"open": "18:00", "close": "23:00"},
+            "wed": {"open": "18:00", "close": "23:00"},
+            "thu": {"open": "18:00", "close": "23:00"},
+            "fri": {"open": "18:00", "close": "23:30"},
+            "sat": {"open": "12:00", "close": "23:30"},
+            "sun": {"open": "12:00", "close": "22:00"},
+        }
+        click.echo("✔ Horário de funcionamento demo definido.")
+    else:
+        click.echo("• Loja demo já tinha horário de funcionamento, pulando.")
+
     # --- Cardápio demo ---
     # Roda tanto para uma loja recém-criada quanto para uma já existente
     # (ex: instalações antigas, de antes deste cardápio existir) — assim
@@ -166,20 +184,9 @@ def _seed_demo_media(tenant: Tenant) -> None:
     (ver app/utils/demo_media.py). Cada parte é independentemente
     idempotente, então rodar de novo só completa o que estiver faltando."""
 
-    upload_root = current_app.config["UPLOAD_FOLDER"]
-
-    def save_image(image, relative_subdir: str) -> tuple[str, str]:
-        absolute_dir = os.path.join(upload_root, relative_subdir)
-        os.makedirs(absolute_dir, exist_ok=True)
-        filename = f"{uuid.uuid4().hex}.webp"
-        absolute_path = os.path.join(absolute_dir, filename)
-        image.save(absolute_path, format="WEBP", quality=82, method=6)
-        relative_path = os.path.join("uploads", relative_subdir, filename).replace(os.sep, "/")
-        return relative_path, dominant_edge_color(image)
-
     if not tenant.logo_path:
         logo = generate_logo(tenant.name[:1].upper())
-        relative_path, _color = save_image(logo, os.path.join(f"tenant_{tenant.id}", "logo"))
+        relative_path, _color = save_generated_image(logo, os.path.join(f"tenant_{tenant.id}", "logo"))
         tenant.logo_path = relative_path
         click.echo("✔ Logo de demonstração gerada.")
     else:
@@ -193,7 +200,7 @@ def _seed_demo_media(tenant: Tenant) -> None:
             category_slug = product.category.slug if product.category else None
             glyph = _DEMO_CATEGORY_GLYPHS.get(category_slug, "combo")
             card = generate_product_card(glyph, product.name)
-            relative_path, color = save_image(card, os.path.join(f"tenant_{tenant.id}", "products", str(product.id)))
+            relative_path, color = save_generated_image(card, os.path.join(f"tenant_{tenant.id}", "products", str(product.id)))
             db.session.add(ProductImage(
                 tenant_id=tenant.id,
                 product_id=product.id,
@@ -214,7 +221,7 @@ def _seed_demo_media(tenant: Tenant) -> None:
         ]
         for order, (glyph, title, subtitle) in enumerate(banners):
             banner_image = generate_banner(glyph, title, subtitle)
-            relative_path, color = save_image(banner_image, os.path.join(f"tenant_{tenant.id}", "banners"))
+            relative_path, color = save_generated_image(banner_image, os.path.join(f"tenant_{tenant.id}", "banners"))
             db.session.add(Banner(
                 tenant_id=tenant.id,
                 title=title,

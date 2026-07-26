@@ -2,9 +2,12 @@
 Geração de imagens de demonstração (sem depender de fotos reais nem de
 nenhuma fonte/emoji instalada no sistema operacional do servidor).
 
-Usado só por `flask seed-db` (ver app/cli.py) para deixar a loja demo
+Usado por `flask seed-db` (ver app/cli.py) para deixar a loja demo
 "Braseiro & Cia" com uma aparência completa no cardápio público — fotos
-de produto, banners promocionais e logo — para fins de apresentação.
+de produto, banners promocionais e logo — para fins de apresentação. E
+também por app/services/starter_content_service.py, que dá esse mesmo
+tipo de conteúdo de exemplo (genérico, não temático) para TODA loja
+nova criada na plataforma, não só a de demonstração.
 
 Só depende do Pillow (já é dependência obrigatória do projeto, ver
 requirements.txt) e da própria fonte "Inter" já vendorizada no projeto
@@ -27,6 +30,7 @@ from __future__ import annotations
 
 import math
 import os
+import uuid
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
 
@@ -367,15 +371,18 @@ def _blend(color_a, color_b, t: float) -> tuple[int, int, int]:
     return tuple(int(a + (b - a) * t) for a, b in zip(color_a, color_b))
 
 
-def generate_logo(initial: str, size: int = 512) -> Image.Image:
+def generate_logo(initial: str, size: int = 512, glyph: str = "espeto") -> Image.Image:
     """Logo circular simples: iniciais do nome da loja sobre um disco,
-    com labareda estilizada por baixo, no acento de marca padrão do
-    sistema (chili/laranja)."""
+    com um ícone estilizado por baixo. `glyph` escolhe tanto o ícone
+    quanto a paleta — "espeto" (padrão) é o tema da loja demo
+    (churrascaria); conteúdo genérico para lojas novas de verdade deve
+    passar outro glyph (ex: "combo", que não sugere nenhum tipo
+    específico de comida)."""
     badge_center = (size * 0.5, size * 0.42)
     badge_r = size * 0.40
-    image = _decorated_background((size, size), "espeto", badge_center, badge_r)
+    image = _decorated_background((size, size), glyph, badge_center, badge_r)
     draw = ImageDraw.Draw(image)
-    _draw_espeto(draw, size // 2, int(size * 0.70), int(size * 0.26))
+    _GLYPH_DRAWERS.get(glyph, _draw_combo)(draw, size // 2, int(size * 0.70), int(size * 0.26))
     font = _font(int(size * 0.32))
     bbox = draw.textbbox((0, 0), initial, font=font)
     text_w = bbox[2] - bbox[0]
@@ -384,3 +391,22 @@ def generate_logo(initial: str, size: int = 512) -> Image.Image:
         initial, font=font, fill=_GLYPH_COLOR,
     )
     return image
+
+
+def save_generated_image(image: Image.Image, relative_subdir: str) -> tuple[str, str]:
+    """Salva uma imagem gerada (`generate_product_card`/`generate_banner`/
+    `generate_logo`) em `UPLOAD_FOLDER/<relative_subdir>/<uuid>.webp` e
+    retorna (caminho_relativo, cor_dominante) — mesmo formato que
+    `app/utils/uploads.py` usa para fotos de verdade enviadas pelo
+    lojista, então tudo (template, carrossel com cor de fundo...)
+    funciona igual não importa se a foto é gerada ou enviada."""
+    from flask import current_app
+
+    from app.utils.uploads import dominant_edge_color
+
+    absolute_dir = os.path.join(current_app.config["UPLOAD_FOLDER"], relative_subdir)
+    os.makedirs(absolute_dir, exist_ok=True)
+    filename = f"{uuid.uuid4().hex}.webp"
+    image.save(os.path.join(absolute_dir, filename), format="WEBP", quality=82, method=6)
+    relative_path = os.path.join("uploads", relative_subdir, filename).replace(os.sep, "/")
+    return relative_path, dominant_edge_color(image)

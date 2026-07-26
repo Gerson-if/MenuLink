@@ -45,6 +45,43 @@ class TestTenantManagement:
             assert owner.tenant_id == tenant.id
             assert owner.check_password("senha123")
 
+    def test_new_tenant_gets_starter_content(self, app, client, login_as):
+        # Toda loja nova (criada pelo Super Admin ou por auto-cadastro,
+        # ambos passam por AdminTenantService.create) já sai com um
+        # cardápio de exemplo — ver app/services/starter_content_service.py.
+        # Assim o lojista nunca cai num painel totalmente vazio.
+        login_as(client, "admin@cardapio.saas", "admin123")
+
+        resp = client.get("/admin/lojistas/novo")
+        csrf = _get_csrf(resp.get_data(as_text=True))
+        client.post(
+            "/admin/lojistas/novo",
+            data={
+                "name": "Pizzaria Starter", "email": "contato@starter.com",
+                "phone": "", "whatsapp_number": "", "plan_id": "0",
+                "owner_name": "Dono Starter", "owner_email": "dono@starter.com",
+                "owner_password": "senha123", "csrf_token": csrf,
+            },
+            follow_redirects=True,
+        )
+
+        with app.app_context():
+            from app.models import Banner, Category, Product
+
+            tenant = Tenant.query.filter_by(email="contato@starter.com").first()
+            assert tenant is not None
+            assert tenant.logo_path is not None
+
+            categories = Category.query.filter_by(tenant_id=tenant.id).all()
+            assert len(categories) == 4
+
+            products = Product.query.filter_by(tenant_id=tenant.id).all()
+            assert len(products) == 4
+            assert all(p.tag == "Exemplo" for p in products)
+            assert all(p.primary_image is not None for p in products)
+
+            assert Banner.query.filter_by(tenant_id=tenant.id).count() == 1
+
     def test_duplicate_tenant_email_is_rejected(self, client, login_as):
         login_as(client, "admin@cardapio.saas", "admin123")
 

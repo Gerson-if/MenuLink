@@ -69,6 +69,17 @@ class AdminTenantService:
         db.session.add(owner)
 
         db.session.commit()
+
+        # Conteúdo de exemplo (categorias, produtos, banner, logo) pra
+        # loja não começar 100% vazia — ver starter_content_service.py.
+        # Chamado DEPOIS do commit acima de propósito: essa é uma etapa
+        # "de cortesia", nunca deve impedir a criação da loja em si (o
+        # próprio seed_starter_content já isola falhas com try/rollback,
+        # mas rodar depois do commit é uma segunda garantia).
+        from app.services.starter_content_service import seed_starter_content
+
+        seed_starter_content(tenant)
+
         return tenant
 
     def update(self, tenant: Tenant, *, name: str, email: str, phone: str,
