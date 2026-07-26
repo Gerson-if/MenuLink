@@ -4,6 +4,7 @@ from app.forms.tenant_settings_forms import (
     AppearanceSettingsForm, CheckoutSettingsForm, MenuSettingsForm, OpeningHoursForm, StoreInfoForm,
 )
 from app.models import InvoiceStatus, TenantStatus
+from app.repositories.plan_repository import PlanRepository
 from app.services.admin_billing_service import AdminBillingService
 from app.services.tenant_settings_service import TenantSettingsError, TenantSettingsService
 from app.utils.decorators import lojista_login_required, lojista_required
@@ -224,6 +225,32 @@ def settings_subscription():
     service = AdminBillingService()
     invoices = service.list_invoices_for_tenant(tenant.id)
     subscription = service.get_subscription_for_tenant(tenant.id)
+    available_plans = PlanRepository().list_active_for_landing()
     return render_template(
         "lojista/settings/subscription.html", tenant=tenant, invoices=invoices, subscription=subscription,
+        available_plans=available_plans,
     )
+
+
+@lojista_bp.route("/configuracoes/assinatura/plano", methods=["POST"])
+@lojista_required
+def settings_subscription_change_plan():
+    """O lojista escolhe/troca de plano — só aplicado após ele confirmar
+    no modal de confirmação do formulário (ver
+    lojista/settings/subscription.html, data-confirm-message), nunca
+    silenciosamente."""
+    tenant = get_current_tenant()
+    plan_id = request.form.get("plan_id", type=int)
+
+    if not plan_id:
+        flash("Selecione um plano válido.", "danger")
+        return redirect(url_for("lojista.settings_subscription"))
+
+    try:
+        plan = TenantSettingsService(tenant).change_plan(plan_id).plan
+    except TenantSettingsError as exc:
+        flash(str(exc), "danger")
+    else:
+        flash(f"Plano alterado para '{plan.name}' com sucesso.", "success")
+
+    return redirect(url_for("lojista.settings_subscription"))

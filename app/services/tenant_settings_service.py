@@ -6,6 +6,7 @@ sessão atual, nunca com um tenant_id vindo de fora)."""
 
 from app.extensions import db
 from app.models.tenant import WEEKDAY_KEYS
+from app.repositories.plan_repository import PlanRepository
 from app.repositories.tenant_repository import TenantRepository
 from app.utils.slugs import generate_unique_slug
 from app.utils.uploads import save_tenant_logo, delete_product_image_file, InvalidImageError
@@ -19,6 +20,37 @@ class TenantSettingsService:
     def __init__(self, tenant):
         self.tenant = tenant
         self.repo = TenantRepository()
+        self.plan_repo = PlanRepository()
+
+    def change_plan(self, new_plan_id: int):
+        """O próprio lojista escolhe/troca de plano (ver
+        lojista/settings/subscription.html) — SÓ é aplicado quando ele
+        confirma explicitamente pelo modal de confirmação do formulário
+        (data-confirm-message), nunca automaticamente. Isso evita tanto
+        loja com plano nulo (toda loja nova já cai no mais barato, ver
+        AdminTenantService.create) quanto uma troca acidental de plano
+        sem o lojista perceber.
+
+        Só permite planos ATIVOS (disponíveis para contratação) — um
+        plano desativado pelo Super Admin não deve poder ser escolhido
+        por quem ainda não o tinha. Sincroniza também o `plan_id` de
+        uma Subscription já ativa, se houver (ela não seria atualizada
+        sozinha — ver AdminBillingService, que lê `subscription.plan`,
+        não `tenant.plan`, ao gerar a próxima fatura)."""
+        plan = self.plan_repo.get_by_id(new_plan_id)
+        if plan is None or not plan.is_active:
+            raise TenantSettingsError("Plano indisponível para contratação no momento.")
+
+        self.tenant.plan_id = plan.id
+
+        from app.repositories.billing_repository import SubscriptionRepository
+
+        subscription = SubscriptionRepository().get_active_for_tenant(self.tenant.id)
+        if subscription is not None:
+            subscription.plan_id = plan.id
+
+        db.session.commit()
+        return self.tenant
 
     def update_store_info(
         self, *, name: str, whatsapp_number: str, phone: str, logo_file_storage=None,

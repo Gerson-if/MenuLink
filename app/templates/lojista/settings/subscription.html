@@ -24,7 +24,7 @@
       <p class="text-muted-custom small">Você ainda não tem um plano associado (período de teste).</p>
       {% endif %}
       <p class="text-muted-custom small mt-3 mb-2">
-        Para trocar de plano ou tirar dúvidas sobre cobrança, fale com o suporte.
+        Dúvidas sobre cobrança? Fale com o suporte.
       </p>
       {% if platform_settings and platform_settings.support_whatsapp %}
       <a href="https://wa.me/{{ platform_settings.support_whatsapp }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary w-100">
@@ -32,6 +32,37 @@
       </a>
       {% endif %}
     </div>
+
+    {% if available_plans %}
+    <div class="panel mt-4">
+      <div class="panel-title"><i class="bi bi-arrow-left-right"></i> Trocar de plano</div>
+      <p class="text-muted-custom small mb-3">
+        A troca só é aplicada depois que você confirmar — nada muda automaticamente.
+      </p>
+      <div class="d-grid gap-2">
+        {% for plan in available_plans %}
+        {% set is_current = tenant.plan_id == plan.id %}
+        <div class="d-flex align-items-center justify-content-between gap-2 p-2" style="border: 1px solid var(--card-border); border-radius: 10px;">
+          <div>
+            <div class="fw-semibold small">
+              {{ plan.name }}
+              {% if is_current %}<span class="status-badge status-active ms-1">Atual</span>{% endif %}
+            </div>
+            <div class="text-muted-custom small">R$ {{ "%.2f"|format(plan.price_cents / 100) }}/{{ "ano" if plan.billing_cycle.value == "yearly" else "mês" }}</div>
+          </div>
+          {% if not is_current %}
+          <form method="POST" action="{{ url_for('lojista.settings_subscription_change_plan') }}"
+                data-confirm-message="Confirma a troca para o plano '{{ plan.name }}' (R$ {{ '%.2f'|format(plan.price_cents / 100) }}/{{ 'ano' if plan.billing_cycle.value == 'yearly' else 'mês' }})? Isso pode alterar o valor da sua próxima cobrança.">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="plan_id" value="{{ plan.id }}">
+            <button type="submit" class="btn btn-sm btn-outline-chili">Escolher</button>
+          </form>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
   </div>
 
   <div class="col-lg-7">

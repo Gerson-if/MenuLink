@@ -11,6 +11,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from app.extensions import db
 from app.models import Tenant, TenantStatus, User, UserRole
 from app.models.platform_settings import PlatformSettings
+from app.repositories.plan_repository import PlanRepository
 from app.repositories.tenant_repository import TenantRepository
 from app.repositories.user_repository import UserRepository
 from app.utils.slugs import generate_unique_slug
@@ -24,6 +25,7 @@ class AdminTenantService:
     def __init__(self):
         self.repo = TenantRepository()
         self.user_repo = UserRepository()
+        self.plan_repo = PlanRepository()
 
     # --- Consulta ---
     def search(self, term: str = "", status: str = ""):
@@ -49,6 +51,20 @@ class AdminTenantService:
         slug = generate_unique_slug(slug or name, self.repo.get_by_slug)
 
         trial_days = PlatformSettings.get_or_create().trial_days
+
+        # Nenhum lojista deve começar com plano nulo (isso trava, por
+        # exemplo, o lançamento de fatura — ver BillingError em
+        # AdminBillingService.get_or_create_subscription). Se quem criou
+        # não escolheu um plano (Super Admin deixou "Sem plano", ou o
+        # auto-cadastro público, que nem pergunta isso), cai no plano
+        # mais barato disponível — o lojista pode trocar depois pela
+        # própria configuração de assinatura (ver
+        # TenantSettingsService.change_plan). Só fica sem plano mesmo se
+        # ainda não existir NENHUM plano ativo cadastrado na plataforma
+        # (instalação nova, antes do Super Admin criar o primeiro).
+        if not plan_id:
+            cheapest_plan = self.plan_repo.get_cheapest_active()
+            plan_id = cheapest_plan.id if cheapest_plan else None
 
         tenant = Tenant(
             name=name.strip(),
