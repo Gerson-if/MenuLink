@@ -27,14 +27,25 @@ from app.utils.validators import only_digits
 REQUEST_TIMEOUT_SECONDS = 15
 
 
+_VALID_BILLING_TYPES = {"PIX", "UNDEFINED", "BOLETO", "CREDIT_CARD"}
+
+
 class AsaasGateway(PaymentGateway):
-    def __init__(self, api_key: str, environment: str = "sandbox"):
+    def __init__(self, api_key: str, environment: str = "sandbox", billing_type: str = "PIX"):
         self.api_key = api_key
         self.base_url = (
             "https://api.asaas.com/v3"
             if environment == "production"
             else "https://sandbox.asaas.com/api/v3"
         )
+        # "PIX" é o padrão e a recomendação da Comanda (liberação via
+        # webhook quase em tempo real, ver create_charge/módulo
+        # webhooks_controller.py) — configurável pelo Super Admin em
+        # /admin/configuracoes/asaas (PlatformSettings.asaas_billing_type),
+        # deixado pronto para o dia em que boleto/cartão forem habilitados
+        # sem precisar mexer em código. Um valor desconhecido cai de
+        # volta pro padrão seguro em vez de quebrar a geração de cobrança.
+        self.billing_type = billing_type if billing_type in _VALID_BILLING_TYPES else "PIX"
 
     @property
     def _headers(self) -> dict:
@@ -109,9 +120,9 @@ class AsaasGateway(PaymentGateway):
 
         payload = {
             "customer": customer_id,
-            # "UNDEFINED" deixa o próprio lojista escolher a forma de
-            # pagamento (Pix, boleto ou cartão) na tela de fatura do Asaas.
-            "billingType": "UNDEFINED",
+            # Ver comentário em __init__ — "PIX" por padrão (liberação em
+            # tempo real via webhook), configurável pelo Super Admin.
+            "billingType": self.billing_type,
             "value": round(invoice.amount_cents / 100, 2),
             "dueDate": invoice.due_date.isoformat(),
             "description": f"Fatura #{invoice.id} — {tenant.name}",

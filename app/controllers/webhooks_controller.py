@@ -28,6 +28,15 @@ webhooks_bp = Blueprint("webhooks", __name__, url_prefix="/webhooks")
 # Eventos do Asaas que indicam que o dinheiro entrou de fato — outros
 # eventos (ex: PAYMENT_CREATED, PAYMENT_UPDATED, PAYMENT_DELETED) são
 # reconhecidos (200 OK) mas não disparam nenhuma ação.
+#
+# PAYMENT_RECEIVED é o que importa para Pix (forma de cobrança padrão
+# da Comanda, ver PlatformSettings.asaas_billing_type/AsaasGateway) — o
+# Asaas dispara esse evento assim que o Pix cai na conta, em tempo
+# real, sem esperar nenhuma compensação. PAYMENT_CONFIRMED é o
+# equivalente para boleto/cartão (quando/se habilitados no futuro).
+# Tratamos os dois do mesmo jeito porque ambos significam "dinheiro
+# confirmado", mas o caminho comum em produção com Pix é sempre o
+# primeiro.
 _PAID_EVENTS = {"PAYMENT_RECEIVED", "PAYMENT_CONFIRMED"}
 
 

@@ -45,6 +45,80 @@ class TestGatewayFactory:
             assert gateway is not None
             assert gateway.api_key == "fake-key-123"
 
+    def test_get_gateway_defaults_to_pix_billing_type(self, app):
+        with app.app_context():
+            app.config["ASAAS_API_KEY"] = "fake-key-123"
+            from app.services.payment_gateway import get_gateway
+
+            assert get_gateway().billing_type == "PIX"
+
+    def test_get_gateway_uses_configured_billing_type(self, app):
+        with app.app_context():
+            from app.models.platform_settings import PlatformSettings
+
+            app.config["ASAAS_API_KEY"] = "fake-key-123"
+            settings = PlatformSettings.get_or_create()
+            settings.asaas_billing_type = "BOLETO"
+            db.session.commit()
+
+            from app.services.payment_gateway import get_gateway
+
+            assert get_gateway().billing_type == "BOLETO"
+
+
+class TestAsaasGatewayBillingTypeDefaultsToPix:
+    def test_defaults_to_pix_when_not_passed(self):
+        gateway = AsaasGateway(api_key="fake")
+        assert gateway.billing_type == "PIX"
+
+    def test_falls_back_to_pix_on_unknown_value(self):
+        gateway = AsaasGateway(api_key="fake", billing_type="SOMETHING_INVALID")
+        assert gateway.billing_type == "PIX"
+
+    def test_accepts_a_valid_alternative(self):
+        gateway = AsaasGateway(api_key="fake", billing_type="BOLETO")
+        assert gateway.billing_type == "BOLETO"
+
+    def test_create_charge_payload_uses_configured_billing_type(self, app, monkeypatch):
+        captured = {}
+
+        def fake_request(method, url, headers=None, timeout=None, **kwargs):
+            captured["json"] = kwargs.get("json")
+            if "/customers" in url:
+                return _FakeResponse(200, {"id": "cus_pix"})
+            return _FakeResponse(200, {"id": "pay_pix", "invoiceUrl": "https://sandbox.asaas.com/i/pay_pix", "status": "PENDING"})
+
+        monkeypatch.setattr("app.services.payment_gateway.asaas_gateway.requests.request", fake_request)
+
+        with app.app_context():
+            from datetime import date, timedelta
+
+            from app.models import Invoice, InvoiceStatus, Plan, Subscription, SubscriptionStatus
+
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            tenant.asaas_customer_id = None
+            plan = Plan.query.first()
+            subscription = Subscription(
+                tenant_id=tenant.id, plan_id=plan.id, status=SubscriptionStatus.ACTIVE,
+                current_period_start=date.today(), current_period_end=date.today() + timedelta(days=30),
+            )
+            db.session.add(subscription)
+            db.session.flush()
+            invoice = Invoice(
+                tenant_id=tenant.id, subscription_id=subscription.id,
+                amount_cents=4990, status=InvoiceStatus.PENDING, due_date=date.today() + timedelta(days=5),
+            )
+            db.session.add(invoice)
+            db.session.commit()
+
+            gateway = AsaasGateway(api_key="fake", billing_type="PIX")
+            gateway.create_charge(tenant, invoice)
+
+            # `captured["json"]` guarda o payload da ÚLTIMA chamada feita
+            # (a de /payments, já que /customers acontece primeiro dentro
+            # de create_charge) — é nela que billingType é enviado.
+            assert captured["json"]["billingType"] == "PIX"
+
 
 class TestAsaasGatewayRequests:
     def test_ensure_customer_creates_when_missing(self, app, monkeypatch):

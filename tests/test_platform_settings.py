@@ -97,6 +97,49 @@ class TestAsaasSettingsRoutes:
             assert settings.asaas_api_key == "nova-chave-123"
             assert settings.asaas_environment == "production"
 
+    def test_billing_type_defaults_to_pix(self, app):
+        with app.app_context():
+            assert PlatformSettings.get_or_create().asaas_billing_type == "PIX"
+
+    def test_get_form_prefills_current_billing_type(self, app, client, login_as):
+        with app.app_context():
+            settings = PlatformSettings.get_or_create()
+            settings.asaas_billing_type = "BOLETO"
+            db.session.commit()
+
+        login_as(client, "admin@cardapio.saas", "admin123")
+        html = client.get("/admin/configuracoes/asaas").get_data(as_text=True)
+        assert '<option selected value="BOLETO">' in html or 'value="BOLETO" selected' in html
+
+    def test_post_updates_billing_type(self, app, client, login_as):
+        login_as(client, "admin@cardapio.saas", "admin123")
+        resp = client.post(
+            "/admin/configuracoes/asaas",
+            data={"environment": "sandbox", "billing_type": "UNDEFINED"},
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+
+        with app.app_context():
+            assert PlatformSettings.get_or_create().asaas_billing_type == "UNDEFINED"
+
+    def test_post_without_billing_type_falls_back_to_pix(self, app, client, login_as):
+        with app.app_context():
+            settings = PlatformSettings.get_or_create()
+            settings.asaas_billing_type = "BOLETO"
+            db.session.commit()
+
+        login_as(client, "admin@cardapio.saas", "admin123")
+        # Simula um POST direto (sem passar pelo <select>, que sempre
+        # manda algum valor) — a defesa em PlatformSettingsService.
+        # update_asaas precisa cair pro padrão seguro (PIX) em vez de
+        # aceitar um valor fora da lista de opções.
+        from app.services.platform_settings_service import PlatformSettingsService
+
+        with app.app_context():
+            PlatformSettingsService().update_asaas(environment="sandbox", billing_type="ALGO_INVALIDO")
+            assert PlatformSettings.get_or_create().asaas_billing_type == "PIX"
+
     def test_post_blank_api_key_keeps_current_value(self, app, client, login_as):
         with app.app_context():
             settings = PlatformSettings.get_or_create()

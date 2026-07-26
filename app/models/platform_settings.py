@@ -24,6 +24,21 @@ ASAAS_ENVIRONMENT_CHOICES = [
     ("production", "Produção"),
 ]
 
+# Forma de cobrança usada ao gerar uma cobrança Asaas (ver
+# AsaasGateway.create_charge). PIX é o padrão e a recomendação da
+# Comanda: o Asaas confirma o pagamento via webhook quase em tempo real
+# (evento PAYMENT_RECEIVED, ver webhooks_controller.py), liberando o
+# lojista na hora — diferente de boleto (compensação bancária, dias de
+# atraso) ou cartão (temos evitado, por trazer taxa maior e disputa de
+# chargeback). As outras opções ficam disponíveis para o dia em que a
+# plataforma decidir habilitá-las, sem precisar mexer em código.
+ASAAS_BILLING_TYPE_CHOICES = [
+    ("PIX", "Pix (recomendado — liberação em tempo real)"),
+    ("UNDEFINED", "Cliente escolhe (Pix, boleto ou cartão)"),
+    ("BOLETO", "Somente boleto"),
+    ("CREDIT_CARD", "Somente cartão de crédito"),
+]
+
 # Textos atuais de app/templates/marketing/landing.html, hardcoded lá
 # até agora — viram o default aqui, então nada muda visualmente pra quem
 # nunca editar a landing page pelo painel do Super Admin.
@@ -87,6 +102,8 @@ class PlatformSettings(db.Model, TimestampMixin):
     asaas_api_key = Column(String(255), nullable=True)
     asaas_environment = Column(String(20), nullable=False, default="sandbox", server_default="sandbox")
     asaas_webhook_token = Column(String(255), nullable=True)
+    # "PIX" por padrão — ver ASAAS_BILLING_TYPE_CHOICES acima.
+    asaas_billing_type = Column(String(20), nullable=False, default="PIX", server_default="PIX")
 
     # Cor de destaque (accent) do painel administrativo (Super Admin +
     # lojista compartilham o mesmo design system "chili"). Se vazio, usa

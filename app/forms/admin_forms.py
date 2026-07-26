@@ -5,7 +5,7 @@ from flask_wtf.file import FileAllowed, FileField
 from wtforms import BooleanField, DateField, DecimalField, IntegerField, PasswordField, SelectField, StringField, SubmitField, TextAreaField
 from wtforms.validators import DataRequired, Email, EqualTo, Length, NumberRange, Optional, ValidationError
 
-from app.models.platform_settings import ASAAS_ENVIRONMENT_CHOICES, LANDING_THEME_CHOICES
+from app.models.platform_settings import ASAAS_BILLING_TYPE_CHOICES, ASAAS_ENVIRONMENT_CHOICES, LANDING_THEME_CHOICES
 from app.utils.colors import normalize_hex
 from app.utils.validators import bounded_length, not_blank, password_max_bytes, phone_number
 
@@ -117,6 +117,7 @@ class AsaasSettingsForm(FlaskForm):
     """
 
     environment = SelectField("Ambiente", choices=ASAAS_ENVIRONMENT_CHOICES)
+    billing_type = SelectField("Forma de cobrança gerada", choices=ASAAS_BILLING_TYPE_CHOICES, default="PIX")
 
     api_key = StringField(
         "Nova chave de API (deixe em branco para manter a atual)",

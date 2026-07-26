@@ -20,10 +20,12 @@ def settings_asaas():
 
     if not form.is_submitted():
         form.environment.data = settings.asaas_environment
+        form.billing_type.data = settings.asaas_billing_type or "PIX"
 
     if form.validate_on_submit():
         service.update_asaas(
             environment=form.environment.data,
+            billing_type=form.billing_type.data,
             api_key=form.api_key.data,
             clear_api_key=form.clear_api_key.data,
             webhook_token=form.webhook_token.data,

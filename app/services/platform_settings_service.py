@@ -17,11 +17,16 @@ class PlatformSettingsService:
         self.settings = PlatformSettings.get_or_create()
 
     def update_asaas(
-        self, *, environment: str,
+        self, *, environment: str, billing_type: str | None = None,
         api_key: str | None = None, clear_api_key: bool = False,
         webhook_token: str | None = None, clear_webhook_token: bool = False,
     ) -> PlatformSettings:
+        from app.models.platform_settings import ASAAS_BILLING_TYPE_CHOICES
+
         self.settings.asaas_environment = environment or "sandbox"
+
+        valid_billing_types = {value for value, _label in ASAAS_BILLING_TYPE_CHOICES}
+        self.settings.asaas_billing_type = billing_type if billing_type in valid_billing_types else "PIX"
 
         if clear_api_key:
             self.settings.asaas_api_key = None

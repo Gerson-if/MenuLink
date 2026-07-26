@@ -27,6 +27,18 @@
         </div>
 
         <div class="mb-3">
+          {{ form.billing_type.label(class="form-label small fw-semibold") }}
+          {{ form.billing_type(class="form-select") }}
+          <p class="text-muted-custom small mt-1 mb-0">
+            <strong>Pix é o recomendado</strong>: o Asaas confirma o pagamento quase em tempo real
+            (evento de webhook <code>PAYMENT_RECEIVED</code>), liberando o lojista na hora, sem
+            depender de compensação bancária como no boleto nem de risco de chargeback como no
+            cartão. As outras opções ficam disponíveis pra quando/se a plataforma decidir habilitá-las
+            — a troca não exige nenhuma mudança de código, só selecionar aqui.
+          </p>
+        </div>
+
+        <div class="mb-3">
           {{ form.api_key.label(class="form-label small fw-semibold") }}
           {{ form.api_key(class="form-control", placeholder="$aact_...") }}
           {% for error in form.api_key.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}

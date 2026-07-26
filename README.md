@@ -359,12 +359,23 @@ Como funciona:
   lojista (`/admin/lojistas/<id>`) ganha um botão "Gerar cobrança
   Asaas", que cria (ou reaproveita) um cliente no Asaas vinculado ao
   tenant e gera uma cobrança com Pix/boleto/cartão.
+- **Pix é a forma de cobrança padrão** (`PlatformSettings.asaas_billing_type`,
+  configurável em **Super Admin → Cobrança (Asaas)**) — por decisão de
+  produto, a Comanda prioriza Pix: o Asaas confirma o pagamento quase
+  em tempo real (webhook `PAYMENT_RECEIVED`), liberando a loja na hora,
+  sem depender de compensação bancária (boleto) nem de disputa de
+  chargeback (cartão). As outras opções (cliente escolhe entre
+  Pix/boleto/cartão, só boleto, ou só cartão) ficam disponíveis pra
+  quando/se a plataforma decidir habilitá-las — trocar não exige
+  nenhuma mudança de código, só selecionar na tela.
 - **Validações antes de chamar o Asaas** (evitam um erro genérico da
   API — ou pior, uma cobrança quebrada — por um problema que dava pra
   pegar antes): recusa se a fatura já tem cobrança gerada, se não está
   pendente/vencida (ex: já paga ou cancelada), se o vencimento já
-  passou (o Asaas não aceita data retroativa), ou se a loja não tem
-  e-mail cadastrado (exigido pra criar o cliente no Asaas). O valor
+  passou (o Asaas não aceita data retroativa), se a loja não tem e-mail
+  cadastrado, ou se a loja não tem CPF/CNPJ cadastrado (`Tenant.document`,
+  editável pelo próprio lojista em Configurações da loja — ambos
+  exigidos pelo Asaas pra criar o cliente de cobrança). O valor
   lançado manualmente também tem limites sãos (entre R$ 0,01 e R$
   100.000,00, vencimento até 2 anos à frente) pra pegar erro de
   digitação antes de virar cobrança real.

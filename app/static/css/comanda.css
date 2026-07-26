@@ -337,6 +337,20 @@ body {
 .modal-title { color: var(--paper); font-family: 'Archivo Black', sans-serif; }
 .btn-close { filter: invert(1) brightness(0.9); opacity: .6; }
 
+/* ---------- Alertas informativos (Bootstrap .alert-*) ---------- */
+/* Sem isso, o Bootstrap padrão usa fundo claro/branco com texto escuro
+   — no tema escuro da Comanda isso fica quase ilegível (texto claro
+   sobre fundo claro em cima de um painel escuro), especialmente
+   perceptível quando um toast de flash (ver .toast-flash-* abaixo)
+   aparece por cima. Mesma paleta dos toasts, pra manter consistência. */
+.alert { border-radius: 10px; }
+.alert-secondary { background: rgba(255,255,255,.06); border: 1px solid var(--card-border); color: var(--card-text); }
+.alert-success { background: rgba(122,160,109,.16); border: 1px solid rgba(122,160,109,.4); color: #BCE2AF; }
+.alert-danger { background: rgba(229,74,54,.16); border: 1px solid rgba(229,74,54,.4); color: #FF8A7A; }
+.alert-warning { background: rgba(240,173,78,.16); border: 1px solid rgba(240,173,78,.4); color: #FCD581; }
+.alert-info { background: rgba(67,97,238,.16); border: 1px solid rgba(67,97,238,.4); color: #9DB2FF; }
+.alert a, .alert strong { color: inherit; }
+
 /* ---------- Toasts de flash ---------- */
 /* top:16px por padrão (páginas sem topbar: landing, login, cardápio
    público). Nos painéis (lojista/admin), há uma topbar "sticky" no mesmo

@@ -46,4 +46,5 @@ def get_gateway():
         return None
 
     environment = settings.asaas_environment or current_app.config.get("ASAAS_ENVIRONMENT", "sandbox")
-    return AsaasGateway(api_key=api_key, environment=environment)
+    billing_type = settings.asaas_billing_type or "PIX"
+    return AsaasGateway(api_key=api_key, environment=environment, billing_type=billing_type)
