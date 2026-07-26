@@ -72,7 +72,12 @@ class AdminBillingService:
         visualização seria surpreendente."""
         return self.subscription_repo.get_active_for_tenant(tenant_id)
 
-    def get_or_create_subscription(self, tenant) -> Subscription:
+    def get_or_create_subscription(self, tenant, *, start_date: date | None = None) -> Subscription:
+        """`start_date` permite criar a assinatura com um início diferente
+        de hoje — usado por `activate_subscription_after_trial` para o
+        primeiro ciclo começar exatamente em `trial_ends_at`, não no dia
+        em que o job rodou (o lojista não perde os dias grátis restantes,
+        ver TrialService)."""
         subscription = self.subscription_repo.get_active_for_tenant(tenant.id)
         if subscription is not None:
             return subscription
@@ -80,7 +85,7 @@ class AdminBillingService:
         if tenant.plan is None:
             raise BillingError("Este lojista não tem um plano associado. Defina um plano antes de lançar faturas.")
 
-        today = date.today()
+        period_start = start_date or date.today()
         billing_cycle = tenant.plan.billing_cycle
 
         subscription = Subscription(
@@ -88,11 +93,24 @@ class AdminBillingService:
             plan_id=tenant.plan_id,
             status=SubscriptionStatus.ACTIVE,
             billing_cycle=billing_cycle,
-            current_period_start=today,
-            current_period_end=_add_cycle(today, billing_cycle),
+            current_period_start=period_start,
+            current_period_end=_add_cycle(period_start, billing_cycle),
         )
         db.session.add(subscription)
         db.session.flush()
+        return subscription
+
+    def activate_subscription_after_trial(self, tenant, *, trial_ends_at: date) -> Subscription:
+        """Chamado por TrialService quando o trial acaba e o lojista já
+        tinha confirmado um plano pago (Tenant.plan_confirmed_at
+        preenchido, ver TenantSettingsService.change_plan) — ativa o
+        tenant e cria a assinatura com o ciclo começando exatamente no
+        fim do trial, não no dia em que este job rodou."""
+        tenant.status = TenantStatus.ACTIVE
+        tenant.blocked_reason = None
+        tenant.blocked_at = None
+        subscription = self.get_or_create_subscription(tenant, start_date=trial_ends_at)
+        db.session.commit()
         return subscription
 
     def update_subscription_cycle(self, subscription: Subscription, billing_cycle: BillingCycle) -> Subscription:
@@ -118,7 +136,16 @@ class AdminBillingService:
         mão): recusa se já existe uma fatura em aberto (pendente ou
         vencida) para esta assinatura — geraria cobrança duplicada — e
         recusa se o plano não tem preço definido.
+
+        Antes de tudo, aplica um downgrade agendado (ver
+        TenantSettingsService.change_plan / `pending_plan_id`), se
+        houver um pendente para esta assinatura — é exatamente neste
+        momento (início do próximo ciclo) que a troca de plano
+        combinada deve entrar em vigor, então o valor calculado abaixo
+        já reflete o plano novo (mais barato).
         """
+        self._apply_pending_plan_change(subscription)
+
         plan = subscription.plan
         if plan is None:
             raise BillingError("Esta assinatura não tem um plano associado.")
@@ -156,6 +183,48 @@ class AdminBillingService:
 
         db.session.commit()
         return invoice
+
+    def _apply_pending_plan_change(self, subscription: Subscription) -> None:
+        """Efetiva um downgrade agendado (ver `pending_plan_id`) se a
+        data marcada já chegou — chamado por `generate_next_invoice`
+        antes de calcular a próxima fatura. Mantém `tenant.plan_id`
+        sincronizado com `subscription.plan_id`, mesmo motivo de
+        TenantSettingsService.change_plan (AdminBillingService lê
+        `subscription.plan`, mas o resto do painel/telas do lojista lê
+        `tenant.plan`)."""
+        if subscription.pending_plan_id is None:
+            return
+        if subscription.pending_plan_change_at and subscription.pending_plan_change_at > date.today():
+            return
+
+        subscription.plan_id = subscription.pending_plan_id
+        if subscription.tenant is not None:
+            subscription.tenant.plan_id = subscription.pending_plan_id
+        subscription.pending_plan_id = None
+        subscription.pending_plan_change_at = None
+
+    def calculate_upgrade_proration_cents(self, subscription: Subscription, new_plan) -> int:
+        """Valor proporcional (prorateio) cobrado imediatamente num
+        upgrade no meio do ciclo: a diferença de preço entre o plano
+        novo e o atual, multiplicada pela fração de dias que ainda
+        faltam no ciclo corrente. Ex: upgrade de R$50 para R$100 na
+        metade do ciclo -> cobra só R$25 agora (a diferença de R$50,
+        pela metade dos dias restantes) — o cliente já pagou o resto do
+        plano antigo, só completa a diferença até a próxima renovação
+        (que já sai no preço cheio do novo plano).
+
+        Nunca retorna um valor negativo (se por algum motivo o cálculo
+        desse negativo, não cobra nada agora — evita gerar uma fatura
+        de valor negativo por engano)."""
+        today = date.today()
+        total_days = (subscription.current_period_end - subscription.current_period_start).days
+        if total_days <= 0:
+            return max(0, new_plan.price_cents - subscription.plan.price_cents)
+
+        remaining_days = max(0, (subscription.current_period_end - today).days)
+        price_diff_cents = new_plan.price_cents - subscription.plan.price_cents
+        prorated = round(price_diff_cents * remaining_days / total_days)
+        return max(0, prorated)
 
     def create_invoice(self, tenant, *, amount_reais: float, due_date: date) -> Invoice:
         subscription = self.get_or_create_subscription(tenant)
@@ -200,6 +269,57 @@ class AdminBillingService:
         invoice.status = InvoiceStatus.CANCELED
         db.session.commit()
         return invoice
+
+    def process_dunning(self, now: date | None = None) -> dict:
+        """Ciclo de vida simples de inadimplência (dunning) para
+        faturas de tenants já pagos (diferente de TrialService, que
+        cuida só do período de teste): marca como vencida (OVERDUE)
+        toda fatura PENDING cujo vencimento já passou, e bloqueia
+        (BLOCKED_PAYMENT) o tenant cuja fatura estiver vencida há mais
+        de `PlatformSettings.dunning_grace_days` dias sem pagamento —
+        mesmo prazo de tolerância dado ao período de teste, só que
+        aplicado a cada fatura de renovação. Chamado por `flask
+        process-dunning` (ver app/cli.py), sem agendador embutido na
+        aplicação — precisa de um cron/systemd timer no servidor.
+        """
+        from app.models.platform_settings import PlatformSettings
+        from app.services.admin_tenant_service import AdminTenantService
+        from app.services.chat_service import ChatService
+
+        today = now or date.today()
+        grace_days = PlatformSettings.get_or_create().dunning_grace_days
+
+        summary = {"marked_overdue": 0, "blocked": 0}
+
+        pending_invoices = Invoice.query.filter(
+            Invoice.status == InvoiceStatus.PENDING, Invoice.due_date < today,
+        ).all()
+        for invoice in pending_invoices:
+            self.mark_overdue(invoice)
+            summary["marked_overdue"] += 1
+
+        overdue_invoices = Invoice.query.filter(Invoice.status == InvoiceStatus.OVERDUE).all()
+        tenant_service = AdminTenantService()
+        for invoice in overdue_invoices:
+            tenant = invoice.tenant
+            if tenant is None or tenant.status != TenantStatus.ACTIVE:
+                continue
+            if (today - invoice.due_date).days < grace_days:
+                continue
+
+            tenant_service.block_for_payment(
+                tenant,
+                reason=f"Fatura vencida em {invoice.due_date.strftime('%d/%m/%Y')} sem pagamento "
+                       f"(tolerância de {grace_days} dia(s) esgotada).",
+            )
+            ChatService.send_system_message(
+                tenant.id,
+                "O acesso ao painel foi pausado por uma fatura em aberto sem pagamento. Regularize "
+                "sua situação na página de assinatura para voltar a usar o sistema normalmente.",
+            )
+            summary["blocked"] += 1
+
+        return summary
 
     # --- Integração Asaas ---
     def is_asaas_configured(self) -> bool:

@@ -149,6 +149,18 @@ class Tenant(db.Model, TimestampMixin):
     trial_d2_notice_sent = Column(Boolean, nullable=False, default=False, server_default="0")
     trial_final_notice_sent = Column(Boolean, nullable=False, default=False, server_default="0")
 
+    # Marca que o lojista CONFIRMOU um plano pago ainda durante o
+    # período de teste (ver TenantSettingsService.change_plan) — não é o
+    # mesmo que `plan_id` estar preenchido, já que toda loja nova já
+    # ganha o plano mais barato automaticamente (ver
+    # AdminTenantService.create) sem isso significar uma adesão de
+    # verdade. Enquanto o teste ainda não acabou, nenhuma assinatura
+    # nem cobrança é criada — o lojista não perde os dias grátis
+    # restantes (ver `flask process-trials` / TrialService, que ativa a
+    # assinatura de verdade exatamente em `trial_ends_at` quando este
+    # campo está preenchido).
+    plan_confirmed_at = Column(db.DateTime(timezone=True), nullable=True)
+
     # Configurações do cardápio / operação
     delivery_enabled = Column(Boolean, nullable=False, default=False)
     delivery_fee_cents = Column(Integer, nullable=True)

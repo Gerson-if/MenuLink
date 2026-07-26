@@ -63,8 +63,21 @@ class Subscription(db.Model, TenantScopedMixin, TimestampMixin):
     # `generate_next_invoice` usa para calcular a próxima fatura.
     billing_cycle = Column(str_enum(BillingCycle, "billing_cycle"), nullable=False, default=BillingCycle.MONTHLY)
 
+    # Downgrade agendado (nunca imediato — ver regra de negócio em
+    # TenantSettingsService.change_plan): quando o lojista pede pra
+    # trocar para um plano mais barato, a troca de verdade só é
+    # aplicada no fim do ciclo já pago (evitando estorno em dinheiro).
+    # Até lá, `plan_id` acima continua sendo o plano premium atual, e
+    # estes dois campos guardam a intenção. `AdminBillingService.
+    # generate_next_invoice` aplica a troca (copia pending_plan_id pra
+    # plan_id e limpa os dois) antes de calcular o valor da próxima
+    # fatura.
+    pending_plan_id = Column(Integer, ForeignKey("plans.id"), nullable=True)
+    pending_plan_change_at = Column(Date, nullable=True)
+
     tenant = relationship("Tenant", back_populates="subscriptions")
-    plan = relationship("Plan")
+    plan = relationship("Plan", foreign_keys=[plan_id])
+    pending_plan = relationship("Plan", foreign_keys=[pending_plan_id])
     invoices = relationship("Invoice", back_populates="subscription", cascade="all, delete-orphan")
 
     __table_args__ = (

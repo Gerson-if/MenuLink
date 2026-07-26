@@ -72,6 +72,17 @@ class TrialService:
             if trial_ends_at.tzinfo is None:
                 trial_ends_at = trial_ends_at.replace(tzinfo=timezone.utc)
 
+            if now > trial_ends_at and tenant.plan_confirmed_at is not None:
+                # Lojista já tinha confirmado um plano pago durante o
+                # teste (ver TenantSettingsService.change_plan) — em vez
+                # de entrar na régua de tolerância/suspensão abaixo,
+                # ativa a assinatura de verdade agora, com o ciclo
+                # começando exatamente em trial_ends_at (não hoje: ele
+                # não perde os dias grátis restantes).
+                self._activate_confirmed_plan(tenant, trial_ends_at.date())
+                summary["activated"] = summary.get("activated", 0) + 1
+                continue
+
             grace_ends_at = trial_ends_at + timedelta(days=self.settings.trial_grace_days)
 
             if now > grace_ends_at:
@@ -118,6 +129,19 @@ class TrialService:
 
         db.session.commit()
         return summary
+
+    def _activate_confirmed_plan(self, tenant: Tenant, trial_ends_at_date) -> None:
+        from app.services.admin_billing_service import AdminBillingService
+
+        AdminBillingService().activate_subscription_after_trial(tenant, trial_ends_at=trial_ends_at_date)
+        body = (
+            f"Seu período de teste terminou e o plano '{tenant.plan.name}' que você escolheu já está "
+            "ativo! A partir de agora, as faturas de renovação aparecem na sua página de assinatura. "
+            "Obrigado por continuar com a gente! 🙂"
+        ) if tenant.plan else (
+            "Seu período de teste terminou e sua assinatura já está ativa! Obrigado por continuar com a gente! 🙂"
+        )
+        ChatService.send_system_message(tenant.id, body)
 
     def _send_reminder(self, tenant: Tenant, now: datetime) -> None:
         days_left = max(0, (tenant.trial_ends_at.date() - now.date()).days)

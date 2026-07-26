@@ -167,6 +167,14 @@ class PlatformSettings(db.Model, TimestampMixin):
     # tolerância também (ver `trial_grace_days` acima).
     trial_urgent_days = Column(Integer, nullable=False, default=3, server_default="3")
 
+    # --- Dunning (falha de pagamento / fatura vencida) ---
+    # Quantos dias de tolerância depois do vencimento de uma fatura
+    # (Invoice.due_date) antes de bloquear a loja por inadimplência (ver
+    # `flask process-dunning` / AdminBillingService.process_dunning).
+    # Mesmo espírito de `trial_grace_days`, mas para faturas de uma loja
+    # já paga (não em teste).
+    dunning_grace_days = Column(Integer, nullable=False, default=3, server_default="3")
+
     @classmethod
     def get_or_create(cls) -> "PlatformSettings":
         settings = db.session.get(cls, 1)

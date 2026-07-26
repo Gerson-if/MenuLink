@@ -296,6 +296,35 @@ demais.
   topo só nos últimos dias e durante a tolerância — pedindo pra
   assinar um plano, sem deixar isso passar despercebido perto do
   prazo.
+- **Confirmação de plano ainda durante o trial**: se o lojista escolher
+  um plano pago (`/painel/configuracoes/assinatura`) antes do teste
+  acabar, o sistema só registra a intenção (`Tenant.plan_confirmed_at`)
+  — nenhuma assinatura ou cobrança nasce na hora. Quando `flask
+  process-trials` detecta que o teste acabou e há um plano confirmado,
+  ele ativa a loja (`ACTIVE`) e cria a assinatura com o primeiro ciclo
+  começando exatamente no fim do trial, não no dia em que o job rodou:
+  o lojista não perde nenhum dia grátis. Sem confirmação, a loja segue
+  a régua normal de tolerância/suspensão.
+- **Upgrade e downgrade de plano** (mesma tela): um upgrade (plano mais
+  caro) é liberado imediatamente e gera uma fatura extra, prorateada
+  pela fração de dias que ainda faltam no ciclo atual (só a diferença
+  de valor entre os dois planos, não o preço cheio do novo). Um
+  downgrade (plano mais barato) exige que o uso atual já caiba nos
+  limites do plano menor — senão pede pra excluir produtos/categorias
+  primeiro — e, se couber, nunca gera estorno em dinheiro: a troca só
+  entra em vigor no fim do ciclo já pago (o lojista continua no plano
+  atual até lá), aplicada automaticamente na próxima fatura gerada por
+  `generate_next_invoice`.
+- **Dunning (fatura vencida)**: o comando `flask process-dunning` marca
+  como vencida (`OVERDUE`) toda fatura pendente cujo vencimento já
+  passou e bloqueia (`BLOCKED_PAYMENT`) a loja cuja fatura estiver
+  vencida há mais dias do que a tolerância configurada
+  (`PlatformSettings.dunning_grace_days`, padrão 3 dias) sem
+  pagamento. Programe também para rodar 1x por dia num cron do
+  servidor:
+  ```bash
+  0 7 * * * root cd /opt/comanda && venv/bin/flask process-dunning >> /var/log/comanda-dunning.log 2>&1
+  ```
 - Todas as rotas protegidas por `@super_admin_required`.
 
 ### Integração com Asaas (cobrança de faturas)
@@ -833,6 +862,7 @@ flask db downgrade                 # reverte a última migration
 flask seed-db                      # popula dados mínimos (idempotente)
 flask create-admin                 # cria/atualiza um super admin específico
 flask process-trials               # lembretes/tolerância/suspensão de teste grátis (rodar 1x/dia via cron)
+flask process-dunning               # marca faturas vencidas e bloqueia inadimplentes (rodar 1x/dia via cron)
 pytest tests/ -v                    # roda a suíte de testes
 ```
 

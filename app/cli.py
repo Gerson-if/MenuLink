@@ -12,8 +12,13 @@ Uso:
                                     banners/fotos de produto enviados antes dessa
                                     mudança (idempotente, ver app/utils/uploads.py)
     flask process-trials         -> manda lembretes de fim de teste, avisa quem
-                                    entrou na tolerância extra e suspende quem
-                                    esgotou o prazo (ver app/services/trial_service.py) —
+                                    entrou na tolerância extra, suspende quem
+                                    esgotou o prazo e ativa a assinatura de quem já
+                                    confirmou plano pago (ver app/services/trial_service.py) —
+                                    programe para rodar 1x/dia num cron do servidor
+    flask process-dunning        -> marca faturas vencidas como OVERDUE e bloqueia
+                                    lojas inadimplentes após a tolerância configurada
+                                    (ver app/services/admin_billing_service.py) —
                                     programe para rodar 1x/dia num cron do servidor
 
 Estes comandos de gestão de Super Admin (create-admin, list-admins,
@@ -70,6 +75,7 @@ def register_cli(app: Flask) -> None:
     app.cli.add_command(check_db)
     app.cli.add_command(backfill_image_colors)
     app.cli.add_command(process_trials)
+    app.cli.add_command(process_dunning)
 
 
 @click.command("seed-db")
@@ -560,4 +566,25 @@ def process_trials():
         f"{summary['grace_notices_sent']} aviso(s) de tolerância, "
         f"{summary['final_notices_sent']} aviso(s) de dia da suspensão, "
         f"{summary['suspended']} loja(s) suspensa(s) por teste expirado."
+    )
+
+
+@click.command("process-dunning")
+def process_dunning():
+    """Processa faturas vencidas (dunning) de tenants já pagos: marca
+    como vencida (OVERDUE) toda fatura pendente cujo vencimento já
+    passou, e bloqueia (BLOCKED_PAYMENT) o tenant cuja fatura estiver
+    vencida há mais dias do que a tolerância configurada
+    (PlatformSettings.dunning_grace_days) sem pagamento. Sem efeito
+    sobre lojas já bloqueadas/suspensas/canceladas.
+
+    Não há agendador embutido na aplicação — programe este comando
+    para rodar uma vez por dia num cron/systemd timer do servidor (ver
+    README, seção de deploy)."""
+    from app.services.admin_billing_service import AdminBillingService
+
+    summary = AdminBillingService().process_dunning()
+    click.echo(
+        f"OK: {summary['marked_overdue']} fatura(s) marcada(s) como vencida(s), "
+        f"{summary['blocked']} loja(s) bloqueada(s) por inadimplência."
     )
