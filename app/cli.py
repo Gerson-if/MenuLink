@@ -11,6 +11,10 @@ Uso:
     flask backfill-image-colors -> recalcula cor dominante e recomprime pra WEBP
                                     banners/fotos de produto enviados antes dessa
                                     mudança (idempotente, ver app/utils/uploads.py)
+    flask process-trials         -> manda lembretes de fim de teste, avisa quem
+                                    entrou na tolerância extra e suspende quem
+                                    esgotou o prazo (ver app/services/trial_service.py) —
+                                    programe para rodar 1x/dia num cron do servidor
 
 Estes comandos de gestão de Super Admin (create-admin, list-admins,
 update-admin-email, remove-admin) são chamados também pelo menu interativo
@@ -65,6 +69,7 @@ def register_cli(app: Flask) -> None:
     app.cli.add_command(remove_admin)
     app.cli.add_command(check_db)
     app.cli.add_command(backfill_image_colors)
+    app.cli.add_command(process_trials)
 
 
 @click.command("seed-db")
@@ -532,3 +537,25 @@ def backfill_image_colors():
 
     db.session.commit()
     click.echo(f"OK: {count} imagem(ns) reprocessada(s).")
+
+
+@click.command("process-trials")
+def process_trials():
+    """Processa o ciclo de vida do período de teste grátis de todas as
+    lojas em TRIAL: manda lembrete automático (pelo chat de suporte)
+    perto do fim do prazo, avisa quem acabou de entrar na tolerância
+    extra, e suspende (BLOCKED_PAYMENT) quem esgotou a tolerância sem
+    regularizar. Sem efeito sobre lojas que já saíram de TRIAL (ativas,
+    suspensas, bloqueadas ou canceladas manualmente).
+
+    Não há agendador embutido na aplicação — programe este comando para
+    rodar uma vez por dia num cron/systemd timer do servidor (ver
+    README, seção de deploy)."""
+    from app.services.trial_service import TrialService
+
+    summary = TrialService().process_all()
+    click.echo(
+        f"OK: {summary['reminders_sent']} lembrete(s) enviado(s), "
+        f"{summary['grace_notices_sent']} aviso(s) de tolerância enviado(s), "
+        f"{summary['suspended']} loja(s) suspensa(s) por teste expirado."
+    )

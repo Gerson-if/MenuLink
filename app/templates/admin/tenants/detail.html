@@ -28,6 +28,24 @@
         <dt class="col-4 text-muted-custom">Plano</dt><dd class="col-8">{{ tenant.plan.name if tenant.plan else "Sem plano" }}</dd>
         <dt class="col-4 text-muted-custom">Link do cardápio</dt><dd class="col-8"><a href="/loja/{{ tenant.slug }}" target="_blank" class="link-chili">/loja/{{ tenant.slug }}</a></dd>
         <dt class="col-4 text-muted-custom">Cadastrada em</dt><dd class="col-8">{{ tenant.created_at.strftime("%d/%m/%Y") }}</dd>
+        {% if tenant.trial_ends_at %}
+        <dt class="col-4 text-muted-custom">Período de teste</dt>
+        <dd class="col-8">
+          {% if tenant.status.value == 'trial' %}
+            {% set trial = tenant.trial_status() %}
+            {% if trial and trial.phase == 'trial' %}
+            Termina em {{ tenant.trial_ends_at.strftime("%d/%m/%Y") }} ({{ trial.days_left }} dia(s) restante(s))
+            {% elif trial and trial.phase == 'grace' %}
+            <span class="status-badge status-blocked">Em tolerância</span>
+            teste acabou — {{ trial.days_left }} dia(s) para regularizar (até {{ trial.grace_ends_at.strftime("%d/%m/%Y") }})
+            {% else %}
+            Prazo (incluindo tolerância) esgotado
+            {% endif %}
+          {% else %}
+          Terminou em {{ tenant.trial_ends_at.strftime("%d/%m/%Y") }}
+          {% endif %}
+        </dd>
+        {% endif %}
       </dl>
     </div>
     </div>
@@ -201,6 +219,21 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <textarea name="reason" class="form-control form-control-sm mb-2" rows="2" placeholder="Motivo (opcional)" maxlength="255"></textarea>
             <button type="submit" class="btn btn-sm btn-outline-danger w-100">Confirmar cancelamento</button>
+          </form>
+        </div>
+        {% endif %}
+
+        {% if tenant.status.value == 'trial' %}
+        <div>
+          <button type="button" class="btn btn-sm btn-outline-secondary w-100" @click="openAction = (openAction === 'trial' ? null : 'trial')">⏳ Ajustar prazo de teste</button>
+          <form x-show="openAction === 'trial'" x-cloak method="POST" action="{{ url_for('admin.tenants_update_trial', tenant_id=tenant.id) }}" class="mt-2">
+            {{ trial_form.hidden_tag() }}
+            <p class="text-muted-custom small mb-2">Define um novo fim de teste para esta loja (ex: estender alguns dias a pedido do cliente).</p>
+            <div class="mb-2">
+              {{ trial_form.trial_ends_at(class="form-control form-control-sm") }}
+              {% for error in trial_form.trial_ends_at.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+            </div>
+            <button type="submit" class="btn btn-sm btn-chili w-100">Atualizar prazo</button>
           </form>
         </div>
         {% endif %}

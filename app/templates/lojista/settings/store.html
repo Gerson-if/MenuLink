@@ -17,6 +17,13 @@
       {% for error in form.name.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
     </div>
 
+    <div class="mb-3">
+      {{ form.menu_tagline.label(class="form-label small fw-semibold") }}
+      {{ form.menu_tagline(class="form-control", maxlength=60, placeholder="CARDÁPIO DIGITAL") }}
+      <p class="text-muted-custom small mt-1 mb-0">Aparece ao lado do nome da loja no cardápio público.</p>
+      {% for error in form.menu_tagline.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+    </div>
+
     <div class="row g-2 mb-3">
       <div class="col-6">
         {{ form.whatsapp_number.label(class="form-label small fw-semibold") }}

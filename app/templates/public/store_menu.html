@@ -330,7 +330,7 @@
       </div>
       <div>
         <div class="brand-name">{{ tenant.name }}</div>
-        <div class="brand-tag">CARDÁPIO DIGITAL</div>
+        <div class="brand-tag">{{ tenant.menu_tagline_or_default }}</div>
       </div>
     </div>
 
@@ -383,7 +383,7 @@
           <div class="brand-mark">
             {% if tenant.logo_path %}<img src="{{ url_for('static', filename=tenant.logo_path) }}" alt="{{ tenant.name }}">{% else %}{{ tenant.name[:1]|upper }}{% endif %}
           </div>
-          <div class="brand-name">{{ tenant.name }}<small>CARDÁPIO DIGITAL</small></div>
+          <div class="brand-name">{{ tenant.name }}<small>{{ tenant.menu_tagline_or_default }}</small></div>
         </div>
       </div>
       <div class="cart-icon" @click="openCart()" :class="{ 'hidden-cart-ui': cartUiHidden, 'cart-bump': cartBump }">

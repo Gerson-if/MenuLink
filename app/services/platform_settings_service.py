@@ -98,6 +98,25 @@ class PlatformSettingsService:
             ),
         )
 
+    def update_trial_settings(
+        self, *, trial_days: int, trial_grace_days: int,
+        trial_reminder_days_before: int, trial_reminder_cycle_days: int,
+        trial_reminder_message: str | None,
+    ) -> PlatformSettings:
+        """Configurações do período de teste grátis — ver campos
+        correspondentes em app/models/platform_settings.py. Alterar
+        `trial_days` aqui só afeta lojas criadas DAQUI PRA FRENTE
+        (AdminTenantService.create grava `trial_ends_at` já calculado no
+        cadastro); para ajustar o prazo de uma loja específica já
+        existente, use AdminTenantService.update_trial_deadline."""
+        self.settings.trial_days = max(1, int(trial_days or 20))
+        self.settings.trial_grace_days = max(0, int(trial_grace_days or 0))
+        self.settings.trial_reminder_days_before = max(0, int(trial_reminder_days_before or 0))
+        self.settings.trial_reminder_cycle_days = max(1, int(trial_reminder_cycle_days or 1))
+        self.settings.trial_reminder_message = (trial_reminder_message or "").strip() or None
+        db.session.commit()
+        return self.settings
+
     def update_legal_content(self, *, terms_content: str | None, privacy_content: str | None) -> PlatformSettings:
         """Salva o texto customizado de Termos de Uso e/ou Política de
         Privacidade — deixar um campo em branco restaura o texto padrão

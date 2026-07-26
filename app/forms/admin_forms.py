@@ -61,6 +61,14 @@ class TenantOwnerPasswordForm(FlaskForm):
     submit = SubmitField("Redefinir senha")
 
 
+class TenantTrialForm(FlaskForm):
+    """Super Admin ajusta manualmente o fim do período de teste de uma
+    loja específica — ver AdminTenantService.update_trial_deadline."""
+
+    trial_ends_at = DateField("Novo fim do período de teste", validators=[DataRequired()])
+    submit = SubmitField("Atualizar prazo")
+
+
 class PlanForm(FlaskForm):
     name = StringField("Nome do plano", validators=[DataRequired(), Length(max=80), not_blank])
     description = TextAreaField("Descrição (opcional)", validators=[Optional(), Length(max=500)])
@@ -181,6 +189,34 @@ class LegalContentForm(FlaskForm):
     terms_content = TextAreaField("Termos de Uso (HTML)", validators=[Optional(), Length(max=20000)])
     privacy_content = TextAreaField("Política de Privacidade (HTML)", validators=[Optional(), Length(max=20000)])
     submit = SubmitField("Salvar")
+
+
+class TrialSettingsForm(FlaskForm):
+    """Configurações globais do período de teste grátis — afeta o
+    cadastro de lojas NOVAS (ver AdminTenantService.create) e o job
+    `flask process-trials` (ver app/services/trial_service.py)."""
+
+    trial_days = IntegerField(
+        "Duração do período de teste (dias)",
+        validators=[DataRequired(), NumberRange(min=1, max=365)],
+    )
+    trial_grace_days = IntegerField(
+        "Dias extras de tolerância após o teste acabar",
+        validators=[DataRequired(), NumberRange(min=0, max=60)],
+    )
+    trial_reminder_days_before = IntegerField(
+        "Avisar com quantos dias de antecedência",
+        validators=[DataRequired(), NumberRange(min=0, max=90)],
+    )
+    trial_reminder_cycle_days = IntegerField(
+        "Repetir o lembrete a cada quantos dias",
+        validators=[DataRequired(), NumberRange(min=1, max=30)],
+    )
+    trial_reminder_message = TextAreaField(
+        "Mensagem do lembrete (enviada pelo chat de suporte)",
+        validators=[Optional(), Length(max=2000)],
+    )
+    submit = SubmitField("Salvar configurações")
 
 
 class AdminAppearanceForm(FlaskForm):

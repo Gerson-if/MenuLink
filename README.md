@@ -131,12 +131,19 @@ demais.
 - **QR Code do cardápio**, gerado localmente (sem API externa) a
   partir da URL pública da loja.
 - **Configurações da loja** organizadas em abas: dados da loja (nome,
+  **legenda do cardápio público** — substitui o texto fixo "CARDÁPIO
+  DIGITAL" mostrado ao lado do nome da loja, ex: "Pizzas Artesanais" —,
   WhatsApp, logo), cardápio/link (slug editável, retirada/entrega),
   checkout (taxa de entrega, com isenção configurável acima de um
   valor mínimo), assinatura (plano atual, ciclo de cobrança, faturas
   com link de pagamento quando há cobrança Asaas gerada, e atalho pro
   WhatsApp de suporte) e segurança (senha, dados de login, sessões
   ativas).
+- **Período de teste grátis**: toda loja nova começa em teste (duração
+  configurável pelo Super Admin). O painel mostra quantos dias faltam
+  e, quando o teste acaba, a loja ainda acessa normalmente por mais
+  alguns dias de tolerância para regularizar — só depois disso o
+  acesso é suspenso (ver detalhes na seção do Super Admin abaixo).
 - **Limites de plano**: `Plan.max_categories` / `Plan.max_products`
   checados na criação.
 - **Link do cardápio** exibido no dashboard com botão "Copiar link".
@@ -248,6 +255,26 @@ demais.
 - **Landing page** (`/admin/configuracoes/landing`): além dos textos e
   dos "3 destaques" já existentes, a arte de destaque do hero agora tem
   controles de opacidade e desfoque com pré-visualização ao vivo.
+- **Período de teste grátis** (`/admin/configuracoes/teste-gratis`):
+  duração do teste (padrão 20 dias), dias extras de tolerância após o
+  teste acabar (padrão 2 dias — a loja continua acessando o painel
+  normalmente nesse período, só para regularizar a situação), e o
+  lembrete automático mandado pelo chat de suporte da própria loja
+  conforme o prazo se aproxima (com quantos dias de antecedência e a
+  cada quantos dias repetir, tudo configurável, além do texto da
+  mensagem). Ao esgotar a tolerância sem regularizar, a loja é
+  suspensa automaticamente (mesmo status/tela de "conta bloqueada" já
+  usado para inadimplência). O ajuste de duração só vale para lojas
+  criadas dali em diante — para estender o prazo de uma loja
+  específica já existente, use "Ajustar prazo de teste" no detalhe
+  dela (`/admin/lojistas/<id>`). Como não há agendador embutido na
+  aplicação, quem processa lembretes/tolerância/suspensão é o comando
+  `flask process-trials` (ver [Comandos úteis](#comandos-úteis)) —
+  programe-o para rodar 1x por dia num cron do servidor:
+  ```bash
+  # roda todo dia às 6h da manhã
+  0 6 * * * root cd /opt/comanda && venv/bin/flask process-trials >> /var/log/comanda-trials.log 2>&1
+  ```
 - Todas as rotas protegidas por `@super_admin_required`.
 
 ### Integração com Asaas (cobrança de faturas)
@@ -784,6 +811,7 @@ flask db upgrade                   # aplica migrations pendentes
 flask db downgrade                 # reverte a última migration
 flask seed-db                      # popula dados mínimos (idempotente)
 flask create-admin                 # cria/atualiza um super admin específico
+flask process-trials               # lembretes/tolerância/suspensão de teste grátis (rodar 1x/dia via cron)
 pytest tests/ -v                    # roda a suíte de testes
 ```
 

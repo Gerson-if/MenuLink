@@ -54,6 +54,9 @@
       <a href="{{ url_for('admin.settings_asaas') }}" class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.settings_asaas') }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Cobrança (Asaas)">
         <i class="bi bi-credit-card"></i><span class="nav-label">Cobrança (Asaas)</span>
       </a>
+      <a href="{{ url_for('admin.settings_trial') }}" class="nav-link {{ 'active' if request.endpoint == 'admin.settings_trial' }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Período de Teste">
+        <i class="bi bi-hourglass-split"></i><span class="nav-label">Período de Teste</span>
+      </a>
       <a href="{{ url_for('admin.settings_appearance') }}" class="nav-link {{ 'active' if request.endpoint == 'admin.settings_appearance' }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Aparência">
         <i class="bi bi-palette"></i><span class="nav-label">Aparência</span>
       </a>

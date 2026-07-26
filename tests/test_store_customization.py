@@ -105,6 +105,31 @@ class TestStoreAddress:
         assert "Centro" in html
 
 
+class TestMenuTagline:
+    def test_customizing_tagline_reflects_on_public_menu(self, app, client, login_as):
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+
+        resp = client.post(
+            "/painel/configuracoes/loja",
+            data={"name": "Braseiro & Cia", "menu_tagline": "Churrasco Artesanal"},
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+
+        with app.app_context():
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            assert tenant.menu_tagline == "Churrasco Artesanal"
+
+        html = client.get("/loja/braseiro-cia").get_data(as_text=True)
+        assert "Churrasco Artesanal" in html
+        assert "CARDÁPIO DIGITAL" not in html
+
+    def test_blank_tagline_falls_back_to_default(self, app):
+        with app.app_context():
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            assert tenant.menu_tagline_or_default == "CARDÁPIO DIGITAL"
+
+
 class TestOpeningHours:
     def test_saving_hours_via_settings_form(self, app, client, login_as):
         login_as(client, "lojista@braseiroecia.com.br", "lojista123")

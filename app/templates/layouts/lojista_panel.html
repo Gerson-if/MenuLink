@@ -159,6 +159,30 @@
     </header>
 
     <div class="content">
+      {% if current_tenant %}
+        {% set trial = current_tenant.trial_status() %}
+        {% if trial and trial.phase == 'trial' %}
+        <div class="alert alert-secondary d-flex align-items-center gap-2 py-2 mb-3" style="font-size: .85rem;">
+          <i class="bi bi-hourglass-split"></i>
+          <span>
+            Seu período de teste grátis termina em <strong>{{ trial.days_left }} dia(s)</strong>
+            ({{ trial.ends_at.strftime("%d/%m/%Y") }}). Aproveite para explorar todos os
+            recursos — quando quiser, é só assinar um plano pela
+            <a href="{{ url_for('lojista.chat') }}" class="link-chili">Central de Suporte</a>.
+          </span>
+        </div>
+        {% elif trial and trial.phase in ('grace', 'expired') %}
+        <div class="alert alert-warning d-flex align-items-center gap-2 py-2 mb-3" style="font-size: .85rem;">
+          <i class="bi bi-exclamation-triangle"></i>
+          <span>
+            Seu período de teste acabou. Você ainda tem <strong>{{ trial.days_left }} dia(s)</strong>
+            para regularizar sua situação antes que o acesso seja pausado
+            (até {{ trial.grace_ends_at.strftime("%d/%m/%Y") }}). Fale com a gente pela
+            <a href="{{ url_for('lojista.chat') }}" class="link-chili">Central de Suporte</a>.
+          </span>
+        </div>
+        {% endif %}
+      {% endif %}
       {% block panel_content %}{% endblock %}
     </div>
   </div>

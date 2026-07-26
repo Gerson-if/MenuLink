@@ -1,0 +1,74 @@
+{% extends "layouts/admin_panel.html" %}
+{% block title %}Período de Teste — Comanda Admin{% endblock %}
+{% block page_title %}Período de Teste{% endblock %}
+
+{% block panel_content %}
+<div class="alert alert-secondary py-2 small mb-4">
+  <i class="bi bi-info-circle"></i>
+  Toda loja nova começa em <strong>período de teste grátis</strong>. Ao acabar o
+  prazo, a loja ainda tem alguns dias extras de tolerância para continuar
+  acessando o painel e regularizar a situação — só depois disso o acesso é
+  suspenso automaticamente. Um lembrete amigável é enviado pelo chat de
+  suporte da própria loja conforme o prazo se aproxima.
+  Mudar os valores abaixo afeta as próximas lojas cadastradas — para ajustar
+  o prazo de uma loja específica que já existe, use "Ajustar prazo de teste"
+  no detalhe dela.
+</div>
+
+<form method="POST" novalidate>
+  {{ form.hidden_tag() }}
+
+  <div class="row g-4">
+    <div class="col-lg-6">
+      <div class="panel">
+        <div class="panel-title"><i class="bi bi-hourglass-split"></i> Prazos</div>
+
+        <div class="mb-3">
+          {{ form.trial_days.label(class="form-label small fw-semibold") }}
+          {{ form.trial_days(class="form-control") }}
+          {% for error in form.trial_days.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+        </div>
+
+        <div class="mb-3">
+          {{ form.trial_grace_days.label(class="form-label small fw-semibold") }}
+          {{ form.trial_grace_days(class="form-control") }}
+          <p class="text-muted-custom small mt-1 mb-0">
+            Depois do teste acabar, a loja continua acessando o painel normalmente por
+            esse tanto de dias antes de ser suspensa.
+          </p>
+          {% for error in form.trial_grace_days.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="panel">
+        <div class="panel-title"><i class="bi bi-chat-dots"></i> Lembrete automático (chat de suporte)</div>
+
+        <div class="row g-2 mb-3">
+          <div class="col-6">
+            {{ form.trial_reminder_days_before.label(class="form-label small fw-semibold") }}
+            {{ form.trial_reminder_days_before(class="form-control") }}
+          </div>
+          <div class="col-6">
+            {{ form.trial_reminder_cycle_days.label(class="form-label small fw-semibold") }}
+            {{ form.trial_reminder_cycle_days(class="form-control") }}
+          </div>
+        </div>
+
+        <div class="mb-1">
+          {{ form.trial_reminder_message.label(class="form-label small fw-semibold") }}
+          {{ form.trial_reminder_message(class="form-control", rows=6, placeholder="Deixe em branco para usar a mensagem padrão.") }}
+          {% for error in form.trial_reminder_message.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+        </div>
+        <p class="text-muted-custom small mb-0">
+          Placeholders disponíveis: <code>{loja}</code>, <code>{dias_restantes}</code> e
+          <code>{data_fim}</code>.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-4">{{ form.submit(class="btn btn-chili") }}</div>
+</form>
+{% endblock %}

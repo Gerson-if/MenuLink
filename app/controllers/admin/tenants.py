@@ -6,6 +6,7 @@ from app.forms.admin_forms import (
     TenantEditForm,
     TenantOwnerPasswordForm,
     TenantStatusReasonForm,
+    TenantTrialForm,
 )
 from app.repositories.plan_repository import PlanRepository
 from app.services.admin_billing_service import AdminBillingService
@@ -120,6 +121,9 @@ def tenants_detail(tenant_id):
     invoices = billing_service.list_invoices_for_tenant(tenant.id)
     reason_form = TenantStatusReasonForm()
     owner_password_form = TenantOwnerPasswordForm()
+    trial_form = TenantTrialForm()
+    if not trial_form.is_submitted() and tenant.trial_ends_at:
+        trial_form.trial_ends_at.data = tenant.trial_ends_at.date()
     subscription = billing_service.get_subscription_for_tenant(tenant.id)
 
     cycle_form = SubscriptionCycleForm()
@@ -139,6 +143,7 @@ def tenants_detail(tenant_id):
         invoices=invoices,
         reason_form=reason_form,
         owner_password_form=owner_password_form,
+        trial_form=trial_form,
         asaas_configured=billing_service.is_asaas_configured(),
         subscription=subscription,
         cycle_form=cycle_form,
@@ -201,6 +206,28 @@ def tenants_reset_owner_password(tenant_id):
                 f"Senha de {owner.email} redefinida com sucesso. As sessões abertas dele(a) foram encerradas.",
                 "success",
             )
+    else:
+        for field_errors in form.errors.values():
+            for error in field_errors:
+                flash(error, "danger")
+
+    return redirect(url_for("admin.tenants_detail", tenant_id=tenant.id))
+
+
+@admin_bp.route("/lojistas/<int:tenant_id>/prazo-teste", methods=["POST"])
+@super_admin_required
+def tenants_update_trial(tenant_id):
+    service = AdminTenantService()
+    tenant = service.get_or_404(tenant_id)
+    form = TenantTrialForm()
+
+    if form.validate_on_submit():
+        try:
+            service.update_trial_deadline(tenant, form.trial_ends_at.data)
+        except TenantAdminError as exc:
+            flash(str(exc), "danger")
+        else:
+            flash(f"Prazo de teste de '{tenant.name}' atualizado para {form.trial_ends_at.data.strftime('%d/%m/%Y')}.", "success")
     else:
         for field_errors in form.errors.values():
             for error in field_errors:

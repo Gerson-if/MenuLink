@@ -6,10 +6,11 @@ cuida dos efeitos colaterais esperados (ex: bloquear por inadimplência
 registra o motivo e a data; liberar acesso limpa o motivo do bloqueio).
 """
 
-from datetime import datetime, timezone
+from datetime import date, datetime, time, timedelta, timezone
 
 from app.extensions import db
 from app.models import Tenant, TenantStatus, User, UserRole
+from app.models.platform_settings import PlatformSettings
 from app.repositories.tenant_repository import TenantRepository
 from app.repositories.user_repository import UserRepository
 from app.utils.slugs import generate_unique_slug
@@ -47,6 +48,8 @@ class AdminTenantService:
 
         slug = generate_unique_slug(slug or name, self.repo.get_by_slug)
 
+        trial_days = PlatformSettings.get_or_create().trial_days
+
         tenant = Tenant(
             name=name.strip(),
             slug=slug,
@@ -55,6 +58,12 @@ class AdminTenantService:
             whatsapp_number=whatsapp_number or None,
             plan_id=plan_id,
             status=TenantStatus.TRIAL,
+            # Fim do período de teste grátis (ver `flask process-trials`
+            # / app/services/trial_service.py) — calculado a partir da
+            # duração configurada pelo Super Admin NO MOMENTO deste
+            # cadastro; mudar a configuração global depois não afeta
+            # lojas já criadas (só as próximas).
+            trial_ends_at=datetime.now(timezone.utc) + timedelta(days=trial_days),
         )
         db.session.add(tenant)
         db.session.flush()
@@ -121,6 +130,24 @@ class AdminTenantService:
 
         SessionService().revoke_all_other_sessions(owner.id)
         return owner
+
+    def update_trial_deadline(self, tenant: Tenant, new_end_date: date) -> Tenant:
+        """Super Admin estende (ou reduz) manualmente o fim do período de
+        teste de UMA loja específica — ex: cliente pediu mais alguns dias
+        pra decidir, ou negociação de suporte. Só faz sentido pra loja
+        ainda em TRIAL (uma vez ACTIVE/paga, o prazo de teste não importa
+        mais). Reseta o aviso de tolerância (`trial_grace_notice_sent`) —
+        se a loja já tinha recebido o aviso de "seu teste acabou" e o
+        Super Admin estendeu o prazo, ela pode legitimamente entrar em
+        tolerância de novo mais pra frente e o aviso precisa poder ser
+        mandado outra vez."""
+        if tenant.status != TenantStatus.TRIAL:
+            raise TenantAdminError("Só é possível ajustar o prazo de teste de lojas que ainda estão em período de teste.")
+
+        tenant.trial_ends_at = datetime.combine(new_end_date, time(23, 59, 59), tzinfo=timezone.utc)
+        tenant.trial_grace_notice_sent = False
+        db.session.commit()
+        return tenant
 
     def delete(self, tenant: Tenant) -> None:
         # O cascade definido nos relacionamentos do model (categorias,

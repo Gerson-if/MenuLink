@@ -24,8 +24,10 @@ class TenantSettingsService:
         self, *, name: str, whatsapp_number: str, phone: str, logo_file_storage=None,
         address_street: str | None = None, address_number: str | None = None,
         address_neighborhood: str | None = None, address_city: str | None = None,
+        menu_tagline: str | None = None,
     ):
         self.tenant.name = name.strip()
+        self.tenant.menu_tagline = (menu_tagline or "").strip() or None
         self.tenant.whatsapp_number = (whatsapp_number or "").strip() or None
         self.tenant.phone = (phone or "").strip() or None
         self.tenant.address_street = (address_street or "").strip() or None

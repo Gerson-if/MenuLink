@@ -46,6 +46,7 @@ def settings_store():
                 phone=form.phone.data, logo_file_storage=form.logo.data,
                 address_street=form.address_street.data, address_number=form.address_number.data,
                 address_neighborhood=form.address_neighborhood.data, address_city=form.address_city.data,
+                menu_tagline=form.menu_tagline.data,
             )
         except InvalidImageError as exc:
             flash(str(exc), "danger")

@@ -8,7 +8,8 @@ filtrando SEMPRE por tenant_id nas queries (ver base_repository.py).
 """
 
 import enum
-from datetime import datetime, time
+import math
+from datetime import datetime, time, timedelta, timezone
 
 from sqlalchemy import (
     Boolean,
@@ -118,6 +119,26 @@ class Tenant(db.Model, TimestampMixin):
     blocked_reason = Column(String(255), nullable=True)
     blocked_at = Column(db.DateTime(timezone=True), nullable=True)
 
+    # --- Período de teste grátis ---
+    # Preenchido em AdminTenantService.create() com base em
+    # PlatformSettings.trial_days no momento do cadastro (ajustável pelo
+    # Super Admin, mas o valor já gravado aqui não muda retroativamente
+    # se a configuração global mudar depois). None para tenants criados
+    # já ACTIVE (ex: a loja demo do `flask seed-db`) ou para instalações
+    # antigas, anteriores a este recurso — nesses casos trial_status()
+    # retorna None e nenhum aviso é mostrado.
+    trial_ends_at = Column(db.DateTime(timezone=True), nullable=True)
+    # Marca se o aviso ÚNICO de "seu teste acabou, você tem N dias de
+    # tolerância" já foi mandado pelo chat de suporte (ver
+    # app/services/trial_service.py) — evita reenviar a cada execução do
+    # `flask process-trials`. Reseta pra False quando o Super Admin
+    # estende o prazo manualmente (ver AdminTenantService.update_trial_deadline).
+    trial_grace_notice_sent = Column(Boolean, nullable=False, default=False, server_default="0")
+    # Última vez que o lembrete "faltam N dias" foi enviado (respeita o
+    # ciclo configurado em PlatformSettings.trial_reminder_cycle_days,
+    # pra não mandar mensagem repetida toda hora).
+    trial_reminder_last_sent_at = Column(db.DateTime(timezone=True), nullable=True)
+
     # Configurações do cardápio / operação
     delivery_enabled = Column(Boolean, nullable=False, default=False)
     delivery_fee_cents = Column(Integer, nullable=True)
@@ -144,6 +165,15 @@ class Tenant(db.Model, TimestampMixin):
     logo_path = Column(String(255), nullable=True)
     banner_path = Column(String(255), nullable=True)
     theme_settings = Column(JSON, nullable=True)  # cores, fontes etc.
+
+    # Legenda curta mostrada ao lado/abaixo do nome da loja no cardápio
+    # público (sidebar e topbar — ver public/store_menu.html), tipo um
+    # subtítulo. Antes era um texto fixo ("CARDÁPIO DIGITAL") igual pra
+    # toda loja; agora o lojista pode trocar por algo próprio (ex: "Pizzas
+    # Artesanais", "Delivery & Retirada"). None/vazio mantém o texto
+    # padrão (ver `menu_tagline_or_default` abaixo) — nada muda pra quem
+    # nunca customizar.
+    menu_tagline = Column(String(60), nullable=True)
 
     # Integração de cobrança (Asaas) — preenchido automaticamente na
     # primeira cobrança gerada para este tenant. Ver
@@ -182,6 +212,54 @@ class Tenant(db.Model, TimestampMixin):
     @property
     def is_active_account(self) -> bool:
         return self.status in (TenantStatus.TRIAL, TenantStatus.ACTIVE)
+
+    @property
+    def menu_tagline_or_default(self) -> str:
+        return (self.menu_tagline or "").strip() or "CARDÁPIO DIGITAL"
+
+    def trial_status(self, now: datetime | None = None) -> dict | None:
+        """
+        Informações do período de teste gratuito, para exibir um aviso
+        ao lojista no painel (ver layouts/lojista_panel.html). Retorna
+        None se a loja não estiver em TRIAL ou não tiver `trial_ends_at`
+        definido (contas já ativas/pagas, ou instalações antigas de
+        antes deste recurso existir).
+
+        Fases possíveis:
+        - "trial": ainda dentro do período de teste normal.
+        - "grace": o teste acabou, mas ainda dentro da tolerância extra
+          configurada em PlatformSettings.trial_grace_days — o lojista
+          continua acessando o painel normalmente para regularizar.
+        - "expired": tolerância também esgotada — na prática o job
+          `flask process-trials` já deveria ter suspendido a conta
+          (mudando o status para BLOCKED_PAYMENT) antes disso aparecer
+          aqui; mantido como rede de segurança caso o job ainda não
+          tenha rodado.
+        """
+        if self.status != TenantStatus.TRIAL or not self.trial_ends_at:
+            return None
+
+        from app.models.platform_settings import PlatformSettings
+
+        now = now or datetime.now(timezone.utc)
+        trial_ends_at = self.trial_ends_at
+        if trial_ends_at.tzinfo is None:
+            # SQLite não guarda de fato o timezone (mesmo com
+            # DateTime(timezone=True)) — volta "naive" na leitura. Sempre
+            # gravamos em UTC (ver AdminTenantService.create), então é
+            # seguro assumir UTC aqui (mesmo padrão de session_service.py
+            # e report_service.py).
+            trial_ends_at = trial_ends_at.replace(tzinfo=timezone.utc)
+        grace_days = PlatformSettings.get_or_create().trial_grace_days
+        grace_ends_at = trial_ends_at + timedelta(days=grace_days)
+
+        if now <= trial_ends_at:
+            days_left = max(0, math.ceil((trial_ends_at - now).total_seconds() / 86400))
+            return {"phase": "trial", "days_left": days_left, "ends_at": trial_ends_at}
+        if now <= grace_ends_at:
+            days_left = max(0, math.ceil((grace_ends_at - now).total_seconds() / 86400))
+            return {"phase": "grace", "days_left": days_left, "grace_ends_at": grace_ends_at}
+        return {"phase": "expired", "days_left": 0, "grace_ends_at": grace_ends_at}
 
     @property
     def owner(self):

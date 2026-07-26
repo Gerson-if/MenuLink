@@ -14,6 +14,10 @@ _TIME_FORMAT = Regexp(r"^([01]?\d|2[0-3]):[0-5]\d$", message="Use o formato HH:M
 
 class StoreInfoForm(FlaskForm):
     name = StringField("Nome da loja", validators=[DataRequired(), Length(max=150), not_blank])
+    menu_tagline = StringField(
+        'Legenda do cardápio público (ex: "Pizzas Artesanais") — deixe em branco para usar "Cardápio Digital"',
+        validators=[Optional(), Length(max=60)],
+    )
     whatsapp_number = StringField("WhatsApp (com DDI+DDD)", validators=[Optional(), Length(max=20), phone_number()])
     phone = StringField("Telefone (opcional)", validators=[Optional(), Length(max=20), phone_number()])
     logo = FileField("Logo da loja", validators=[FileAllowed(["png", "jpg", "jpeg", "webp"], message="Formato não suportado.")])

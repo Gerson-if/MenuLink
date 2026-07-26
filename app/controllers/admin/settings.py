@@ -1,7 +1,7 @@
 from flask import abort, flash, make_response, redirect, render_template, request, url_for
 from flask_login import current_user
 
-from app.forms.admin_forms import AdminAppearanceForm, AsaasSettingsForm, EmailSettingsForm, EmailTestForm, LandingContentForm, LegalContentForm
+from app.forms.admin_forms import AdminAppearanceForm, AsaasSettingsForm, EmailSettingsForm, EmailTestForm, LandingContentForm, LegalContentForm, TrialSettingsForm
 from app.services.email_service import EmailError
 from app.services.payment_gateway.base import PaymentGatewayError
 from app.services.platform_settings_service import PlatformSettingsService
@@ -153,6 +153,34 @@ def settings_legal():
         "admin/settings/legal.html", form=form, settings=settings,
         terms_url=url_for("terms_of_use", _external=True), privacy_url=url_for("privacy_policy", _external=True),
     )
+
+
+@admin_bp.route("/configuracoes/teste-gratis", methods=["GET", "POST"])
+@super_admin_required
+def settings_trial():
+    service = PlatformSettingsService()
+    settings = service.settings
+    form = TrialSettingsForm()
+
+    if not form.is_submitted():
+        form.trial_days.data = settings.trial_days
+        form.trial_grace_days.data = settings.trial_grace_days
+        form.trial_reminder_days_before.data = settings.trial_reminder_days_before
+        form.trial_reminder_cycle_days.data = settings.trial_reminder_cycle_days
+        form.trial_reminder_message.data = settings.trial_reminder_message or ""
+
+    if form.validate_on_submit():
+        service.update_trial_settings(
+            trial_days=form.trial_days.data,
+            trial_grace_days=form.trial_grace_days.data,
+            trial_reminder_days_before=form.trial_reminder_days_before.data,
+            trial_reminder_cycle_days=form.trial_reminder_cycle_days.data,
+            trial_reminder_message=form.trial_reminder_message.data,
+        )
+        flash("Configurações do período de teste atualizadas.", "success")
+        return redirect(url_for("admin.settings_trial"))
+
+    return render_template("admin/settings/trial.html", form=form, settings=settings)
 
 
 @admin_bp.route("/configuracoes/aparencia", methods=["GET", "POST"])

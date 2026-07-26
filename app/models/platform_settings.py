@@ -33,6 +33,18 @@ LANDING_THEME_CHOICES = [
     ("light", "Claro"),
 ]
 
+# Mensagem padrão do lembrete automático de fim do período de teste,
+# mandada pelo chat de suporte (ver app/services/trial_service.py).
+# Placeholders substituídos na hora do envio: {loja}, {dias_restantes},
+# {data_fim} — documentados também na tela de configuração (Super Admin).
+DEFAULT_TRIAL_REMINDER_MESSAGE = (
+    "Olá, {loja}! 👋 Passando para lembrar que seu período de teste grátis no "
+    "Comanda termina em {dias_restantes} dia(s), no dia {data_fim}. Se estiver "
+    "gostando do sistema, escolha um plano quando quiser para continuar "
+    "aproveitando o cardápio digital sem interrupções — qualquer dúvida, é só "
+    "chamar a gente por aqui! 🙂"
+)
+
 DEFAULT_LANDING_CONTENT = {
     "hero_title": "O Cardápio Digital que seu Delivery merece.",
     "hero_subtitle": (
@@ -130,6 +142,25 @@ class PlatformSettings(db.Model, TimestampMixin):
     privacy_content = Column(Text, nullable=True)
     privacy_updated_at = Column(Date, nullable=True)
 
+    # --- Período de teste grátis (trial) ---
+    # Controla o cadastro de TODA loja nova (ver AdminTenantService.create,
+    # que grava Tenant.trial_ends_at = agora + trial_days no momento da
+    # criação) e o job `flask process-trials` (ver app/services/trial_service.py),
+    # que manda lembretes automáticos e suspende quem passar do prazo.
+    trial_days = Column(Integer, nullable=False, default=20, server_default="20")
+    # Tolerância extra, em dias, DEPOIS do fim do teste — a loja continua
+    # acessando o painel normalmente nesse período, só para regularizar
+    # (ver Tenant.trial_status). Só depois disso a conta é suspensa.
+    trial_grace_days = Column(Integer, nullable=False, default=2, server_default="2")
+    # Com quantos dias de antecedência o lembrete automático começa a ser
+    # enviado (antes do fim do teste).
+    trial_reminder_days_before = Column(Integer, nullable=False, default=5, server_default="5")
+    # De quantos em quantos dias o lembrete se repete, enquanto ainda não
+    # regularizado (evita mandar mensagem nova a cada execução do job).
+    trial_reminder_cycle_days = Column(Integer, nullable=False, default=3, server_default="3")
+    # Texto do lembrete — None/vazio usa DEFAULT_TRIAL_REMINDER_MESSAGE.
+    trial_reminder_message = Column(Text, nullable=True)
+
     @classmethod
     def get_or_create(cls) -> "PlatformSettings":
         settings = db.session.get(cls, 1)
@@ -164,6 +195,10 @@ class PlatformSettings(db.Model, TimestampMixin):
         from app.utils.colors import darken_hex
 
         return {"accent": self.admin_theme_accent, "accent_dark": darken_hex(self.admin_theme_accent)}
+
+    @property
+    def trial_reminder_message_or_default(self) -> str:
+        return self.trial_reminder_message or DEFAULT_TRIAL_REMINDER_MESSAGE
 
     @property
     def landing_content_or_default(self) -> dict:

@@ -38,6 +38,24 @@ class ChatService:
         db.session.commit()
         return message
 
+    @staticmethod
+    def send_system_message(tenant_id: int, body: str) -> ChatMessage:
+        """Mensagem automática da PLATAFORMA (não de um usuário humano) —
+        usada pelos lembretes/avisos de período de teste (ver
+        app/services/trial_service.py). Aparece no chat com o mesmo
+        estilo visual de uma mensagem do Super Admin (mesmo
+        `sender_role`, já que não há um terceiro papel "sistema" no
+        modelo — ver ChatSenderRole), mas com `sender_user_id` nulo. Ao
+        contrário de `send_message`, não valida tamanho/vazio: quem
+        chama isso já controla o texto (mensagens fixas ou geradas a
+        partir de um template configurado pelo Super Admin)."""
+        message = ChatMessage(
+            tenant_id=tenant_id, sender_user_id=None, sender_role=ChatSenderRole.SUPER_ADMIN, body=body,
+        )
+        db.session.add(message)
+        db.session.commit()
+        return message
+
     def mark_read(self, *, reader_role: ChatSenderRole) -> None:
         """`reader_role` é quem está LENDO agora — marca como lidas as
         mensagens que vieram do OUTRO lado (nunca marca a própria
