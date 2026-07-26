@@ -216,6 +216,10 @@ class TrialSettingsForm(FlaskForm):
         "Mensagem do lembrete (enviada pelo chat de suporte)",
         validators=[Optional(), Length(max=2000)],
     )
+    trial_urgent_days = IntegerField(
+        "A partir de quantos dias restantes o painel do lojista fica com aviso chamativo",
+        validators=[DataRequired(), NumberRange(min=0, max=30)],
+    )
     submit = SubmitField("Salvar configurações")
 
 

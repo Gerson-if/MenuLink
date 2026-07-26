@@ -152,16 +152,19 @@ class AdminTenantService:
         teste de UMA loja específica — ex: cliente pediu mais alguns dias
         pra decidir, ou negociação de suporte. Só faz sentido pra loja
         ainda em TRIAL (uma vez ACTIVE/paga, o prazo de teste não importa
-        mais). Reseta o aviso de tolerância (`trial_grace_notice_sent`) —
-        se a loja já tinha recebido o aviso de "seu teste acabou" e o
-        Super Admin estendeu o prazo, ela pode legitimamente entrar em
-        tolerância de novo mais pra frente e o aviso precisa poder ser
-        mandado outra vez."""
+        mais). Reseta todos os avisos automáticos já enviados
+        (`trial_grace_notice_sent`, `trial_d2_notice_sent`,
+        `trial_final_notice_sent`) — se a loja já tinha recebido algum
+        deles e o Super Admin estendeu o prazo, ela pode legitimamente
+        passar por essas fases de novo mais pra frente e os avisos
+        precisam poder ser mandados outra vez."""
         if tenant.status != TenantStatus.TRIAL:
             raise TenantAdminError("Só é possível ajustar o prazo de teste de lojas que ainda estão em período de teste.")
 
         tenant.trial_ends_at = datetime.combine(new_end_date, time(23, 59, 59), tzinfo=timezone.utc)
         tenant.trial_grace_notice_sent = False
+        tenant.trial_d2_notice_sent = False
+        tenant.trial_final_notice_sent = False
         db.session.commit()
         return tenant
 

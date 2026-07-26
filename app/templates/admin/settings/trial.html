@@ -9,7 +9,10 @@
   prazo, a loja ainda tem alguns dias extras de tolerância para continuar
   acessando o painel e regularizar a situação — só depois disso o acesso é
   suspenso automaticamente. Um lembrete amigável é enviado pelo chat de
-  suporte da própria loja conforme o prazo se aproxima.
+  suporte da própria loja conforme o prazo se aproxima, com mais duas
+  mensagens de reforço com texto fixo (não editável): uma quando faltam 2
+  dias para o fim do teste e outra no dia em que o link efetivamente sai
+  do ar.
   Mudar os valores abaixo afeta as próximas lojas cadastradas — para ajustar
   o prazo de uma loja específica que já existe, use "Ajustar prazo de teste"
   no detalhe dela.
@@ -37,6 +40,15 @@
             esse tanto de dias antes de ser suspensa.
           </p>
           {% for error in form.trial_grace_days.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+        </div>
+
+        <div class="mb-1">
+          {{ form.trial_urgent_days.label(class="form-label small fw-semibold") }}
+          {{ form.trial_urgent_days(class="form-control") }}
+          <p class="text-muted-custom small mt-1 mb-0">
+            Antes disso, o painel do lojista mostra só um aviso discreto.
+          </p>
+          {% for error in form.trial_urgent_days.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
         </div>
       </div>
     </div>

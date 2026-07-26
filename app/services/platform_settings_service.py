@@ -101,7 +101,7 @@ class PlatformSettingsService:
     def update_trial_settings(
         self, *, trial_days: int, trial_grace_days: int,
         trial_reminder_days_before: int, trial_reminder_cycle_days: int,
-        trial_reminder_message: str | None,
+        trial_reminder_message: str | None, trial_urgent_days: int,
     ) -> PlatformSettings:
         """Configurações do período de teste grátis — ver campos
         correspondentes em app/models/platform_settings.py. Alterar
@@ -114,6 +114,7 @@ class PlatformSettingsService:
         self.settings.trial_reminder_days_before = max(0, int(trial_reminder_days_before or 0))
         self.settings.trial_reminder_cycle_days = max(1, int(trial_reminder_cycle_days or 1))
         self.settings.trial_reminder_message = (trial_reminder_message or "").strip() or None
+        self.settings.trial_urgent_days = max(0, int(trial_urgent_days or 0))
         db.session.commit()
         return self.settings
 

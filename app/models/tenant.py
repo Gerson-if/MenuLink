@@ -138,6 +138,16 @@ class Tenant(db.Model, TimestampMixin):
     # ciclo configurado em PlatformSettings.trial_reminder_cycle_days,
     # pra não mandar mensagem repetida toda hora).
     trial_reminder_last_sent_at = Column(db.DateTime(timezone=True), nullable=True)
+    # Duas mensagens FIXAS da régua de comunicação (texto não editável,
+    # diferente do lembrete configurável acima) — ver
+    # app/services/trial_service.py: um aviso único a 2 dias do fim do
+    # teste, e outro no próprio dia em que o link efetivamente sai do ar
+    # (fim da tolerância). Ambas resetam em
+    # AdminTenantService.update_trial_deadline, pra poderem disparar de
+    # novo se o Super Admin estender o prazo depois de já terem sido
+    # enviadas.
+    trial_d2_notice_sent = Column(Boolean, nullable=False, default=False, server_default="0")
+    trial_final_notice_sent = Column(Boolean, nullable=False, default=False, server_default="0")
 
     # Configurações do cardápio / operação
     delivery_enabled = Column(Boolean, nullable=False, default=False)
@@ -235,6 +245,13 @@ class Tenant(db.Model, TimestampMixin):
           (mudando o status para BLOCKED_PAYMENT) antes disso aparecer
           aqui; mantido como rede de segurança caso o job ainda não
           tenha rodado.
+
+        Também inclui `is_urgent` (bool): quando True, o painel troca o
+        aviso discreto por uma barra fixa e chamativa no topo (ver
+        layouts/lojista_panel.html) — True durante toda a fase "grace"/
+        "expired", e na fase "trial" só nos últimos
+        `PlatformSettings.trial_urgent_days` dias, pra não assustar
+        quem acabou de se cadastrar.
         """
         if self.status != TenantStatus.TRIAL or not self.trial_ends_at:
             return None
@@ -250,16 +267,26 @@ class Tenant(db.Model, TimestampMixin):
             # seguro assumir UTC aqui (mesmo padrão de session_service.py
             # e report_service.py).
             trial_ends_at = trial_ends_at.replace(tzinfo=timezone.utc)
-        grace_days = PlatformSettings.get_or_create().trial_grace_days
+        settings = PlatformSettings.get_or_create()
+        grace_days = settings.trial_grace_days
         grace_ends_at = trial_ends_at + timedelta(days=grace_days)
 
         if now <= trial_ends_at:
             days_left = max(0, math.ceil((trial_ends_at - now).total_seconds() / 86400))
-            return {"phase": "trial", "days_left": days_left, "ends_at": trial_ends_at}
+            return {
+                "phase": "trial", "days_left": days_left, "ends_at": trial_ends_at,
+                "is_urgent": days_left <= settings.trial_urgent_days,
+            }
         if now <= grace_ends_at:
             days_left = max(0, math.ceil((grace_ends_at - now).total_seconds() / 86400))
-            return {"phase": "grace", "days_left": days_left, "grace_ends_at": grace_ends_at}
-        return {"phase": "expired", "days_left": 0, "grace_ends_at": grace_ends_at}
+            return {
+                "phase": "grace", "days_left": days_left, "grace_ends_at": grace_ends_at,
+                "is_urgent": True, "is_final_day": grace_ends_at.date() == now.date(),
+            }
+        return {
+            "phase": "expired", "days_left": 0, "grace_ends_at": grace_ends_at,
+            "is_urgent": True, "is_final_day": False,
+        }
 
     @property
     def owner(self):

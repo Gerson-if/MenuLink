@@ -168,6 +168,7 @@ def settings_trial():
         form.trial_reminder_days_before.data = settings.trial_reminder_days_before
         form.trial_reminder_cycle_days.data = settings.trial_reminder_cycle_days
         form.trial_reminder_message.data = settings.trial_reminder_message or ""
+        form.trial_urgent_days.data = settings.trial_urgent_days
 
     if form.validate_on_submit():
         service.update_trial_settings(
@@ -176,6 +177,7 @@ def settings_trial():
             trial_reminder_days_before=form.trial_reminder_days_before.data,
             trial_reminder_cycle_days=form.trial_reminder_cycle_days.data,
             trial_reminder_message=form.trial_reminder_message.data,
+            trial_urgent_days=form.trial_urgent_days.data,
         )
         flash("Configurações do período de teste atualizadas.", "success")
         return redirect(url_for("admin.settings_trial"))

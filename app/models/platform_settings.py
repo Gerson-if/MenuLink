@@ -160,6 +160,12 @@ class PlatformSettings(db.Model, TimestampMixin):
     trial_reminder_cycle_days = Column(Integer, nullable=False, default=3, server_default="3")
     # Texto do lembrete — None/vazio usa DEFAULT_TRIAL_REMINDER_MESSAGE.
     trial_reminder_message = Column(Text, nullable=True)
+    # A partir de quantos dias restantes o PAINEL do lojista troca do
+    # aviso discreto (linha pequena) pra uma barra fixa e chamativa no
+    # topo, pedindo pra assinar um plano — ver Tenant.trial_status e
+    # layouts/lojista_panel.html. Continua chamativa durante toda a
+    # tolerância também (ver `trial_grace_days` acima).
+    trial_urgent_days = Column(Integer, nullable=False, default=3, server_default="3")
 
     @classmethod
     def get_or_create(cls) -> "PlatformSettings":

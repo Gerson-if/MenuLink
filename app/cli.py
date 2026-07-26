@@ -555,7 +555,9 @@ def process_trials():
 
     summary = TrialService().process_all()
     click.echo(
-        f"OK: {summary['reminders_sent']} lembrete(s) enviado(s), "
-        f"{summary['grace_notices_sent']} aviso(s) de tolerância enviado(s), "
+        f"OK: {summary['reminders_sent']} lembrete(s), "
+        f"{summary['d2_notices_sent']} aviso(s) de 2 dias, "
+        f"{summary['grace_notices_sent']} aviso(s) de tolerância, "
+        f"{summary['final_notices_sent']} aviso(s) de dia da suspensão, "
         f"{summary['suspended']} loja(s) suspensa(s) por teste expirado."
     )

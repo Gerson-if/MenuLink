@@ -139,6 +139,14 @@ demais.
   com link de pagamento quando há cobrança Asaas gerada, e atalho pro
   WhatsApp de suporte) e segurança (senha, dados de login, sessões
   ativas).
+- **Escolher/trocar de plano pelo próprio painel** (aba Assinatura):
+  toda loja nova (self-service ou criada pelo Super Admin sem plano
+  escolhido) já cai automaticamente no plano mais barato disponível —
+  nenhuma loja fica com plano nulo. O lojista pode trocar para
+  qualquer outro plano ativo a qualquer momento; a troca só é aplicada
+  depois que ele confirma num modal (nunca automaticamente), e a tela
+  deixa explícito que só associar/trocar de plano não gera cobrança
+  nenhuma — a fatura em si continua sendo lançada separadamente.
 - **Período de teste grátis**: toda loja nova começa em teste (duração
   configurável pelo Super Admin). O painel mostra quantos dias faltam
   e, quando o teste acaba, a loja ainda acessa normalmente por mais
@@ -258,23 +266,36 @@ demais.
 - **Período de teste grátis** (`/admin/configuracoes/teste-gratis`):
   duração do teste (padrão 20 dias), dias extras de tolerância após o
   teste acabar (padrão 2 dias — a loja continua acessando o painel
-  normalmente nesse período, só para regularizar a situação), e o
-  lembrete automático mandado pelo chat de suporte da própria loja
-  conforme o prazo se aproxima (com quantos dias de antecedência e a
-  cada quantos dias repetir, tudo configurável, além do texto da
-  mensagem). Ao esgotar a tolerância sem regularizar, a loja é
+  normalmente nesse período, só para regularizar a situação), a partir
+  de quantos dias restantes o painel do lojista fica com aviso
+  chamativo (padrão 3 dias), e o lembrete automático mandado pelo chat
+  de suporte da própria loja conforme o prazo se aproxima (com quantos
+  dias de antecedência e a cada quantos dias repetir, tudo
+  configurável, além do texto da mensagem). Além desse lembrete
+  configurável, uma **régua de comunicação fixa** manda dois avisos
+  extras com texto padronizado (não editável): um quando faltam 2 dias
+  para o fim do teste ("seu cardápio está ficando incrível, mas seu
+  teste acaba em 2 dias...") e outro no próprio dia em que o link sai
+  do ar, ao fim da tolerância ("seu link sairá do ar hoje à
+  meia-noite..."). Ao esgotar a tolerância sem regularizar, a loja é
   suspensa automaticamente (mesmo status/tela de "conta bloqueada" já
   usado para inadimplência). O ajuste de duração só vale para lojas
   criadas dali em diante — para estender o prazo de uma loja
   específica já existente, use "Ajustar prazo de teste" no detalhe
   dela (`/admin/lojistas/<id>`). Como não há agendador embutido na
-  aplicação, quem processa lembretes/tolerância/suspensão é o comando
-  `flask process-trials` (ver [Comandos úteis](#comandos-úteis)) —
-  programe-o para rodar 1x por dia num cron do servidor:
+  aplicação, quem processa lembretes/régua fixa/tolerância/suspensão é
+  o comando `flask process-trials` (ver
+  [Comandos úteis](#comandos-úteis)) — programe-o para rodar 1x por
+  dia num cron do servidor:
   ```bash
   # roda todo dia às 6h da manhã
   0 6 * * * root cd /opt/comanda && venv/bin/flask process-trials >> /var/log/comanda-trials.log 2>&1
   ```
+  No painel do lojista, o aviso fica discreto (uma linha pequena)
+  durante a maior parte do teste, e vira uma barra fixa e chamativa no
+  topo só nos últimos dias e durante a tolerância — pedindo pra
+  assinar um plano, sem deixar isso passar despercebido perto do
+  prazo.
 - Todas as rotas protegidas por `@super_admin_required`.
 
 ### Integração com Asaas (cobrança de faturas)

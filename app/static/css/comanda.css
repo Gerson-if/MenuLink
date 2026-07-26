@@ -578,6 +578,20 @@ body:has(.app-shell) .toast-flash-stack { top: 84px; }
 .topbar h1 { font-size: 1.25rem; margin: 0; font-weight: 700; color: var(--paper); font-family: 'Archivo Black', sans-serif; }
 .content { padding: 24px; }
 
+/* Barra chamativa de fim de período de teste (últimos dias / tolerância
+   / prazo esgotado) — ver layouts/lojista_panel.html. Deliberadamente
+   "impossível de ignorar": cor sólida de alerta, sticky no topo do
+   conteúdo, texto em negrito. Contraste com o aviso discreto (texto
+   pequeno sem fundo) mostrado no resto do período de teste. */
+.trial-urgent-bar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: #C93522; color: #fff; font-weight: 600; font-size: .85rem;
+  padding: 10px 16px; border-radius: 10px;
+  position: sticky; top: 8px; z-index: 5;
+  box-shadow: 0 4px 16px rgba(201, 53, 34, .35);
+}
+.trial-urgent-bar i { font-size: 1.1rem; }
+
 /* ---------- Barra de navegação inferior (só no celular) ----------
    O maior detalhe que faz o painel parecer um app de verdade em vez de
    um site aberto no celular: os destinos mais usados ficam fixos

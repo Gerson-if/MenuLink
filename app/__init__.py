@@ -235,6 +235,18 @@ def _register_template_filters(app: Flask) -> None:
 
         return len(ChatService.tenant_ids_with_unread_messages_for_admin())
 
+    @app.template_global("cheapest_plan_name")
+    def cheapest_plan_name() -> str | None:
+        """Nome do plano mais barato disponível para contratação — usado
+        na barra chamativa de fim de teste (ver layouts/lojista_panel.html)
+        pra personalizar a chamada ("Assine o plano X agora") em vez de um
+        genérico "assine um plano". None se não houver nenhum plano ativo
+        cadastrado ainda."""
+        from app.repositories.plan_repository import PlanRepository
+
+        plan = PlanRepository().get_cheapest_active()
+        return plan.name if plan else None
+
     @app.template_global("chat_day_label")
     def chat_day_label(moment) -> str:
         """"Hoje"/"Ontem"/data — usado pelos separadores de dia no chat de

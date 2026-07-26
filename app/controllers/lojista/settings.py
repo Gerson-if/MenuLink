@@ -251,6 +251,10 @@ def settings_subscription_change_plan():
     except TenantSettingsError as exc:
         flash(str(exc), "danger")
     else:
-        flash(f"Plano alterado para '{plan.name}' com sucesso.", "success")
+        flash(
+            f"Plano associado à sua loja alterado para '{plan.name}'. Nenhuma cobrança foi "
+            "gerada agora — a fatura, quando houver, aparece aqui antes de qualquer pagamento.",
+            "success",
+        )
 
     return redirect(url_for("lojista.settings_subscription"))

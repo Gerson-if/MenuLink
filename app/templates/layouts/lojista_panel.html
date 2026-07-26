@@ -161,18 +161,31 @@
     <div class="content">
       {% if current_tenant %}
         {% set trial = current_tenant.trial_status() %}
-        {% if trial and trial.phase == 'trial' %}
+        {% if trial and not trial.is_urgent %}
+        {# Fase tranquila do teste (ainda faltam vários dias) — só uma
+           linha discreta, sem alarde nenhum. #}
         <div class="text-muted-custom mb-3" style="font-size: .78rem; opacity: .85;">
           <i class="bi bi-hourglass-split"></i>
           Teste grátis: {{ trial.days_left }} dia(s) restante(s) ·
           <a href="{{ url_for('lojista.settings_subscription') }}" class="link-chili">ver planos</a>
         </div>
-        {% elif trial and trial.phase in ('grace', 'expired') %}
-        <div class="mb-3" style="font-size: .78rem; color: var(--accent);">
-          <i class="bi bi-exclamation-circle"></i>
-          Teste encerrado — {{ trial.days_left }} dia(s) para regularizar ·
-          <a href="{{ url_for('lojista.settings_subscription') }}" class="link-chili">ver planos</a> ·
-          <a href="{{ url_for('lojista.chat') }}" class="link-chili">suporte</a>
+        {% elif trial and trial.is_urgent %}
+        {# Reta final (últimos dias de teste, tolerância, ou prazo já
+           esgotado) — barra fixa e chamativa, impossível de ignorar. #}
+        <div class="trial-urgent-bar mb-3">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+          <span>
+            {% if trial.phase == 'trial' %}
+            Seu período de teste acaba em <strong>{{ trial.days_left }} dia(s)</strong>.
+            {% set plan_name = cheapest_plan_name() %}
+            Assine {{ ("o plano " ~ plan_name) if plan_name else "um plano" }} agora para manter seu cardápio no ar.
+            {% elif trial.is_final_day %}
+            Seu link sairá do ar <strong>hoje à meia-noite</strong>. Assine um plano agora para continuar vendendo sem interrupções.
+            {% else %}
+            Seu período de teste acabou — você tem <strong>{{ trial.days_left }} dia(s)</strong> para regularizar antes que seu cardápio saia do ar.
+            {% endif %}
+          </span>
+          <a href="{{ url_for('lojista.settings_subscription') }}" class="btn btn-sm btn-light fw-semibold ms-auto flex-shrink-0">Assinar agora</a>
         </div>
         {% endif %}
       {% endif %}

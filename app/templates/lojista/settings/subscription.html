@@ -5,6 +5,14 @@
 {% block panel_content %}
 {% include "lojista/settings/_tabs.html" %}
 
+<div class="alert alert-secondary py-2 small mb-4">
+  <i class="bi bi-shield-check"></i>
+  <strong>Nenhuma cobrança é gerada automaticamente.</strong> Escolher ou trocar de
+  plano aqui só define qual plano fica associado à sua loja — a fatura em si só é
+  lançada depois, e você sempre confirma antes de qualquer mudança (nada acontece
+  sem você clicar em "Escolher" e confirmar no aviso que aparece).
+</div>
+
 <div class="row g-4">
   <div class="col-lg-5">
     <div class="panel">
@@ -35,9 +43,10 @@
 
     {% if available_plans %}
     <div class="panel mt-4">
-      <div class="panel-title"><i class="bi bi-arrow-left-right"></i> Trocar de plano</div>
+      <div class="panel-title"><i class="bi bi-arrow-left-right"></i> {{ "Escolher um plano" if not tenant.plan else "Trocar de plano" }}</div>
       <p class="text-muted-custom small mb-3">
-        A troca só é aplicada depois que você confirmar — nada muda automaticamente.
+        Nada é cobrado só por escolher aqui — a troca só é aplicada depois que você
+        confirmar, e a cobrança em si depende de uma fatura ser lançada depois.
       </p>
       <div class="d-grid gap-2">
         {% for plan in available_plans %}
@@ -52,7 +61,7 @@
           </div>
           {% if not is_current %}
           <form method="POST" action="{{ url_for('lojista.settings_subscription_change_plan') }}"
-                data-confirm-message="Confirma a troca para o plano '{{ plan.name }}' (R$ {{ '%.2f'|format(plan.price_cents / 100) }}/{{ 'ano' if plan.billing_cycle.value == 'yearly' else 'mês' }})? Isso pode alterar o valor da sua próxima cobrança.">
+                data-confirm-message="Confirma que quer aderir ao plano '{{ plan.name }}' (R$ {{ '%.2f'|format(plan.price_cents / 100) }}/{{ 'ano' if plan.billing_cycle.value == 'yearly' else 'mês' }})? Nenhuma cobrança é gerada agora — isso só define o plano associado à sua loja.">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="plan_id" value="{{ plan.id }}">
             <button type="submit" class="btn btn-sm btn-outline-chili">Escolher</button>
