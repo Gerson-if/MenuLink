@@ -40,6 +40,22 @@ from app.models import (
     User,
     UserRole,
 )
+from app.utils.demo_media import generate_banner, generate_logo, generate_product_card
+from app.utils.uploads import dominant_edge_color
+
+# Categoria (pelo slug, ver _seed_demo_catalog) -> "glifo" usado para
+# desenhar a foto de demonstração dos produtos dela (ver _seed_demo_media
+# e app/utils/demo_media.py). Os ícones de categoria do sistema
+# (CATEGORY_ICON_KEYS) são um conjunto fechado/genérico demais para
+# variar bem numa churrascaria — por isso um mapeamento à parte aqui.
+_DEMO_CATEGORY_GLYPHS = {
+    "espetinhos": "espeto",
+    "pratos-na-brasa": "prato",
+    "acompanhamentos": "bowl",
+    "bebidas": "cup",
+    "sobremesas": "cupcake",
+    "combos": "combo",
+}
 
 
 def register_cli(app: Flask) -> None:
@@ -131,7 +147,86 @@ def seed_db():
         click.echo("• Cardápio demo já tinha categorias, pulando.")
 
     db.session.commit()
+
+    # --- Imagens de demonstração (logo, banners, fotos de produto) ---
+    # Separado da checagem de categorias acima de propósito: quem já tinha
+    # rodado `flask seed-db` antes desta funcionalidade existir tem a loja
+    # demo com produtos mas SEM foto nenhuma — rodar de novo agora completa
+    # só o que estiver faltando (logo, banners, foto de cada produto),
+    # sem duplicar nada.
+    _seed_demo_media(tenant)
+    db.session.commit()
     click.echo("Seed concluído.")
+
+
+def _seed_demo_media(tenant: Tenant) -> None:
+    """Gera (se ainda não existirem) logo, banners promocionais e uma foto
+    de demonstração para cada produto da loja 'Braseiro & Cia' — sem
+    depender de fotos reais nem de fontes/emoji do sistema operacional
+    (ver app/utils/demo_media.py). Cada parte é independentemente
+    idempotente, então rodar de novo só completa o que estiver faltando."""
+
+    upload_root = current_app.config["UPLOAD_FOLDER"]
+
+    def save_image(image, relative_subdir: str) -> tuple[str, str]:
+        absolute_dir = os.path.join(upload_root, relative_subdir)
+        os.makedirs(absolute_dir, exist_ok=True)
+        filename = f"{uuid.uuid4().hex}.webp"
+        absolute_path = os.path.join(absolute_dir, filename)
+        image.save(absolute_path, format="WEBP", quality=82, method=6)
+        relative_path = os.path.join("uploads", relative_subdir, filename).replace(os.sep, "/")
+        return relative_path, dominant_edge_color(image)
+
+    if not tenant.logo_path:
+        logo = generate_logo(tenant.name[:1].upper())
+        relative_path, _color = save_image(logo, os.path.join(f"tenant_{tenant.id}", "logo"))
+        tenant.logo_path = relative_path
+        click.echo("✔ Logo de demonstração gerada.")
+    else:
+        click.echo("• Loja já tinha logo, pulando.")
+
+    products_without_image = [
+        product for product in Product.query.filter_by(tenant_id=tenant.id).all() if not product.images
+    ]
+    if products_without_image:
+        for product in products_without_image:
+            category_slug = product.category.slug if product.category else None
+            glyph = _DEMO_CATEGORY_GLYPHS.get(category_slug, "combo")
+            card = generate_product_card(glyph, product.name)
+            relative_path, color = save_image(card, os.path.join(f"tenant_{tenant.id}", "products", str(product.id)))
+            db.session.add(ProductImage(
+                tenant_id=tenant.id,
+                product_id=product.id,
+                file_path=relative_path,
+                dominant_color=color,
+                is_primary=True,
+                display_order=0,
+            ))
+        click.echo(f"✔ {len(products_without_image)} foto(s) de produto geradas.")
+    else:
+        click.echo("• Todos os produtos já tinham foto, pulando.")
+
+    if Banner.query.filter_by(tenant_id=tenant.id).first() is None:
+        banners = [
+            ("espeto", "Bem-vindo ao Braseiro & Cia", "Sabor de brasa direto pra sua mesa"),
+            ("combo", "Combo Família com 20% OFF", "Peça já pelo cardápio digital"),
+            ("prato", "Peça pelo cardápio digital", "Entrega rápida e pagamento facilitado"),
+        ]
+        for order, (glyph, title, subtitle) in enumerate(banners):
+            banner_image = generate_banner(glyph, title, subtitle)
+            relative_path, color = save_image(banner_image, os.path.join(f"tenant_{tenant.id}", "banners"))
+            db.session.add(Banner(
+                tenant_id=tenant.id,
+                title=title,
+                subtitle=subtitle,
+                image_path=relative_path,
+                dominant_color=color,
+                display_order=order,
+                is_active=True,
+            ))
+        click.echo(f"✔ {len(banners)} banner(s) de demonstração gerados.")
+    else:
+        click.echo("• Loja já tinha banners, pulando.")
 
 
 def _seed_demo_catalog(tenant_id: int) -> None:
