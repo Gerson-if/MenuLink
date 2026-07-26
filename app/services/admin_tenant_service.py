@@ -87,6 +87,30 @@ class AdminTenantService:
         db.session.commit()
         return tenant
 
+    def set_owner_password(self, tenant: Tenant, new_password: str) -> User:
+        """Super Admin redefine a senha do lojista (dono da loja) — ex:
+        ele esqueceu a senha e não tem e-mail configurado pra
+        recuperação, ou pediu suporte por outro canal. Ao contrário da
+        troca de senha pelo próprio usuário (AuthService.change_password),
+        não exige a senha atual — quem está autenticado aqui é o Super
+        Admin, não o lojista.
+
+        Encerra todas as sessões abertas do lojista (mesmo motivo do
+        AuthService.change_password: uma sessão já aberta em outro
+        lugar não deve continuar valendo depois que a senha muda por
+        baixo dela)."""
+        owner = tenant.owner
+        if owner is None:
+            raise TenantAdminError("Esta loja não tem um usuário lojista (dono) cadastrado.")
+
+        owner.set_password(new_password)
+        db.session.commit()
+
+        from app.services.session_service import SessionService
+
+        SessionService().revoke_all_other_sessions(owner.id)
+        return owner
+
     def delete(self, tenant: Tenant) -> None:
         # O cascade definido nos relacionamentos do model (categorias,
         # produtos, pedidos, clientes, usuários, assinaturas, faturas)

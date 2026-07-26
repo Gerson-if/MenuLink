@@ -204,6 +204,23 @@
           </form>
         </div>
         {% endif %}
+
+        {% if tenant.owner %}
+        <div>
+          <button type="button" class="btn btn-sm btn-outline-secondary w-100" @click="openAction = (openAction === 'reset_password' ? null : 'reset_password')">🔑 Redefinir senha do lojista</button>
+          <form x-show="openAction === 'reset_password'" x-cloak method="POST" action="{{ url_for('admin.tenants_reset_owner_password', tenant_id=tenant.id) }}" class="mt-2">
+            {{ owner_password_form.hidden_tag() }}
+            <p class="text-muted-custom small mb-2">Define uma nova senha para <strong>{{ tenant.owner.email }}</strong> e encerra as sessões abertas dele(a). Avise o lojista pelo WhatsApp/e-mail com a nova senha.</p>
+            <div class="mb-2">
+              {{ owner_password_form.new_password(class="form-control form-control-sm", placeholder="Nova senha", autocomplete="new-password") }}
+            </div>
+            <div class="mb-2">
+              {{ owner_password_form.confirm_password(class="form-control form-control-sm", placeholder="Confirme a nova senha", autocomplete="new-password") }}
+            </div>
+            <button type="submit" class="btn btn-sm btn-chili w-100">Confirmar redefinição</button>
+          </form>
+        </div>
+        {% endif %}
       </div>
     </div>
 

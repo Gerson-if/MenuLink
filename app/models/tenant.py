@@ -184,6 +184,20 @@ class Tenant(db.Model, TimestampMixin):
         return self.status in (TenantStatus.TRIAL, TenantStatus.ACTIVE)
 
     @property
+    def owner(self):
+        """O usuário com papel OWNER (lojista responsável) desta loja, ou
+        None se por algum motivo não houver nenhum (não deveria acontecer
+        em uso normal — toda loja criada por AdminTenantService.create()
+        já vem com um OWNER). Import tardio de UserRole evita import
+        circular (app/models/user.py importa Tenant)."""
+        from app.models.user import UserRole
+
+        for user in self.users:
+            if user.role == UserRole.OWNER:
+                return user
+        return None
+
+    @property
     def public_theme_css_vars(self) -> dict | None:
         """
         Variáveis CSS derivadas da cor de destaque escolhida pelo

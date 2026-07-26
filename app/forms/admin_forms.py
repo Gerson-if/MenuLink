@@ -2,8 +2,8 @@ from datetime import date, timedelta
 
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileAllowed, FileField
-from wtforms import BooleanField, DateField, DecimalField, IntegerField, SelectField, StringField, SubmitField, TextAreaField
-from wtforms.validators import DataRequired, Email, Length, NumberRange, Optional, ValidationError
+from wtforms import BooleanField, DateField, DecimalField, IntegerField, PasswordField, SelectField, StringField, SubmitField, TextAreaField
+from wtforms.validators import DataRequired, Email, EqualTo, Length, NumberRange, Optional, ValidationError
 
 from app.models.platform_settings import ASAAS_ENVIRONMENT_CHOICES, LANDING_THEME_CHOICES
 from app.utils.colors import normalize_hex
@@ -38,6 +38,27 @@ class TenantEditForm(FlaskForm):
 class TenantStatusReasonForm(FlaskForm):
     reason = TextAreaField("Motivo (opcional)", validators=[Optional(), Length(max=255)])
     submit = SubmitField("Confirmar")
+
+
+class TenantOwnerPasswordForm(FlaskForm):
+    """Redefinição de senha do lojista (dono da loja) pelo Super Admin —
+    ver AdminTenantService.set_owner_password. Diferente de
+    ChangePasswordForm (troca pelo próprio usuário), não pede a senha
+    atual: quem preenche isto é o Super Admin, não o lojista."""
+
+    new_password = PasswordField(
+        "Nova senha do lojista",
+        validators=[
+            DataRequired(message="Informe a nova senha."),
+            password_max_bytes(),
+            Length(min=6, max=128, message="A senha deve ter entre 6 e 128 caracteres."),
+        ],
+    )
+    confirm_password = PasswordField(
+        "Confirme a nova senha",
+        validators=[DataRequired(message="Confirme a nova senha."), EqualTo("new_password", message="As senhas não coincidem.")],
+    )
+    submit = SubmitField("Redefinir senha")
 
 
 class PlanForm(FlaskForm):

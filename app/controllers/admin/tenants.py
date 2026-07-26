@@ -1,6 +1,12 @@
 from flask import flash, make_response, redirect, render_template, request, url_for
 
-from app.forms.admin_forms import SubscriptionCycleForm, TenantCreateForm, TenantEditForm, TenantStatusReasonForm
+from app.forms.admin_forms import (
+    SubscriptionCycleForm,
+    TenantCreateForm,
+    TenantEditForm,
+    TenantOwnerPasswordForm,
+    TenantStatusReasonForm,
+)
 from app.repositories.plan_repository import PlanRepository
 from app.services.admin_billing_service import AdminBillingService
 from app.services.admin_tenant_service import AdminTenantService, TenantAdminError
@@ -113,6 +119,7 @@ def tenants_detail(tenant_id):
     billing_service = AdminBillingService()
     invoices = billing_service.list_invoices_for_tenant(tenant.id)
     reason_form = TenantStatusReasonForm()
+    owner_password_form = TenantOwnerPasswordForm()
     subscription = billing_service.get_subscription_for_tenant(tenant.id)
 
     cycle_form = SubscriptionCycleForm()
@@ -131,6 +138,7 @@ def tenants_detail(tenant_id):
         tenant=tenant,
         invoices=invoices,
         reason_form=reason_form,
+        owner_password_form=owner_password_form,
         asaas_configured=billing_service.is_asaas_configured(),
         subscription=subscription,
         cycle_form=cycle_form,
@@ -174,6 +182,31 @@ def tenants_edit(tenant_id):
             form_action=url_for("admin.tenants_edit", tenant_id=tenant.id), hide_back_link=True,
         )
     return render_template("admin/tenants/form.html", form=form, tenant=tenant)
+
+
+@admin_bp.route("/lojistas/<int:tenant_id>/redefinir-senha-lojista", methods=["POST"])
+@super_admin_required
+def tenants_reset_owner_password(tenant_id):
+    service = AdminTenantService()
+    tenant = service.get_or_404(tenant_id)
+    form = TenantOwnerPasswordForm()
+
+    if form.validate_on_submit():
+        try:
+            owner = service.set_owner_password(tenant, form.new_password.data)
+        except TenantAdminError as exc:
+            flash(str(exc), "danger")
+        else:
+            flash(
+                f"Senha de {owner.email} redefinida com sucesso. As sessões abertas dele(a) foram encerradas.",
+                "success",
+            )
+    else:
+        for field_errors in form.errors.values():
+            for error in field_errors:
+                flash(error, "danger")
+
+    return redirect(url_for("admin.tenants_detail", tenant_id=tenant.id))
 
 
 @admin_bp.route("/lojistas/<int:tenant_id>/excluir", methods=["POST"])

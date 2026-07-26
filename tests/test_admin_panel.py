@@ -2,7 +2,7 @@ import re
 from datetime import date, timedelta
 
 from app.extensions import db
-from app.models import Invoice, InvoiceStatus, Plan, Tenant, TenantStatus, User
+from app.models import Invoice, InvoiceStatus, Plan, Tenant, TenantStatus, User, UserSession
 
 
 def _get_csrf(html: str) -> str | None:
@@ -95,6 +95,72 @@ class TestTenantManagement:
             tenant = db.session.get(Tenant, tenant_id)
             assert tenant.name == "Braseiro & Cia Grill"
             assert tenant.phone == "6733334444"
+
+    def test_super_admin_can_reset_owner_password(self, app, client, login_as):
+        # A "sessão antiga do lojista" é criada direto no banco (não
+        # navegando como o dono neste `client`) — logar como o dono e
+        # DEPOIS como admin no mesmo client exigiria passar por /logout
+        # entre os dois (current_user do Flask-Login fica cacheado em `g`
+        # pelo resto do teste, ver test_delete_tenant_cascades_related_data),
+        # e /logout já revoga a sessão sozinho (SessionService.
+        # revoke_current_session) — o que "esconderia" se é a
+        # REDEFINIÇÃO DE SENHA quem de fato revoga a sessão antiga.
+        with app.app_context():
+            owner = User.query.filter_by(email="lojista@braseiroecia.com.br").first()
+            owner_session = UserSession(
+                user_id=owner.id, session_token="fake-token-para-teste",
+                ip_address="127.0.0.1", user_agent="pytest",
+            )
+            db.session.add(owner_session)
+            db.session.commit()
+            owner_session_id = owner_session.id
+            tenant_id = Tenant.query.filter_by(slug="braseiro-cia").first().id
+
+        login_as(client, "admin@cardapio.saas", "admin123")
+
+        resp = client.get(f"/admin/lojistas/{tenant_id}")
+        csrf = _get_csrf(resp.get_data(as_text=True))
+        resp = client.post(
+            f"/admin/lojistas/{tenant_id}/redefinir-senha-lojista",
+            data={"new_password": "novaSenha456", "confirm_password": "novaSenha456", "csrf_token": csrf},
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+        assert "redefinida com sucesso" in resp.get_data(as_text=True)
+
+        with app.app_context():
+            owner = User.query.filter_by(email="lojista@braseiroecia.com.br").first()
+            assert owner.check_password("novaSenha456")
+            assert not owner.check_password("lojista123")
+
+            # a sessão que o lojista já tinha aberta foi encerrada
+            refreshed_session = db.session.get(UserSession, owner_session_id)
+            assert refreshed_session.revoked_at is not None
+
+    def test_reset_owner_password_rejects_mismatched_confirmation(self, app, client, login_as):
+        login_as(client, "admin@cardapio.saas", "admin123")
+        with app.app_context():
+            tenant_id = Tenant.query.filter_by(slug="braseiro-cia").first().id
+
+        resp = client.get(f"/admin/lojistas/{tenant_id}")
+        csrf = _get_csrf(resp.get_data(as_text=True))
+        resp = client.post(
+            f"/admin/lojistas/{tenant_id}/redefinir-senha-lojista",
+            data={"new_password": "novaSenha456", "confirm_password": "outraSenha789", "csrf_token": csrf},
+            follow_redirects=True,
+        )
+        assert "não coincidem" in resp.get_data(as_text=True)
+        with app.app_context():
+            owner = User.query.filter_by(email="lojista@braseiroecia.com.br").first()
+            assert owner.check_password("lojista123")  # não mudou
+
+    def test_lojista_cannot_reset_owner_password(self, client, login_as):
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        resp = client.post(
+            "/admin/lojistas/1/redefinir-senha-lojista",
+            data={"new_password": "x", "confirm_password": "x"},
+        )
+        assert resp.status_code == 403
 
     def test_delete_tenant_cascades_related_data(self, app, client, login_as):
         # cria loja descartável via service diretamente para simplificar
