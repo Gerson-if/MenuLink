@@ -22,6 +22,7 @@ funcionando normalmente com lançamento manual de fatura.
 import requests
 
 from app.services.payment_gateway.base import PaymentGateway, PaymentGatewayError
+from app.utils.validators import only_digits
 
 REQUEST_TIMEOUT_SECONDS = 15
 
@@ -85,6 +86,15 @@ class AsaasGateway(PaymentGateway):
             payload["mobilePhone"] = tenant.whatsapp_number
         if tenant.phone:
             payload["phone"] = tenant.phone
+        # O Asaas EXIGE cpfCnpj pra criar um cliente de cobrança de
+        # verdade — sem isso, a API real recusa a requisição (ver
+        # validação equivalente em AdminBillingService.generate_asaas_charge,
+        # que barra a geração da cobrança antes de chegar aqui se o
+        # tenant não tiver documento cadastrado). Só números, sem
+        # pontuação (ver TenantSettingsService.update_store_info, que já
+        # salva `document` só com dígitos).
+        if tenant.document:
+            payload["cpfCnpj"] = only_digits(tenant.document)
 
         data = self._request("POST", "/customers", json=payload)
         customer_id = data.get("id")

@@ -47,7 +47,7 @@ def settings_store():
                 phone=form.phone.data, logo_file_storage=form.logo.data,
                 address_street=form.address_street.data, address_number=form.address_number.data,
                 address_neighborhood=form.address_neighborhood.data, address_city=form.address_city.data,
-                menu_tagline=form.menu_tagline.data,
+                menu_tagline=form.menu_tagline.data, legal_name=form.legal_name.data, document=form.document.data,
             )
         except InvalidImageError as exc:
             flash(str(exc), "danger")
@@ -232,6 +232,26 @@ def settings_subscription():
     )
 
 
+@lojista_bp.route("/configuracoes/assinatura/faturas/<int:invoice_id>")
+@lojista_required
+def settings_subscription_invoice_detail(invoice_id):
+    """Detalhe de UMA fatura — pra o lojista entender de onde veio
+    aquele valor (renovação normal, prorateio de upgrade, cobrança
+    manual do Super Admin etc.) sem precisar perguntar ao suporte. Só
+    mostra fatura da própria loja (confere `tenant_id` explicitamente,
+    mesmo a query já vindo de dentro do painel autenticado — segunda
+    camada de isolamento entre lojistas, ver base_repository.py)."""
+    tenant = get_current_tenant()
+    service = AdminBillingService()
+    invoice = service.get_invoice_or_404(invoice_id)
+    if invoice.tenant_id != tenant.id:
+        from flask import abort
+
+        abort(404)
+
+    return render_template("lojista/settings/invoice_detail.html", tenant=tenant, invoice=invoice)
+
+
 @lojista_bp.route("/configuracoes/assinatura/plano", methods=["POST"])
 @lojista_required
 def settings_subscription_change_plan():
@@ -247,9 +267,46 @@ def settings_subscription_change_plan():
         return redirect(url_for("lojista.settings_subscription"))
 
     try:
-        plan = TenantSettingsService(tenant).change_plan(plan_id).plan
+        result = TenantSettingsService(tenant).change_plan(plan_id)
     except TenantSettingsError as exc:
         flash(str(exc), "danger")
+        return redirect(url_for("lojista.settings_subscription"))
+
+    plan = result.plan
+    if result.kind == "trial_confirmed":
+        flash(
+            f"Plano '{plan.name}' confirmado! Como você ainda está no período de teste, nenhuma cobrança "
+            "é feita agora — a primeira fatura só é gerada no dia seguinte ao fim do seu teste grátis, "
+            "sem perder os dias que ainda restam.",
+            "success",
+        )
+    elif result.kind == "upgrade":
+        if result.proration_cents > 0:
+            flash(
+                f"Plano alterado para '{plan.name}' e já está valendo! Foi gerada uma fatura de R$ "
+                f"{result.proration_cents / 100:.2f} referente à diferença proporcional aos dias restantes "
+                "deste ciclo — a partir da próxima renovação, o valor cobrado já é o cheio do novo plano. "
+                "Você confere a fatura logo abaixo antes de pagar.",
+                "success",
+            )
+        else:
+            flash(f"Plano alterado para '{plan.name}' e já está valendo, sem nenhuma cobrança adicional agora.", "success")
+    elif result.kind == "downgrade_scheduled":
+        effective = result.effective_date.strftime("%d/%m/%Y") if result.effective_date else "no fim do ciclo atual"
+        flash(
+            f"Pedido de troca para o plano '{plan.name}' recebido. Como é um plano mais barato, a troca só "
+            f"entra em vigor em {effective} — você continua no plano '{result.current_plan.name}' até lá, "
+            "sem nenhum estorno, já que esse período já está pago. Nenhuma cobrança é feita agora.",
+            "success",
+        )
+    elif result.kind == "reaffirmed_canceled_downgrade":
+        flash(
+            f"Você continua no plano '{plan.name}'. A troca que estava agendada para um plano diferente foi "
+            "cancelada.",
+            "success",
+        )
+    elif result.kind == "reaffirmed":
+        flash(f"Você já está no plano '{plan.name}' — nada mudou.", "success")
     else:
         flash(
             f"Plano associado à sua loja alterado para '{plan.name}'. Nenhuma cobrança foi "

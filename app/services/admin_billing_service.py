@@ -175,6 +175,7 @@ class AdminBillingService:
             amount_cents=plan.price_cents,
             status=InvoiceStatus.PENDING,
             due_date=next_due_date,
+            description=f"Renovação do ciclo de cobrança — plano '{plan.name}'.",
         )
         db.session.add(invoice)
 
@@ -191,15 +192,47 @@ class AdminBillingService:
         sincronizado com `subscription.plan_id`, mesmo motivo de
         TenantSettingsService.change_plan (AdminBillingService lê
         `subscription.plan`, mas o resto do painel/telas do lojista lê
-        `tenant.plan`)."""
+        `tenant.plan`).
+
+        Revalida os limites do plano de destino ANTES de aplicar —
+        entre o pedido de downgrade e a renovação, o lojista continua
+        oficialmente no plano premium (ver TenantSettingsService.
+        change_plan) e pode ter cadastrado mais produtos/categorias
+        nesse meio tempo, usando a cota maior. Se não couber mais,
+        adia a troca por mais um ciclo (em vez de aplicar silenciosamente
+        e deixar a loja acima do limite do plano novo) e avisa o
+        lojista pelo chat de suporte, pra ele saber que precisa ajustar
+        antes da próxima tentativa."""
         if subscription.pending_plan_id is None:
             return
         if subscription.pending_plan_change_at and subscription.pending_plan_change_at > date.today():
             return
 
+        pending_plan = subscription.pending_plan
+        tenant = subscription.tenant
+        if pending_plan is not None and tenant is not None:
+            from app.services.plan_limits import PlanLimitExceeded, check_plan_limits
+
+            try:
+                check_plan_limits(tenant, pending_plan)
+            except PlanLimitExceeded:
+                subscription.pending_plan_change_at = _add_cycle(
+                    subscription.pending_plan_change_at or date.today(), subscription.billing_cycle,
+                )
+                from app.services.chat_service import ChatService
+
+                ChatService.send_system_message(
+                    tenant.id,
+                    f"Sua troca agendada para o plano '{pending_plan.name}' não pôde ser aplicada nesta "
+                    "renovação porque sua loja está usando mais produtos/categorias do que esse plano "
+                    "permite. A troca foi adiada para o próximo ciclo — ajuste o quanto antes na sua "
+                    "página de assinatura, ou exclua o excedente para a troca ser aplicada automaticamente.",
+                )
+                return
+
         subscription.plan_id = subscription.pending_plan_id
-        if subscription.tenant is not None:
-            subscription.tenant.plan_id = subscription.pending_plan_id
+        if tenant is not None:
+            tenant.plan_id = subscription.pending_plan_id
         subscription.pending_plan_id = None
         subscription.pending_plan_change_at = None
 
@@ -226,7 +259,7 @@ class AdminBillingService:
         prorated = round(price_diff_cents * remaining_days / total_days)
         return max(0, prorated)
 
-    def create_invoice(self, tenant, *, amount_reais: float, due_date: date) -> Invoice:
+    def create_invoice(self, tenant, *, amount_reais: float, due_date: date, description: str | None = None) -> Invoice:
         subscription = self.get_or_create_subscription(tenant)
 
         invoice = Invoice(
@@ -235,6 +268,7 @@ class AdminBillingService:
             amount_cents=round(amount_reais * 100),
             status=InvoiceStatus.PENDING,
             due_date=due_date,
+            description=description or "Fatura lançada manualmente pelo Super Admin.",
         )
         db.session.add(invoice)
         db.session.commit()
@@ -356,6 +390,19 @@ class AdminBillingService:
             raise BillingError(
                 "Esta loja não tem e-mail cadastrado — o Asaas exige um e-mail para criar o "
                 "cliente de cobrança. Preencha o e-mail em Editar dados antes de gerar a cobrança."
+            )
+
+        # O Asaas também exige CPF/CNPJ pra criar o cliente de cobrança
+        # (ver AsaasGateway.ensure_customer) — sem isso cadastrado, a
+        # chamada real à API falharia lá na frente com um erro genérico
+        # do gateway. Barrar aqui, cedo, dá uma mensagem clara de qual
+        # dado falta e onde completar (o próprio lojista edita isso em
+        # Configurações da loja, ver TenantSettingsService.update_store_info).
+        if not (invoice.tenant.document or "").strip():
+            raise BillingError(
+                "Esta loja não tem CPF/CNPJ cadastrado — o Asaas exige um documento válido para "
+                "criar o cliente de cobrança. Peça para o lojista preencher em Configurações > "
+                "Dados da loja antes de gerar a cobrança."
             )
 
         try:

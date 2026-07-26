@@ -6,7 +6,7 @@ from wtforms.validators import DataRequired, Length, Optional, NumberRange, Rege
 
 from app.models.tenant import WEEKDAY_KEYS, WEEKDAY_LABELS
 from app.utils.colors import normalize_hex
-from app.utils.validators import not_blank, phone_number, slug_format
+from app.utils.validators import cpf_cnpj, not_blank, phone_number, slug_format
 
 # HH:MM, 24 horas (aceita "9:00" ou "09:00")
 _TIME_FORMAT = Regexp(r"^([01]?\d|2[0-3]):[0-5]\d$", message="Use o formato HH:MM (ex: 18:30).")
@@ -21,6 +21,9 @@ class StoreInfoForm(FlaskForm):
     whatsapp_number = StringField("WhatsApp (com DDI+DDD)", validators=[Optional(), Length(max=20), phone_number()])
     phone = StringField("Telefone (opcional)", validators=[Optional(), Length(max=20), phone_number()])
     logo = FileField("Logo da loja", validators=[FileAllowed(["png", "jpg", "jpeg", "webp"], message="Formato não suportado.")])
+
+    legal_name = StringField("Razão social (opcional)", validators=[Optional(), Length(max=150), not_blank])
+    document = StringField("CPF ou CNPJ", validators=[Optional(), Length(max=20), cpf_cnpj])
 
     address_street = StringField("Rua", validators=[Optional(), Length(max=180)])
     address_number = StringField("Número", validators=[Optional(), Length(max=20)])

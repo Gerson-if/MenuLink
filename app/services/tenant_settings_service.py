@@ -19,6 +19,31 @@ class TenantSettingsError(Exception):
     pass
 
 
+class PlanChangeResult:
+    """Retorno de `TenantSettingsService.change_plan` — carrega o
+    suficiente pra quem chamou (ver
+    app/controllers/lojista/settings.py) montar uma mensagem clara e
+    específica sobre o que de fato aconteceu (cada tipo de troca tem
+    implicações bem diferentes: uma cobrança na hora, uma troca
+    agendada sem estorno, ou só uma intenção registrada durante o
+    trial), em vez de um aviso genérico que deixaria os detalhes
+    financeiros por conta do lojista adivinhar.
+
+    `kind` é um dos: "trial_confirmed", "no_subscription", "reaffirmed",
+    "upgrade", "downgrade_scheduled"."""
+
+    def __init__(
+        self, *, tenant, plan, kind: str, current_plan=None,
+        proration_cents: int = 0, effective_date=None,
+    ):
+        self.tenant = tenant
+        self.plan = plan  # plano solicitado nesta chamada
+        self.kind = kind
+        self.current_plan = current_plan  # plano que continua valendo até `effective_date` (downgrade)
+        self.proration_cents = proration_cents
+        self.effective_date = effective_date
+
+
 class TenantSettingsService:
     def __init__(self, tenant):
         self.tenant = tenant
@@ -64,7 +89,7 @@ class TenantSettingsService:
             self.tenant.plan_id = plan.id
             self.tenant.plan_confirmed_at = datetime.now(timezone.utc)
             db.session.commit()
-            return self.tenant
+            return PlanChangeResult(tenant=self.tenant, plan=plan, kind="trial_confirmed")
 
         from app.repositories.billing_repository import SubscriptionRepository
 
@@ -72,31 +97,52 @@ class TenantSettingsService:
         if subscription is None:
             self.tenant.plan_id = plan.id
             db.session.commit()
-            return self.tenant
+            return PlanChangeResult(tenant=self.tenant, plan=plan, kind="no_subscription")
 
         current_plan = subscription.plan
         if current_plan is not None and plan.id == current_plan.id:
-            return self.tenant
+            # O lojista está reafirmando o plano que já está em vigor —
+            # se havia um downgrade agendado pendente (ex: ele tinha
+            # pedido pra voltar pro plano menor e mudou de ideia),
+            # cancela: continuar no plano atual "pra sempre" (até uma
+            # nova troca de verdade) é o que ele está pedindo agora.
+            had_pending = subscription.pending_plan_id is not None
+            if had_pending:
+                subscription.pending_plan_id = None
+                subscription.pending_plan_change_at = None
+                db.session.commit()
+            return PlanChangeResult(
+                tenant=self.tenant, plan=plan, kind="reaffirmed_canceled_downgrade" if had_pending else "reaffirmed",
+            )
 
         if current_plan is None or plan.price_cents > current_plan.price_cents:
-            self._apply_upgrade(subscription, plan)
+            proration_cents = self._apply_upgrade(subscription, plan)
+            result = PlanChangeResult(
+                tenant=self.tenant, plan=plan, kind="upgrade", proration_cents=proration_cents,
+            )
         else:
             self._schedule_downgrade(subscription, plan)
+            result = PlanChangeResult(
+                tenant=self.tenant, plan=plan, kind="downgrade_scheduled",
+                current_plan=current_plan, effective_date=subscription.pending_plan_change_at,
+            )
 
         db.session.commit()
-        return self.tenant
+        return result
 
-    def _apply_upgrade(self, subscription, plan) -> None:
+    def _apply_upgrade(self, subscription, plan) -> int:
         """Upgrade: liberado na hora, com cobrança prorateada pela
         diferença de valor nos dias restantes do ciclo atual (ver
         AdminBillingService.calculate_upgrade_proration_cents). Se
         havia um downgrade agendado pendente (o lojista mudou de ideia
         antes dele entrar em vigor), cancela — o upgrade agora é o que
-        vale."""
+        vale. Retorna o valor (em centavos) da cobrança prorateada
+        gerada (0 se não houve, ex: diferença de preço nula)."""
         from app.services.admin_billing_service import AdminBillingService
 
         billing = AdminBillingService()
         proration_cents = billing.calculate_upgrade_proration_cents(subscription, plan)
+        old_plan_name = subscription.plan.name if subscription.plan else "seu plano anterior"
 
         subscription.plan_id = plan.id
         subscription.pending_plan_id = None
@@ -106,14 +152,21 @@ class TenantSettingsService:
         if proration_cents > 0:
             from app.models import Invoice, InvoiceStatus
 
+            description = (
+                f"Cobrança prorateada pelo upgrade de '{old_plan_name}' para '{plan.name}' — referente "
+                "aos dias restantes do ciclo atual (você já tinha pago o resto do ciclo no plano anterior)."
+            )
             invoice = Invoice(
                 tenant_id=self.tenant.id,
                 subscription_id=subscription.id,
                 amount_cents=proration_cents,
                 status=InvoiceStatus.PENDING,
                 due_date=subscription.current_period_end,
+                description=description,
             )
             db.session.add(invoice)
+
+        return proration_cents
 
     def _schedule_downgrade(self, subscription, plan) -> None:
         """Downgrade: exige que o uso atual já caiba nos limites do
@@ -128,31 +181,21 @@ class TenantSettingsService:
         subscription.pending_plan_change_at = subscription.current_period_end
 
     def _validate_downgrade_limits(self, plan) -> None:
-        from app.repositories.category_repository import CategoryRepository
-        from app.repositories.product_repository import ProductRepository
+        from app.services.plan_limits import PlanLimitExceeded, check_plan_limits
 
-        if plan.max_categories is not None:
-            category_count = CategoryRepository(self.tenant.id).count()
-            if category_count > plan.max_categories:
-                raise TenantSettingsError(
-                    f"O plano '{plan.name}' permite no máximo {plan.max_categories} categoria(s), mas "
-                    f"sua loja tem {category_count} cadastrada(s). Exclua o excedente antes de trocar de plano."
-                )
-
-        if plan.max_products is not None:
-            product_count = ProductRepository(self.tenant.id).count_completed()
-            if product_count > plan.max_products:
-                raise TenantSettingsError(
-                    f"O plano '{plan.name}' permite no máximo {plan.max_products} produto(s), mas "
-                    f"sua loja tem {product_count} cadastrado(s). Exclua o excedente antes de trocar de plano."
-                )
+        try:
+            check_plan_limits(self.tenant, plan)
+        except PlanLimitExceeded as exc:
+            raise TenantSettingsError(str(exc)) from exc
 
     def update_store_info(
         self, *, name: str, whatsapp_number: str, phone: str, logo_file_storage=None,
         address_street: str | None = None, address_number: str | None = None,
         address_neighborhood: str | None = None, address_city: str | None = None,
-        menu_tagline: str | None = None,
+        menu_tagline: str | None = None, legal_name: str | None = None, document: str | None = None,
     ):
+        from app.utils.validators import only_digits
+
         self.tenant.name = name.strip()
         self.tenant.menu_tagline = (menu_tagline or "").strip() or None
         self.tenant.whatsapp_number = (whatsapp_number or "").strip() or None
@@ -161,6 +204,12 @@ class TenantSettingsService:
         self.tenant.address_number = (address_number or "").strip() or None
         self.tenant.address_neighborhood = (address_neighborhood or "").strip() or None
         self.tenant.address_city = (address_city or "").strip() or None
+        self.tenant.legal_name = (legal_name or "").strip() or None
+        # Guarda só os dígitos — é o formato que o Asaas espera em
+        # `cpfCnpj` (ver AsaasGateway.ensure_customer) e evita
+        # inconsistência de formatação (com/sem pontuação) entre
+        # cadastros diferentes.
+        self.tenant.document = only_digits(document) or None
 
         if logo_file_storage and logo_file_storage.filename:
             try:

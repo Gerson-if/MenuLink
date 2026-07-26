@@ -1,17 +1,39 @@
 {% extends "layouts/lojista_panel.html" %}
-{% block title %}Configurações — Assinatura{% endblock %}
-{% block page_title %}Configurações{% endblock %}
+{% block title %}Assinatura{% endblock %}
+{% block page_title %}Assinatura{% endblock %}
 
 {% block panel_content %}
-{% include "lojista/settings/_tabs.html" %}
 
+{% if tenant.status.value == 'trial' %}
 <div class="alert alert-secondary py-2 small mb-4">
   <i class="bi bi-shield-check"></i>
-  <strong>Nenhuma cobrança é gerada automaticamente.</strong> Escolher ou trocar de
-  plano aqui só define qual plano fica associado à sua loja — a fatura em si só é
-  lançada depois, e você sempre confirma antes de qualquer mudança (nada acontece
-  sem você clicar em "Escolher" e confirmar no aviso que aparece).
+  <strong>Você ainda está no período de teste grátis.</strong> Escolher um plano
+  agora só reserva a sua adesão — nada é cobrado enquanto o teste não acabar, e
+  você não perde nenhum dia grátis restante: a primeira fatura só sai no dia
+  seguinte ao fim do teste.
 </div>
+{% else %}
+<div class="alert alert-secondary py-2 small mb-4">
+  <i class="bi bi-shield-check"></i>
+  <strong>Como funciona a troca de plano:</strong> um upgrade (plano mais caro)
+  passa a valer na hora e gera uma fatura extra só com a diferença proporcional
+  aos dias restantes do ciclo. Um downgrade (plano mais barato) nunca gera
+  estorno — você continua no plano atual até o fim do ciclo já pago, e a troca
+  só entra em vigor na próxima renovação. Você sempre confirma antes de
+  qualquer mudança.
+</div>
+{% endif %}
+
+{% if subscription and subscription.pending_plan %}
+<div class="alert alert-warning py-2 small mb-4">
+  <i class="bi bi-clock-history"></i>
+  Você tem uma troca agendada para o plano <strong>{{ subscription.pending_plan.name }}</strong>, que
+  só entra em vigor em <strong>{{ subscription.pending_plan_change_at.strftime("%d/%m/%Y") }}</strong>
+  (fim do ciclo já pago do plano atual). Até lá, nada muda e nenhuma cobrança é feita — se mudar de
+  ideia, é só escolher o plano '{{ tenant.plan.name if tenant.plan }}' de novo aqui embaixo para
+  cancelar a troca agendada.
+</div>
+{% endif %}
 
 <div class="row g-4">
   <div class="col-lg-5">
@@ -51,17 +73,35 @@
       <div class="d-grid gap-2">
         {% for plan in available_plans %}
         {% set is_current = tenant.plan_id == plan.id %}
+        {% set is_pending = subscription and subscription.pending_plan_id == plan.id %}
+        {% set price_label = "R$ " ~ "%.2f"|format(plan.price_cents / 100) ~ "/" ~ ("ano" if plan.billing_cycle.value == "yearly" else "mês") %}
         <div class="d-flex align-items-center justify-content-between gap-2 p-2" style="border: 1px solid var(--card-border); border-radius: 10px;">
           <div>
             <div class="fw-semibold small">
               {{ plan.name }}
               {% if is_current %}<span class="status-badge status-active ms-1">Atual</span>{% endif %}
+              {% if is_pending %}<span class="status-badge status-trial ms-1">Agendado</span>{% endif %}
+              {% if not is_current and tenant.plan and tenant.status.value != 'trial' %}
+                {% if plan.price_cents > tenant.plan.price_cents %}<span class="status-badge status-active ms-1">Upgrade</span>
+                {% elif plan.price_cents < tenant.plan.price_cents %}<span class="status-badge status-suspended ms-1">Downgrade</span>{% endif %}
+              {% endif %}
             </div>
-            <div class="text-muted-custom small">R$ {{ "%.2f"|format(plan.price_cents / 100) }}/{{ "ano" if plan.billing_cycle.value == "yearly" else "mês" }}</div>
+            <div class="text-muted-custom small">{{ price_label }}</div>
           </div>
           {% if not is_current %}
+          {% if tenant.status.value == 'trial' %}
+            {% set confirm_message = "Confirma que quer aderir ao plano '" ~ plan.name ~ "' (" ~ price_label ~ ")? Como você está em teste, nada é cobrado agora — a primeira fatura só sai no dia seguinte ao fim do seu teste grátis, sem perder os dias restantes." %}
+          {% elif not subscription or not tenant.plan %}
+            {% set confirm_message = "Confirma que quer aderir ao plano '" ~ plan.name ~ "' (" ~ price_label ~ ")? Nenhuma cobrança é gerada agora — a fatura, quando houver, aparece aqui antes de qualquer pagamento." %}
+          {% elif plan.price_cents > tenant.plan.price_cents %}
+            {% set confirm_message = "Confirma o UPGRADE para '" ~ plan.name ~ "' (" ~ price_label ~ ")? Ele passa a valer IMEDIATAMENTE, e será gerada uma fatura extra prorateada só com a diferença proporcional aos dias restantes deste ciclo — a próxima renovação já sai no valor cheio do novo plano." %}
+          {% elif plan.price_cents < tenant.plan.price_cents %}
+            {% set confirm_message = "Confirma o DOWNGRADE para '" ~ plan.name ~ "' (" ~ price_label ~ ")? Por ser um plano mais barato, você continua no plano atual ('" ~ tenant.plan.name ~ "') até o fim do ciclo já pago (" ~ subscription.current_period_end.strftime('%d/%m/%Y') ~ "), sem nenhum estorno — a troca só passa a valer na próxima renovação. Se sua loja usar mais produtos/categorias do que esse plano permite, a troca é bloqueada até você ajustar." %}
+          {% else %}
+            {% set confirm_message = "Confirma a troca para o plano '" ~ plan.name ~ "' (" ~ price_label ~ ")? Mesmo preço do plano atual — a troca vale imediatamente, sem cobrança adicional." %}
+          {% endif %}
           <form method="POST" action="{{ url_for('lojista.settings_subscription_change_plan') }}"
-                data-confirm-message="Confirma que quer aderir ao plano '{{ plan.name }}' (R$ {{ '%.2f'|format(plan.price_cents / 100) }}/{{ 'ano' if plan.billing_cycle.value == 'yearly' else 'mês' }})? Nenhuma cobrança é gerada agora — isso só define o plano associado à sua loja.">
+                data-confirm-message="{{ confirm_message }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="plan_id" value="{{ plan.id }}">
             <button type="submit" class="btn btn-sm btn-outline-chili">Escolher</button>
@@ -83,7 +123,10 @@
         <tbody>
           {% for invoice in invoices %}
           <tr style="border-top: 1px solid var(--card-border);">
-            <td>{{ invoice.due_date.strftime("%d/%m/%Y") }}</td>
+            <td>
+              {{ invoice.due_date.strftime("%d/%m/%Y") }}
+              {% if invoice.description %}<div class="text-muted-custom" style="font-size: .72rem;">{{ invoice.description }}</div>{% endif %}
+            </td>
             <td>R$ {{ "%.2f"|format(invoice.amount_cents / 100) }}</td>
             <td>
               {% if invoice.status.value == 'paid' %}<span class="status-badge status-active">Paga</span>
@@ -92,6 +135,9 @@
               {% else %}<span class="status-badge status-trial">Pendente</span>{% endif %}
             </td>
             <td class="text-end">
+              <a href="{{ url_for('lojista.settings_subscription_invoice_detail', invoice_id=invoice.id) }}" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-eye"></i> Detalhes
+              </a>
               {% if invoice.payment_link_url and invoice.status.value in ('pending', 'overdue') %}
               <a href="{{ invoice.payment_link_url }}" target="_blank" rel="noopener" class="btn btn-sm btn-chili">
                 <i class="bi bi-box-arrow-up-right"></i> Pagar agora

@@ -24,6 +24,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     String,
+    Text,
 )
 from sqlalchemy.orm import relationship
 
@@ -95,6 +96,15 @@ class Invoice(db.Model, TenantScopedMixin, TimestampMixin):
     status = Column(str_enum(InvoiceStatus, "invoice_status"), nullable=False, default=InvoiceStatus.PENDING, index=True)
     due_date = Column(Date, nullable=False)
     paid_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Explicação em texto simples de POR QUE esta fatura existe (ex:
+    # "renovação mensal", "prorateio de upgrade", "lançada manualmente
+    # pelo Super Admin") — mostrada na tela de detalhes da fatura do
+    # lojista (ver lojista/settings/invoice_detail.html), pra ele
+    # entender a origem do valor sem precisar perguntar ao suporte.
+    # Nullable: faturas antigas (de antes deste campo existir) caem no
+    # texto padrão do template.
+    description = Column(Text, nullable=True)
 
     # Integração de cobrança (Asaas) — preenchido quando o Super Admin
     # gera uma cobrança para esta fatura. `asaas_payment_id` é a chave

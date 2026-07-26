@@ -40,6 +40,26 @@
     </div>
 
     <hr class="my-4">
+    <div class="mb-2 small fw-semibold text-muted-custom">Dados para cobrança</div>
+    <p class="text-muted-custom small mb-3">
+      Se sua loja usa (ou vier a usar) cobrança automática via Asaas, esses dados são
+      obrigatórios para gerar a fatura — sem um CPF/CNPJ válido cadastrado, a geração
+      da cobrança falha. Mantenha atualizado para não ter surpresa na hora da renovação.
+    </p>
+    <div class="row g-2 mb-3">
+      <div class="col-7">
+        {{ form.legal_name.label(class="form-label small fw-semibold") }}
+        {{ form.legal_name(class="form-control", maxlength=150) }}
+        {% for error in form.legal_name.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+      </div>
+      <div class="col-5">
+        {{ form.document.label(class="form-label small fw-semibold") }}
+        {{ form.document(class="form-control", maxlength=20, placeholder="Só números") }}
+        {% for error in form.document.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+      </div>
+    </div>
+
+    <hr class="my-4">
     <div class="mb-2 small fw-semibold text-muted-custom">Endereço da loja (opcional — exibido no cardápio público)</div>
     <div class="row g-2 mb-3">
       <div class="col-8">

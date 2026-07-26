@@ -242,6 +242,142 @@ class TestConfirmacaoDePlanoDuranteTrial:
             assert trial_tenant.status == TenantStatus.TRIAL
 
 
+class TestReconfirmarPlanoCancelaDowngradeAgendado:
+    def test_reselecting_current_plan_cancels_pending_downgrade(self, app):
+        """Bug corrigido: reafirmar o plano que já está em vigor (ex: o
+        lojista tinha pedido pra voltar pro plano menor e mudou de
+        ideia) precisa CANCELAR o downgrade agendado — senão ele seria
+        rebaixado silenciosamente na próxima renovação mesmo tendo
+        desistido."""
+        with app.app_context():
+            tenant = _tenant()
+            billing = AdminBillingService()
+            subscription = billing.get_or_create_subscription(tenant)
+            current_plan_id = subscription.plan_id
+
+            cheap_plan = _make_plan("Starter", "starter-reconfirma", 500)
+            db.session.commit()
+            TenantSettingsService(tenant).change_plan(cheap_plan.id)
+            assert subscription.pending_plan_id == cheap_plan.id
+
+            result = TenantSettingsService(tenant).change_plan(current_plan_id)
+
+            assert result.kind == "reaffirmed_canceled_downgrade"
+            assert subscription.pending_plan_id is None
+            assert subscription.pending_plan_change_at is None
+            assert subscription.plan_id == current_plan_id
+
+    def test_reselecting_current_plan_without_pending_change_is_a_noop(self, app):
+        with app.app_context():
+            tenant = _tenant()
+            billing = AdminBillingService()
+            subscription = billing.get_or_create_subscription(tenant)
+            current_plan_id = subscription.plan_id
+
+            result = TenantSettingsService(tenant).change_plan(current_plan_id)
+
+            assert result.kind == "reaffirmed"
+            assert subscription.plan_id == current_plan_id
+
+
+class TestRevalidacaoDeLimitesAoAplicarDowngradeAgendado:
+    def test_scheduled_downgrade_is_deferred_if_usage_grew_past_the_new_plan_limit(self, app):
+        """Bug corrigido: entre agendar o downgrade e a renovação, o
+        lojista continua no plano premium e pode cadastrar mais
+        produtos usando a cota maior. Se ao chegar a renovação o uso já
+        não couber mais no plano menor, a troca precisa ser ADIADA (não
+        aplicada silenciosamente deixando a loja acima do limite)."""
+        with app.app_context():
+            tenant = _tenant()
+            billing = AdminBillingService()
+            subscription = billing.get_or_create_subscription(tenant)
+
+            category = Category(tenant_id=tenant.id, name="Cat", slug="cat-revalidacao", icon="other", is_active=True)
+            db.session.add(category)
+            db.session.flush()
+            db.session.add(Product(
+                tenant_id=tenant.id, category_id=category.id, name="Produto Revalidacao",
+                slug="produto-revalidacao", price_cents=1000, is_active=True,
+            ))
+            db.session.commit()
+
+            cheap_plan = _make_plan("Starter", "starter-revalidacao", 500, max_products=1)
+            db.session.commit()
+            TenantSettingsService(tenant).change_plan(cheap_plan.id)
+
+            # Mais um produto cadastrado DEPOIS de agendar o downgrade —
+            # agora ultrapassa o limite do plano agendado. Simula que a
+            # renovação chegou (data agendada no passado).
+            db.session.add(Product(
+                tenant_id=tenant.id, category_id=category.id, name="Produto Revalidacao 2",
+                slug="produto-revalidacao-2", price_cents=1000, is_active=True,
+            ))
+            deferred_from = date.today() - timedelta(days=1)
+            subscription.pending_plan_change_at = deferred_from
+            db.session.commit()
+
+            invoice = billing.generate_next_invoice(subscription)
+
+            # A troca NÃO foi aplicada — continua no plano caro, a data
+            # agendada foi empurrada pra frente (pro próximo ciclo, a
+            # partir de quando ela deveria ter valido), e a fatura de
+            # renovação sai no valor do plano atual (não do plano
+            # barato que não coube mais).
+            assert subscription.pending_plan_id == cheap_plan.id
+            assert subscription.pending_plan_change_at > deferred_from
+            assert subscription.pending_plan_change_at > date.today()
+            assert subscription.plan_id != cheap_plan.id
+            assert invoice.amount_cents == subscription.plan.price_cents
+
+
+class TestDetalheDeFatura:
+    def test_lojista_can_view_own_invoice_detail(self, app, client, login_as):
+        with app.app_context():
+            tenant = _tenant()
+            billing = AdminBillingService()
+            invoice = billing.create_invoice(tenant, amount_reais=49.90, due_date=date.today() + timedelta(days=10))
+            invoice_id = invoice.id
+
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        resp = client.get(f"/painel/configuracoes/assinatura/faturas/{invoice_id}")
+
+        assert resp.status_code == 200
+        html = resp.get_data(as_text=True)
+        assert "Como funciona a cobrança" in html
+        assert "49.90" in html
+
+    def test_lojista_cannot_view_another_tenants_invoice(self, app, client, login_as):
+        with app.app_context():
+            other_tenant = Tenant(
+                name="Outra Loja", slug="outra-loja-fatura", email="outra@example.com",
+                plan_id=_tenant().plan_id, status=TenantStatus.ACTIVE,
+            )
+            db.session.add(other_tenant)
+            db.session.commit()
+            billing = AdminBillingService()
+            invoice = billing.create_invoice(other_tenant, amount_reais=10.0, due_date=date.today() + timedelta(days=10))
+            invoice_id = invoice.id
+
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        resp = client.get(f"/painel/configuracoes/assinatura/faturas/{invoice_id}")
+
+        assert resp.status_code == 404
+
+    def test_invoices_list_shows_details_link_and_description(self, app, client, login_as):
+        with app.app_context():
+            tenant = _tenant()
+            billing = AdminBillingService()
+            billing.create_invoice(tenant, amount_reais=49.90, due_date=date.today() + timedelta(days=10))
+
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        resp = client.get("/painel/configuracoes/assinatura")
+
+        assert resp.status_code == 200
+        html = resp.get_data(as_text=True)
+        assert "Detalhes" in html
+        assert "Fatura lançada manualmente pelo Super Admin." in html
+
+
 class TestDunning:
     def test_pending_invoice_past_due_date_is_marked_overdue(self, app):
         with app.app_context():

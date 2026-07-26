@@ -90,3 +90,66 @@ _SLUG_RE = re.compile(r"^[a-z0-9-]+$")
 def slug_format(form, field):
     if field.data and not _SLUG_RE.fullmatch(field.data):
         raise ValidationError("Use apenas letras minúsculas, números e hífens.")
+
+
+_NON_DIGITS_RE = re.compile(r"\D")
+
+
+def only_digits(value: str) -> str:
+    """Remove tudo que não é dígito — usado tanto na validação de
+    CPF/CNPJ quanto na hora de montar o payload pra Asaas (que exige
+    `cpfCnpj` só com números, sem pontos/traço/barra)."""
+    return _NON_DIGITS_RE.sub("", value or "")
+
+
+def _cpf_check_digit(digits: str) -> int:
+    factor = len(digits) + 1
+    total = sum(int(d) * f for d, f in zip(digits, range(factor, 1, -1)))
+    rest = (total * 10) % 11
+    return 0 if rest >= 10 else rest
+
+
+def _is_valid_cpf(digits: str) -> bool:
+    if len(digits) != 11 or digits == digits[0] * 11:
+        return False
+    d1 = _cpf_check_digit(digits[:9])
+    d2 = _cpf_check_digit(digits[:9] + str(d1))
+    return digits[-2:] == f"{d1}{d2}"
+
+
+def _cnpj_check_digit(digits: str, weights: list[int]) -> int:
+    total = sum(int(d) * w for d, w in zip(digits, weights))
+    rest = total % 11
+    return 0 if rest < 2 else 11 - rest
+
+
+def _is_valid_cnpj(digits: str) -> bool:
+    if len(digits) != 14 or digits == digits[0] * 14:
+        return False
+    weights1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+    weights2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+    d1 = _cnpj_check_digit(digits[:12], weights1)
+    d2 = _cnpj_check_digit(digits[:12] + str(d1), weights2)
+    return digits[-2:] == f"{d1}{d2}"
+
+
+def cpf_cnpj(form, field):
+    """Valida CPF (11 dígitos) ou CNPJ (14 dígitos), tolerante a
+    formatação (pontos, traço, barra) — mesmo espírito de
+    `phone_number()`. Campo opcional: string vazia não é validada aqui
+    (responsabilidade de `Optional()`). Este documento é o que a
+    integração com o Asaas usa como `cpfCnpj` ao criar o cliente de
+    cobrança (ver AsaasGateway.ensure_customer) — sem um CPF/CNPJ
+    válido cadastrado, a geração de cobrança real falha lá na frente,
+    então validamos aqui, na hora do cadastro, pra pegar o erro cedo."""
+    if not field.data:
+        return
+    digits = only_digits(field.data)
+    if len(digits) == 11:
+        if not _is_valid_cpf(digits):
+            raise ValidationError("CPF inválido.")
+    elif len(digits) == 14:
+        if not _is_valid_cnpj(digits):
+            raise ValidationError("CNPJ inválido.")
+    else:
+        raise ValidationError("Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido.")

@@ -96,7 +96,19 @@
         {% set unread = lojista_unread_chat_count() %}
         {% if unread %}<span class="status-badge status-blocked ms-1">{{ unread }}</span>{% endif %}
       </a>
-      <a href="{{ url_for('lojista.settings_store') }}" class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('lojista.settings') }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Configurações">
+      {# Seção própria (fora de "Configurações") de propósito — é onde o
+         plano, as faturas e o próprio período de teste vivem, e merece
+         mais destaque do que uma aba a mais dentro de configurações
+         genéricas. O selo chama atenção quando o teste está na reta
+         final/tolerância ou há fatura vencida — os dois casos em que o
+         lojista realmente precisa vir até aqui. #}
+      {% set _trial_for_nav = current_tenant.trial_status() if current_tenant else None %}
+      {% set subscription_urgent = _trial_for_nav and _trial_for_nav.is_urgent %}
+      <a href="{{ url_for('lojista.settings_subscription') }}" class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('lojista.settings_subscription') }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Assinatura">
+        <i class="bi bi-credit-card"></i><span class="nav-label">Assinatura</span>
+        {% if subscription_urgent %}<span class="status-badge status-blocked ms-1">!</span>{% endif %}
+      </a>
+      <a href="{{ url_for('lojista.settings_store') }}" class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('lojista.settings') and not request.endpoint.startswith('lojista.settings_subscription') }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Configurações">
         <i class="bi bi-gear"></i><span class="nav-label">Configurações</span>
       </a>
     </nav>
