@@ -1,4 +1,4 @@
-<ul class="nav nav-pills mb-4 gap-2">
+<ul class="nav nav-pills mb-4 gap-2 chip-scroll">
   <li class="nav-item"><a class="btn btn-sm {{ 'btn-chili' if request.endpoint == 'lojista.settings_store' else 'btn-outline-secondary' }}" href="{{ url_for('lojista.settings_store') }}">Loja</a></li>
   <li class="nav-item"><a class="btn btn-sm {{ 'btn-chili' if request.endpoint == 'lojista.settings_menu' else 'btn-outline-secondary' }}" href="{{ url_for('lojista.settings_menu') }}">Cardápio &amp; Link</a></li>
   <li class="nav-item"><a class="btn btn-sm {{ 'btn-chili' if request.endpoint == 'lojista.settings_hours' else 'btn-outline-secondary' }}" href="{{ url_for('lojista.settings_hours') }}">Horário</a></li>

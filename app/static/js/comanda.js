@@ -379,3 +379,22 @@ document.body.addEventListener('toastMessage', (evt) => {
 
   els.forEach((el) => observer.observe(el));
 })();
+
+/*
+ * Chips em carrossel (.chip-scroll — status de Pedidos/Histórico,
+ * período do Histórico, ordenação de Clientes, categorias de Produtos,
+ * abas de Configurações) rolam na horizontal em uma linha só. Só que
+ * cada clique num chip é uma navegação de página inteira (sem SPA), e a
+ * página recém-carregada sempre nasce rolada pro início — então, se o
+ * item selecionado (.btn-chili) for um dos últimos, ele ficava fora da
+ * área visível, "escondido" à direita, dando a impressão de que a
+ * seleção tinha se perdido. Aqui a gente centraliza o item ativo na
+ * carga da página. `block: 'nearest'` garante que só a rolagem
+ * horizontal do carrossel se move — não rola a página inteira.
+ */
+(function () {
+  document.querySelectorAll('.chip-scroll').forEach((container) => {
+    const active = container.querySelector('.btn-chili');
+    if (active) active.scrollIntoView({ block: 'nearest', inline: 'center' });
+  });
+})();
