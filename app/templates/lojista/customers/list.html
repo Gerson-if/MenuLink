@@ -66,6 +66,7 @@
 
 <div class="d-md-none">
   {% for row in pagination.items %}
+  {% set details_id = "customerDetails" ~ row.customer.id %}
   <div class="customer-card">
     <div class="customer-card-head">
       <div class="text-white fw-semibold text-truncate">
@@ -76,19 +77,33 @@
         </span>
         {% endif %}
       </div>
+    </div>
+
+    {# Resumo mínimo sempre visível — os demais dados (telefone, último
+       pedido, cliente desde) só aparecem se o lojista pedir "Ver dados",
+       pra não empilhar informação demais de cara num card pequeno. #}
+    <div class="text-muted-custom small mb-2">
+      {{ row.order_count }} pedido{{ "s" if row.order_count != 1 }} · R$ {{ "%.2f"|format(row.total_spent_cents / 100) }} gasto
+    </div>
+
+    <div class="collapse" id="{{ details_id }}">
+      <dl class="customer-card-stats">
+        <dt>Telefone</dt><dd>{{ row.customer.phone or "—" }}</dd>
+        <dt>Último pedido</dt><dd>{{ row.last_order_at.strftime("%d/%m/%Y") if row.last_order_at else "—" }}</dd>
+        <dt>Cliente desde</dt><dd>{{ row.customer.created_at.strftime("%d/%m/%Y") }}</dd>
+      </dl>
+    </div>
+
+    <div class="customer-card-actions">
+      <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#{{ details_id }}">
+        <i class="bi bi-chevron-down"></i> Ver dados
+      </button>
       <form method="POST" action="{{ url_for('lojista.customers_delete', customer_id=row.customer.id) }}"
             data-confirm-message="Remover o cadastro de {{ row.customer.name }}? Os pedidos já feitos continuam no seu histórico.">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="btn btn-sm btn-outline-danger" title="Remover cliente"><i class="bi bi-trash"></i></button>
+        <button type="submit" class="btn btn-sm btn-outline-danger" title="Remover cliente"><i class="bi bi-trash"></i> Remover</button>
       </form>
     </div>
-    <dl class="customer-card-stats">
-      <dt>Telefone</dt><dd>{{ row.customer.phone or "—" }}</dd>
-      <dt>Pedidos</dt><dd>{{ row.order_count }}</dd>
-      <dt>Total gasto</dt><dd>R$ {{ "%.2f"|format(row.total_spent_cents / 100) }}</dd>
-      <dt>Último pedido</dt><dd>{{ row.last_order_at.strftime("%d/%m/%Y") if row.last_order_at else "—" }}</dd>
-      <dt>Cliente desde</dt><dd>{{ row.customer.created_at.strftime("%d/%m/%Y") }}</dd>
-    </dl>
   </div>
   {% endfor %}
 </div>

@@ -223,14 +223,20 @@ body {
    lojista/customers/list.html) ----------
    A tabela de 7 colunas (nome, telefone, pedidos, total gasto, último
    pedido, cliente desde, excluir) fica ilegível/espremida em telas de
-   celular mesmo com scroll horizontal — vira um cartão por cliente
-   com as mesmas informações em pares label/valor. */
+   celular mesmo com scroll horizontal — vira um cartão por cliente.
+   Só nome + resumo (pedidos/total gasto) ficam sempre visíveis; os
+   demais dados (telefone, último pedido, cliente desde) ficam atrás de
+   um "Ver dados" (collapse), pra não empilhar informação demais de
+   cara — o botão de remover fica sempre à mão ao lado dele. */
 .customer-card { border: 1px solid var(--card-border); border-radius: var(--radius); padding: 14px; background: var(--card-bg); margin-bottom: 10px; color: var(--card-text); }
-.customer-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+.customer-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 4px; }
 .customer-card-head > div { min-width: 0; }
-.customer-card-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; font-size: .82rem; margin: 0; }
+.customer-card-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; font-size: .82rem; margin: 10px 0 0; }
 .customer-card-stats dt { color: var(--muted-text); font-weight: 400; }
 .customer-card-stats dd { color: var(--card-text); margin: 0 0 4px; }
+.customer-card-actions { display: flex; gap: 8px; margin-top: 10px; }
+.customer-card-actions [data-bs-toggle="collapse"] .bi-chevron-down { transition: transform .2s; }
+.customer-card-actions [data-bs-toggle="collapse"][aria-expanded="true"] .bi-chevron-down { transform: rotate(180deg); }
 .badge-order { font-family: 'JetBrains Mono'; background: rgba(255,255,255,.05); border: 1px solid var(--card-border); border-radius: 6px; padding: 3px 10px; font-size: .75rem; color: var(--muted-text); }
 
 /* ---------- Chat (suporte lojista <-> Super Admin) ----------
