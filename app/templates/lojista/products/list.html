@@ -68,10 +68,12 @@
   {% endfor %}
 </div>
 {% else %}
-<div class="panel empty-state">
-  <i class="bi bi-egg-fried"></i>
-  Nenhum produto cadastrado ainda. Crie o primeiro produto do seu cardápio.
-</div>
+{% set icon = "egg-fried" %}
+{% set title = "Seu cardápio está vazio" %}
+{% set text = "Crie o primeiro produto para começar a vender pelo cardápio digital." %}
+{% set cta_label = "+ Novo produto" %}
+{% set cta_attrs %}hx-post="{{ url_for('lojista.products_create_draft') }}" hx-target="#drawer-body" hx-swap="innerHTML" data-bs-toggle="offcanvas" data-bs-target="#editDrawer"{% endset %}
+{% include "lojista/_empty_state.html" %}
 {% endif %}
 {% include "_pagination.html" %}
 

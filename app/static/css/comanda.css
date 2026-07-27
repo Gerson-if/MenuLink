@@ -162,6 +162,32 @@ body {
 .empty-state { text-align: center; padding: 40px 20px; color: var(--muted-text); }
 .empty-state i { font-size: 2rem; margin-bottom: 10px; display: block; color: var(--card-border); }
 
+/* ---------- Estado vazio "hero" (ícone grande + título + texto + CTA) ----------
+   Usado nas listagens do painel do lojista (Pedidos, Histórico, Clientes,
+   Cardápio, Banners) — ver app/templates/lojista/_empty_state.html. O
+   ícone fica num círculo com um glow radial na cor de destaque, no
+   lugar de uma ilustração externa, mantendo a mesma sensação de "card
+   com arte central" pedida sem depender de um arquivo de imagem. */
+.empty-state-hero { text-align: center; padding: 56px 24px; }
+.empty-state-icon {
+  width: 96px; height: 96px; border-radius: 50%; margin: 0 auto 22px; position: relative;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 22%, transparent) 0%, transparent 72%);
+}
+.empty-state-icon::before {
+  content: ""; position: absolute; inset: 6px; border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 12%, var(--card-bg));
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+}
+.empty-state-icon i { position: relative; font-size: 2.5rem; color: var(--accent); }
+.empty-state-title { color: #fff; font-size: 1.2rem; margin-bottom: 8px; }
+.empty-state-text { color: var(--muted-text); font-size: .88rem; max-width: 380px; margin: 0 auto 20px; }
+@media (max-width: 575.98px) {
+  .empty-state-hero { padding: 40px 16px; }
+  .empty-state-icon { width: 76px; height: 76px; }
+  .empty-state-icon i { font-size: 2rem; }
+}
+
 /* ---------- KPI cards ---------- */
 .kpi-card {
   background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius);

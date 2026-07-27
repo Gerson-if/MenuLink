@@ -1,0 +1,30 @@
+{# Estado vazio "hero" — ícone grande com glow, título, texto explicativo
+   e (opcional) botão de ação, usado em todas as listagens do painel do
+   lojista (Pedidos, Histórico, Clientes, Cardápio, Banners) em vez do
+   ícone pequeno + frase única que só ele carregava antes. Inspirado no
+   estado vazio ilustrado que o lojista pediu pra tela de Pedidos —
+   mesma estrutura, só trocando a arte por um ícone (já usado em todo o
+   resto do painel) num círculo com glow na cor de destaque, em vez de
+   uma ilustração externa.
+
+   Parâmetros esperados (via {% include ... with context %} depois de
+   um {% set %}):
+     icon        — nome do ícone Bootstrap Icons, sem o prefixo "bi-".
+     title       — título curto e animador (ex.: "Aguardando novos pedidos!").
+     text        — frase explicando o que vai aparecer ali e quando.
+     cta_url     — (opcional) link do botão de ação, quando é uma navegação normal.
+     cta_attrs   — (opcional, alternativa a cta_url) string com atributos HTML extra
+                   (ex.: hx-get/data-bs-toggle pra abrir a gaveta de "+ Novo X" direto
+                   do estado vazio) — usada quando a ação não é um link, e sim abrir
+                   um offcanvas já existente na página.
+     cta_label   — (opcional) texto do botão; só é exibido se cta_url OU cta_attrs vier. #}
+<div class="panel empty-state-hero">
+  <div class="empty-state-icon"><i class="bi bi-{{ icon }}"></i></div>
+  <h3 class="empty-state-title font-display">{{ title }}</h3>
+  <p class="empty-state-text">{{ text }}</p>
+  {% if cta_label and cta_url %}
+  <a href="{{ cta_url }}" class="btn btn-chili empty-state-cta">{{ cta_label }}</a>
+  {% elif cta_label and cta_attrs %}
+  <button type="button" class="btn btn-chili empty-state-cta" {{ cta_attrs|safe }}>{{ cta_label }}</button>
+  {% endif %}
+</div>

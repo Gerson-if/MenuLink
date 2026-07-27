@@ -108,10 +108,12 @@
   {% endfor %}
 </div>
 {% else %}
-<div class="panel empty-state">
-  <i class="bi bi-people"></i>
-  Nenhum cliente identificado ainda. Assim que alguém entrar com o telefone no seu cardápio público, ele aparece aqui.
-</div>
+{% set icon = "people" %}
+{% set title = "Nenhum cliente por aqui ainda" %}
+{% set text = "Assim que alguém entrar com o telefone no seu cardápio público, ele aparece aqui automaticamente." %}
+{% set cta_url = url_for('public.store_home', slug=current_tenant.slug) if current_tenant else None %}
+{% set cta_label = "Ver Cardápio" %}
+{% include "lojista/_empty_state.html" %}
 {% endif %}
 {% include "_pagination.html" %}
 {% endblock %}

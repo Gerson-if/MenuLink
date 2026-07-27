@@ -60,10 +60,17 @@
   {% endfor %}
 </div>
 {% else %}
-<div class="panel empty-state">
-  <i class="bi bi-clock-history"></i>
-  Nenhum pedido encerrado {% if selected_status %}com esse status {% endif %}{% if selected_period != "todos" %}nesse período{% else %}ainda{% endif %}. Pedidos concluídos ou cancelados aparecem aqui.
-</div>
+{% set icon = "clock-history" %}
+{% if selected_period != "todos" %}
+{% set title = "Nada por aqui nesse período" %}
+{% set text = "Não há pedidos encerrados " ~ ("com esse status " if selected_status else "") ~ "nesse recorte de data. Tente outro período ou veja todos." %}
+{% set cta_url = url_for('lojista.orders_history', status=selected_status or None, period='todos') %}
+{% set cta_label = "Ver todos os períodos" %}
+{% else %}
+{% set title = "Nenhum pedido encerrado ainda" %}
+{% set text = "Pedidos concluídos ou cancelados aparecem aqui assim que forem finalizados." %}
+{% endif %}
+{% include "lojista/_empty_state.html" %}
 {% endif %}
 {% include "_pagination.html" %}
 {% endblock %}

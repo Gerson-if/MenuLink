@@ -23,10 +23,18 @@
   {% endfor %}
 </div>
 {% else %}
-<div class="panel empty-state">
-  <i class="bi bi-receipt"></i>
-  Nenhum pedido {% if selected_status %}com esse status {% endif %}ainda. Assim que um cliente finalizar uma compra no seu cardápio, ele aparece aqui.
-</div>
+{% if selected_status and selected_status != "pending" %}
+{% set icon = "receipt" %}
+{% set title = "Nenhum pedido " ~ status_labels.get(selected_status, selected_status)|lower ~ " no momento" %}
+{% set text = "Assim que um pedido entrar nesse status, ele aparece aqui." %}
+{% else %}
+{% set icon = "bell" %}
+{% set title = "Aguardando novos pedidos!" %}
+{% set text = "Seus pedidos do cardápio aparecerão aqui assim que forem feitos por um cliente." %}
+{% set cta_url = url_for('public.store_home', slug=current_tenant.slug) if current_tenant else None %}
+{% set cta_label = "Ver Cardápio" %}
+{% endif %}
+{% include "lojista/_empty_state.html" %}
 {% endif %}
 {% include "_pagination.html" %}
 {% endblock %}

@@ -36,10 +36,12 @@
 </div>
 {% endfor %}
 {% else %}
-<div class="panel empty-state">
-  <i class="bi bi-images"></i>
-  Nenhum banner cadastrado ainda. Adicione imagens promocionais para destacar no topo do seu cardápio.
-</div>
+{% set icon = "images" %}
+{% set title = "Nenhum banner ainda" %}
+{% set text = "Adicione imagens promocionais para destacar no topo do seu cardápio público." %}
+{% set cta_label = "+ Novo banner" %}
+{% set cta_attrs %}hx-get="{{ url_for('lojista.banners_create') }}" hx-target="#banner-drawer-body" hx-swap="innerHTML" data-bs-toggle="offcanvas" data-bs-target="#bannerDrawer"{% endset %}
+{% include "lojista/_empty_state.html" %}
 {% endif %}
 
 </div>

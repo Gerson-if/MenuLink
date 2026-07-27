@@ -59,10 +59,12 @@
   </table>
 </div>
 {% else %}
-<div class="panel empty-state">
-  <i class="bi bi-tag"></i>
-  Nenhuma categoria cadastrada ainda. Crie a primeira para começar a organizar seu cardápio.
-</div>
+{% set icon = "tag" %}
+{% set title = "Comece organizando seu cardápio" %}
+{% set text = "Crie a primeira categoria (ex.: Lanches, Bebidas) para agrupar seus produtos." %}
+{% set cta_label = "+ Nova categoria" %}
+{% set cta_attrs %}hx-get="{{ url_for('lojista.categories_create') }}" hx-target="#category-drawer-body" hx-swap="innerHTML" data-bs-toggle="offcanvas" data-bs-target="#categoryDrawer"{% endset %}
+{% include "lojista/_empty_state.html" %}
 {% endif %}
 {% include "_pagination.html" %}
 
