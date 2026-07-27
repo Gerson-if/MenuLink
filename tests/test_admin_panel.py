@@ -66,7 +66,7 @@ class TestTenantManagement:
         )
 
         with app.app_context():
-            from app.models import Banner, Category, Product
+            from app.models import Banner, Category, ComplementGroup, Product
 
             tenant = Tenant.query.filter_by(email="contato@starter.com").first()
             assert tenant is not None
@@ -79,8 +79,25 @@ class TestTenantManagement:
             assert len(products) == 4
             assert all(p.tag == "Exemplo" for p in products)
             assert all(p.primary_image is not None for p in products)
+            # Preços variam por tipo de item (não é mais um R$19,90 fixo
+            # pra tudo) — ver _STARTER_CATEGORIES em starter_content_service.py.
+            assert len({p.price_cents for p in products}) > 1
 
-            assert Banner.query.filter_by(tenant_id=tenant.id).count() == 1
+            # Mais de um banner — o suficiente pra demonstrar o carrossel
+            # do cardápio público (com um só, não haveria o que "rolar").
+            assert Banner.query.filter_by(tenant_id=tenant.id).count() == 3
+
+            # Um dos produtos já sai com variação (Tamanho) + adicionais
+            # cadastrados, pra demonstrar esse recurso pro lojista novo.
+            groups = (
+                ComplementGroup.query.join(Product, ComplementGroup.product_id == Product.id)
+                .filter(Product.tenant_id == tenant.id)
+                .all()
+            )
+            assert len(groups) == 2
+            assert any(g.is_variation for g in groups)
+            assert any(not g.is_variation for g in groups)
+            assert sum(len(g.options) for g in groups) == 6
 
     def test_duplicate_tenant_email_is_rejected(self, client, login_as):
         login_as(client, "admin@cardapio.saas", "admin123")
