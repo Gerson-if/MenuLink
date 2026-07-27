@@ -18,7 +18,7 @@
 <div id="products-grid-wrap" hx-trigger="productSaved from:body" hx-get="{{ request.full_path }}" hx-select="#products-grid-wrap" hx-swap="outerHTML" hx-disinherit="hx-select hx-trigger hx-get hx-swap">
 
 {% if categories %}
-<div class="mb-4 d-flex gap-2 flex-wrap">
+<div class="mb-4 d-flex gap-2 chip-scroll">
   <a href="{{ url_for('lojista.products_list') }}"
      class="btn btn-sm {{ 'btn-chili' if not selected_category_id else 'btn-outline-secondary' }}">Todas</a>
   {% for category in categories %}

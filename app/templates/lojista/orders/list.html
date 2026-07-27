@@ -7,7 +7,7 @@
   Pedidos em andamento. Assim que um pedido é concluído ou cancelado, ele sai
   daqui e vai para o <a href="{{ url_for('lojista.orders_history') }}" class="link-chili">Histórico</a>.
 </p>
-<div class="mb-4 d-flex gap-2 flex-wrap">
+<div class="mb-4 d-flex gap-2 chip-scroll">
   <a href="{{ url_for('lojista.orders_list') }}"
      class="btn btn-sm {{ 'btn-chili' if not selected_status else 'btn-outline-secondary' }}">Todos</a>
   {% for s in all_statuses %}

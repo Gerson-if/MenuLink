@@ -11,7 +11,7 @@
    controller), então quando a página abre sem nenhum parâmetro na URL o
    histórico já mostra só o movimento do dia atual. Os demais botões
    trocam o recorte com um clique, preservando o filtro de status. #}
-<div class="mb-2 d-flex gap-2 flex-wrap">
+<div class="mb-2 d-flex gap-2 chip-scroll">
   {% for p in all_periods if p != "personalizado" %}
   <a href="{{ url_for('lojista.orders_history', status=selected_status or None, period=p) }}"
      class="btn btn-sm {{ 'btn-chili' if selected_period == p else 'btn-outline-secondary' }}">{{ period_labels[p] }}</a>
@@ -44,7 +44,7 @@
 </p>
 {% endif %}
 
-<div class="mb-4 d-flex gap-2 flex-wrap">
+<div class="mb-4 d-flex gap-2 chip-scroll">
   <a href="{{ url_for('lojista.orders_history', period=selected_period) }}"
      class="btn btn-sm {{ 'btn-chili' if not selected_status else 'btn-outline-secondary' }}">Todos os status</a>
   {% for s in all_statuses %}

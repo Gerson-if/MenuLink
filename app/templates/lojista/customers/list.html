@@ -7,7 +7,7 @@
   Clientes que se identificaram pelo telefone no seu cardápio público (login opcional, sem senha) — criados/atualizados automaticamente a cada pedido.
 </p>
 
-<div class="mb-4 d-flex gap-2 flex-wrap align-items-center">
+<div class="mb-4 d-flex gap-2 chip-scroll align-items-center">
   <span class="text-muted-custom small me-1">Ordenar por:</span>
   <a href="{{ url_for('lojista.customers_list', sort='recent') }}"
      class="btn btn-sm {{ 'btn-chili' if selected_sort == 'recent' else 'btn-outline-secondary' }}">Mais recentes</a>

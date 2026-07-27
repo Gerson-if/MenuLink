@@ -220,6 +220,21 @@ body {
 .status-completed { background: rgba(255,255,255,0.08); color: var(--paper); }
 .status-canceled { background: rgba(255,255,255,0.04); color: var(--muted-text); text-decoration: line-through; }
 
+/* ---------- Carrossel de filtros (chips) ----------
+   Barras de filtro tipo "chip" (status de Pedidos/Histórico, período do
+   Histórico, ordenação de Clientes, categorias de Produtos) — em vez de
+   quebrar em várias linhas quando não cabem (ficava com cortes
+   desajeitados em telas estreitas), viram uma faixa que rola na
+   horizontal em uma linha só, como um carrossel. A barra de rolagem
+   fica escondida (mais discreta) mas a rolagem continua funcionando
+   normalmente por toque/arraste. */
+.chip-scroll {
+  display: flex; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; -ms-overflow-style: none;
+}
+.chip-scroll::-webkit-scrollbar { display: none; }
+.chip-scroll > * { flex-shrink: 0; white-space: nowrap; }
+
 .status-badge { font-size: .7rem; font-weight: 700; padding: 4px 12px; border-radius: 30px; text-transform: uppercase; letter-spacing: .04em; display: inline-block; color: #fff; }
 .status-active { background: var(--sage); }
 .status-trial { background: var(--accent); }
