@@ -1,3 +1,5 @@
+from datetime import date, timedelta
+
 from flask import flash, redirect, render_template, request, url_for
 
 from app.services.order_service import OrderService, OrderValidationError
@@ -23,6 +25,53 @@ STATUS_LABELS = {
 # de pedidos enxuta e focada no que ainda precisa de ação.
 ACTIVE_STATUSES = ["pending", "confirmed", "preparing", "out_for_delivery", "ready_for_pickup"]
 HISTORY_STATUSES = ["completed", "canceled"]
+
+# Filtro de período do Histórico. Por padrão mostra só "hoje" — a tela
+# tende a acumular meses/anos de pedidos encerrados, então sem um recorte
+# padrão ela viraria uma lista enorme e pouco útil; "hoje" cobre o caso de
+# uso mais comum (conferir o movimento do dia) e os demais períodos ficam
+# a um clique de distância pra quem quiser olhar mais pra trás.
+HISTORY_PERIODS = ["hoje", "semana", "mes", "ano", "todos", "personalizado"]
+HISTORY_PERIOD_LABELS = {
+    "hoje": "Hoje",
+    "semana": "Últimos 7 dias",
+    "mes": "Este mês",
+    "ano": "Este ano",
+    "todos": "Todos",
+    "personalizado": "Personalizado",
+}
+
+
+def _history_date_range(period: str, date_from_str: str, date_to_str: str):
+    """Traduz o período selecionado num par (date_from, date_to) pra
+    OrderRepository.paginated — date_to já vem como "dia seguinte" (veja o
+    docstring de paginated) pra incluir o dia final inteiro sem depender
+    de hora."""
+    today = date.today()
+    tomorrow = today + timedelta(days=1)
+
+    if period == "semana":
+        return today - timedelta(days=6), tomorrow
+    if period == "mes":
+        return today.replace(day=1), tomorrow
+    if period == "ano":
+        return today.replace(month=1, day=1), tomorrow
+    if period == "todos":
+        return None, None
+    if period == "personalizado":
+        try:
+            start = date.fromisoformat(date_from_str) if date_from_str else today
+        except ValueError:
+            start = today
+        try:
+            end = date.fromisoformat(date_to_str) if date_to_str else today
+        except ValueError:
+            end = today
+        if end < start:
+            start, end = end, start
+        return start, end + timedelta(days=1)
+    # "hoje" (padrão)
+    return today, tomorrow
 
 
 @lojista_bp.route("/pedidos")
@@ -54,12 +103,27 @@ def orders_history():
     status = request.args.get("status", "").strip()
     if status and status not in HISTORY_STATUSES:
         status = ""
+
+    period = request.args.get("period", "hoje").strip()
+    if period not in HISTORY_PERIODS:
+        period = "hoje"
+    date_from_str = request.args.get("date_from", "").strip()
+    date_to_str = request.args.get("date_to", "").strip()
+    date_from, date_to = _history_date_range(period, date_from_str, date_to_str)
+
     page = request.args.get("page", 1, type=int)
 
     service = OrderService(tenant)
     pagination = service.order_repo.paginated(
-        page=page, per_page=15, status=status or None, statuses=None if status else HISTORY_STATUSES
+        page=page, per_page=15, status=status or None, statuses=None if status else HISTORY_STATUSES,
+        date_from=date_from, date_to=date_to,
     )
+
+    # Datas "de exibição" (formato ISO, prontas pro atributo value dos
+    # <input type="date">): date_to volta um dia pra virar inclusivo de
+    # novo, já que foi guardado como exclusivo pra query.
+    display_from = date_from.isoformat() if date_from else ""
+    display_to = (date_to - timedelta(days=1)).isoformat() if date_to else ""
 
     return render_template(
         "lojista/orders/history.html",
@@ -68,6 +132,11 @@ def orders_history():
         selected_status=status,
         status_labels=STATUS_LABELS,
         all_statuses=HISTORY_STATUSES,
+        selected_period=period,
+        period_labels=HISTORY_PERIOD_LABELS,
+        all_periods=HISTORY_PERIODS,
+        display_from=display_from,
+        display_to=display_to,
     )
 
 

@@ -15,20 +15,24 @@
 {% if banners %}
 {% for banner in banners %}
 <div class="banner-row">
-  <img src="{{ url_for('static', filename=banner.image_path) }}" alt="{{ banner.title }}">
-  <div class="flex-grow-1">
-    <div class="text-white fw-semibold">{{ banner.title }}</div>
-    {% if banner.subtitle %}<div class="text-muted-custom small">{{ banner.subtitle }}</div>{% endif %}
+  <div class="banner-row-main">
+    <img src="{{ url_for('static', filename=banner.image_path) }}" alt="{{ banner.title }}">
+    <div class="flex-grow-1 min-w-0">
+      <div class="text-white fw-semibold text-truncate">{{ banner.title }}</div>
+      {% if banner.subtitle %}<div class="text-muted-custom small text-truncate">{{ banner.subtitle }}</div>{% endif %}
+    </div>
   </div>
-  {% include "lojista/banners/_status_badge.html" %}
-  <button type="button" class="btn btn-sm btn-outline-secondary"
-          hx-get="{{ url_for('lojista.banners_edit', banner_id=banner.id) }}" hx-target="#banner-drawer-body" hx-swap="innerHTML"
-          data-bs-toggle="offcanvas" data-bs-target="#bannerDrawer">Editar</button>
-  <form method="POST" action="{{ url_for('lojista.banners_delete', banner_id=banner.id) }}"
-        hx-boost="false" data-confirm-message="Excluir este banner?">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
-  </form>
+  <div class="banner-row-actions">
+    {% include "lojista/banners/_status_badge.html" %}
+    <button type="button" class="btn btn-sm btn-outline-secondary"
+            hx-get="{{ url_for('lojista.banners_edit', banner_id=banner.id) }}" hx-target="#banner-drawer-body" hx-swap="innerHTML"
+            data-bs-toggle="offcanvas" data-bs-target="#bannerDrawer">Editar</button>
+    <form method="POST" action="{{ url_for('lojista.banners_delete', banner_id=banner.id) }}"
+          hx-boost="false" data-confirm-message="Excluir este banner?">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+    </form>
+  </div>
 </div>
 {% endfor %}
 {% else %}

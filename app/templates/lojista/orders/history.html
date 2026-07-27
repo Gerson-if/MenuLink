@@ -7,11 +7,48 @@
   Pedidos já encerrados (concluídos ou cancelados). Para acompanhar pedidos em
   andamento, veja a tela de <a href="{{ url_for('lojista.orders_list') }}" class="link-chili">Pedidos</a>.
 </p>
+{# Filtro de período — "Hoje" é o padrão (ver HISTORY_PERIODS no
+   controller), então quando a página abre sem nenhum parâmetro na URL o
+   histórico já mostra só o movimento do dia atual. Os demais botões
+   trocam o recorte com um clique, preservando o filtro de status. #}
+<div class="mb-2 d-flex gap-2 flex-wrap">
+  {% for p in all_periods if p != "personalizado" %}
+  <a href="{{ url_for('lojista.orders_history', status=selected_status or None, period=p) }}"
+     class="btn btn-sm {{ 'btn-chili' if selected_period == p else 'btn-outline-secondary' }}">{{ period_labels[p] }}</a>
+  {% endfor %}
+  <button type="button" class="btn btn-sm {{ 'btn-chili' if selected_period == 'personalizado' else 'btn-outline-secondary' }}"
+          data-bs-toggle="collapse" data-bs-target="#historyCustomRange">
+    <i class="bi bi-calendar-range"></i> Personalizado
+  </button>
+</div>
+
+<div class="collapse {{ 'show' if selected_period == 'personalizado' else '' }} mb-3" id="historyCustomRange">
+  <form method="GET" class="d-flex gap-2 flex-wrap align-items-end panel py-3">
+    <input type="hidden" name="status" value="{{ selected_status }}">
+    <input type="hidden" name="period" value="personalizado">
+    <div>
+      <label class="form-label small text-muted-custom mb-1" for="historyDateFrom">De</label>
+      <input type="date" id="historyDateFrom" name="date_from" class="form-control form-control-sm" value="{{ display_from }}">
+    </div>
+    <div>
+      <label class="form-label small text-muted-custom mb-1" for="historyDateTo">Até</label>
+      <input type="date" id="historyDateTo" name="date_to" class="form-control form-control-sm" value="{{ display_to }}">
+    </div>
+    <button type="submit" class="btn btn-sm btn-chili">Filtrar</button>
+  </form>
+</div>
+
+{% if selected_period != "todos" %}
+<p class="text-muted-custom small mb-3">
+  Mostrando pedidos de <strong>{{ display_from }}</strong> até <strong>{{ display_to }}</strong>.
+</p>
+{% endif %}
+
 <div class="mb-4 d-flex gap-2 flex-wrap">
-  <a href="{{ url_for('lojista.orders_history') }}"
-     class="btn btn-sm {{ 'btn-chili' if not selected_status else 'btn-outline-secondary' }}">Todos</a>
+  <a href="{{ url_for('lojista.orders_history', period=selected_period) }}"
+     class="btn btn-sm {{ 'btn-chili' if not selected_status else 'btn-outline-secondary' }}">Todos os status</a>
   {% for s in all_statuses %}
-  <a href="{{ url_for('lojista.orders_history', status=s) }}"
+  <a href="{{ url_for('lojista.orders_history', status=s, period=selected_period) }}"
      class="btn btn-sm {{ 'btn-chili' if selected_status == s else 'btn-outline-secondary' }}">{{ status_labels.get(s, s) }}</a>
   {% endfor %}
 </div>
@@ -25,7 +62,7 @@
 {% else %}
 <div class="panel empty-state">
   <i class="bi bi-clock-history"></i>
-  Nenhum pedido encerrado {% if selected_status %}com esse status {% endif %}ainda. Pedidos concluídos ou cancelados aparecem aqui.
+  Nenhum pedido encerrado {% if selected_status %}com esse status {% endif %}{% if selected_period != "todos" %}nesse período{% else %}ainda{% endif %}. Pedidos concluídos ou cancelados aparecem aqui.
 </div>
 {% endif %}
 {% include "_pagination.html" %}

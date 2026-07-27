@@ -192,6 +192,71 @@ class TestOrdersManagement:
         assert f'ticket-num">#{data["order_number"]}<' in active_body
 
 
+class TestHistoryDateFilter:
+    def test_history_defaults_to_today_and_hides_older_orders(self, app, client, login_as):
+        product_id, tenant_id = _create_product(app)
+        data = _create_order_via_checkout(client, product_id)
+        order_id = data["order_id"]
+
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        client.post(f"/painel/pedidos/{order_id}/rejeitar")
+
+        with app.app_context():
+            order = db.session.get(Order, order_id)
+            order.created_at = datetime.now(timezone.utc) - timedelta(days=10)
+            db.session.commit()
+
+        client.get("/painel/pedidos/historico")  # consome o flash
+        body = client.get("/painel/pedidos/historico").get_data(as_text=True)
+        assert f'ticket-num">#{data["order_number"]}<' not in body
+
+        body_all = client.get("/painel/pedidos/historico?period=todos").get_data(as_text=True)
+        assert f'ticket-num">#{data["order_number"]}<' in body_all
+
+    def test_history_month_filter_includes_order_from_earlier_this_month(self, app, client, login_as):
+        product_id, tenant_id = _create_product(app)
+        data = _create_order_via_checkout(client, product_id)
+        order_id = data["order_id"]
+
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        client.post(f"/painel/pedidos/{order_id}/rejeitar")
+
+        with app.app_context():
+            order = db.session.get(Order, order_id)
+            order.created_at = datetime.now(timezone.utc).replace(day=1)
+            db.session.commit()
+
+        client.get("/painel/pedidos/historico")
+        body_today = client.get("/painel/pedidos/historico").get_data(as_text=True)
+        assert f'ticket-num">#{data["order_number"]}<' not in body_today
+
+        body_month = client.get("/painel/pedidos/historico?period=mes").get_data(as_text=True)
+        assert f'ticket-num">#{data["order_number"]}<' in body_month
+
+    def test_history_custom_range_filters_by_given_dates(self, app, client, login_as):
+        product_id, tenant_id = _create_product(app)
+        data = _create_order_via_checkout(client, product_id)
+        order_id = data["order_id"]
+
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        client.post(f"/painel/pedidos/{order_id}/rejeitar")
+
+        with app.app_context():
+            order = db.session.get(Order, order_id)
+            order.created_at = datetime(2020, 5, 15, tzinfo=timezone.utc)
+            db.session.commit()
+
+        body_wrong_range = client.get(
+            "/painel/pedidos/historico?period=personalizado&date_from=2020-05-16&date_to=2020-05-20"
+        ).get_data(as_text=True)
+        assert f'ticket-num">#{data["order_number"]}<' not in body_wrong_range
+
+        body_right_range = client.get(
+            "/painel/pedidos/historico?period=personalizado&date_from=2020-05-10&date_to=2020-05-20"
+        ).get_data(as_text=True)
+        assert f'ticket-num">#{data["order_number"]}<' in body_right_range
+
+
 class TestReports:
     def test_summary_reflects_created_orders(self, app, client, login_as):
         product_id, tenant_id = _create_product(app, price_cents=5000)

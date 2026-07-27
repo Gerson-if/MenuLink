@@ -207,8 +207,17 @@ body {
 .product-card .body { padding: 14px; }
 .product-card .price { font-family: 'Archivo Black'; color: var(--accent); font-size: 1.1rem; }
 
-.banner-row { border: 1px solid var(--card-border); border-radius: var(--radius); padding: 12px; display: flex; gap: 14px; align-items: center; background: var(--card-bg); margin-bottom: 10px; color: var(--card-text); }
-.banner-row img { width: 90px; height: 56px; object-fit: cover; border-radius: 8px; background: #3A3127; }
+/* .banner-row-main (imagem + título/subtítulo) e .banner-row-actions
+   (badge + botões) são dois grupos flex dentro de .banner-row — no
+   desktop cabem lado a lado numa linha só; no mobile (ver breakpoint
+   575.98px abaixo) cada grupo vira uma linha inteira, em vez de espremer
+   os 5 itens (imagem, texto, badge, editar, excluir) numa única linha
+   estreita e "deformar" o card. */
+.banner-row { border: 1px solid var(--card-border); border-radius: var(--radius); padding: 12px; display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; background: var(--card-bg); margin-bottom: 10px; color: var(--card-text); }
+.banner-row img { width: 90px; height: 56px; object-fit: cover; border-radius: 8px; background: #3A3127; flex-shrink: 0; }
+.banner-row-main { display: flex; align-items: center; gap: 14px; flex: 1 1 240px; min-width: 0; }
+.banner-row-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.min-w-0 { min-width: 0; }
 .badge-order { font-family: 'JetBrains Mono'; background: rgba(255,255,255,.05); border: 1px solid var(--card-border); border-radius: 6px; padding: 3px 10px; font-size: .75rem; color: var(--muted-text); }
 
 /* ---------- Chat (suporte lojista <-> Super Admin) ----------
@@ -293,6 +302,12 @@ body {
   display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--card-border);
   color: var(--card-text); text-decoration: none; transition: background .15s;
 }
+/* O texto (nome/badge/última mensagem) fica num filho com .flex-grow-1,
+   mas um item flex não encolhe abaixo do próprio conteúdo por padrão
+   (min-width: auto) — sem isso o text-truncate do template não tem
+   efeito nenhum em telas estreitas e a linha estoura/empurra o avatar.
+   Mesmo ajuste já usado em .chat-header (ver acima). */
+.support-conversation-item > .flex-grow-1 { min-width: 0; }
 .support-conversation-item:first-child { border-top: none; }
 .support-conversation-item:hover { background: rgba(255,255,255,.04); color: var(--card-text); }
 .support-conversation-item.active { background: color-mix(in srgb, var(--accent) 12%, transparent); border-left: 3px solid var(--accent); padding-left: 13px; }
@@ -692,4 +707,12 @@ body:has(.app-shell) .toast-flash-stack { top: 84px; }
   .chat-messages { padding: 12px 10px; }
   .chat-input-bar { padding: 10px; gap: 8px; }
   .chat-send-btn { width: 38px; height: 38px; font-size: 1rem; }
+
+  /* Banners: cada card empilha em duas linhas (imagem+texto, depois
+     badge+ações) em vez de espremer tudo numa linha só — mesma ideia do
+     cabeçalho do chat acima, adaptar um flex row rígido pra tela
+     estreita em vez de deixar ele estourar/comprimir o conteúdo. */
+  .banner-row-main { flex: 1 1 100%; }
+  .banner-row-actions { flex: 1 1 100%; justify-content: space-between; }
+  .banner-row img { width: 64px; height: 40px; }
 }
