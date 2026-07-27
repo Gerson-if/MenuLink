@@ -102,6 +102,7 @@
       {% endif %}
 
       {% if invoices %}
+      <div style="overflow-x: auto;">
       <table class="table table-borderless table-sm mb-4" style="color: var(--card-text);">
         <thead class="text-muted-custom small text-uppercase"><tr><th>Vencimento</th><th>Valor</th><th>Status</th><th>Cobrança</th><th class="text-end">Ações</th></tr></thead>
         <tbody>
@@ -153,6 +154,7 @@
           {% endfor %}
         </tbody>
       </table>
+      </div>
       {% else %}
       <p class="text-muted-custom small mb-4">Nenhuma fatura lançada ainda.</p>
       {% endif %}

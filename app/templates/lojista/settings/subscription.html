@@ -118,6 +118,7 @@
     <div class="panel">
       <div class="panel-title"><i class="bi bi-receipt-cutoff"></i> Faturas</div>
       {% if invoices %}
+      <div style="overflow-x: auto;">
       <table class="table table-borderless table-sm mb-0" style="color: var(--card-text);">
         <thead class="text-muted-custom small text-uppercase"><tr><th>Vencimento</th><th>Valor</th><th>Status</th><th></th></tr></thead>
         <tbody>
@@ -148,6 +149,7 @@
           {% endfor %}
         </tbody>
       </table>
+      </div>
       {% else %}
       <p class="text-muted-custom small mb-0">Nenhuma fatura lançada ainda.</p>
       {% endif %}

@@ -38,11 +38,11 @@
          aplica o valor digitado ao seletor quando já for um hex completo
          e válido (6 dígitos) — evita "resetar" o seletor a cada tecla
          digitada, enquanto o hex ainda está incompleto. #}
-      <div class="mb-3 d-flex align-items-center gap-3"
+      <div class="mb-3 d-flex align-items-center gap-3 flex-wrap"
            x-data='{ hex: {{ form.accent_color.data|tojson }} }'
            x-init="$watch('hex', value => { if (/^#[0-9a-fA-F]{6}$/.test(value)) { $refs.accentPicker.value = value; } })">
-        {{ form.accent_color(class="form-control form-control-color", style="width: 70px; height: 46px; padding: 4px;", **{"x-ref": "accentPicker", "@input": "hex = $event.target.value"}) }}
-        <input type="text" class="form-control" style="max-width: 130px;" maxlength="7" placeholder="#E8A33D" x-model="hex">
+        {{ form.accent_color(class="form-control form-control-color", style="width: 70px; height: 46px; padding: 4px; flex-shrink: 0;", **{"x-ref": "accentPicker", "@input": "hex = $event.target.value"}) }}
+        <input type="text" class="form-control" style="max-width: 130px; flex-shrink: 0;" maxlength="7" placeholder="#E8A33D" x-model="hex">
         <span class="text-muted-custom small">Escolha uma cor que combine com a identidade da sua loja.</span>
       </div>
       {% for error in form.accent_color.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}

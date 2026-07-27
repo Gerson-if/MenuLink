@@ -18,7 +18,7 @@
 <div id="categories-list-wrap" hx-trigger="categorySaved from:body" hx-get="{{ request.full_path }}" hx-select="#categories-list-wrap" hx-swap="outerHTML" hx-disinherit="hx-select hx-trigger hx-get hx-swap">
 
 {% if categories %}
-<div class="panel p-0" style="overflow: hidden;">
+<div class="panel p-0" style="overflow-x: auto;">
   <table class="table table-borderless align-middle m-0" style="color: var(--card-text);">
     <thead style="background: rgba(0,0,0,.15);">
       <tr class="text-muted-custom small text-uppercase">

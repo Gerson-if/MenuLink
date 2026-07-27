@@ -57,6 +57,7 @@
 <div class="panel mt-4">
   <div class="panel-title"><i class="bi bi-trophy"></i> Produtos mais vendidos</div>
   {% if top_products %}
+  <div style="overflow-x: auto;">
   <table class="table table-borderless table-sm mb-0" style="color: var(--card-text);">
     <thead class="text-muted-custom small text-uppercase">
       <tr><th>Produto</th><th class="text-center">Quantidade vendida</th><th class="text-end">Receita gerada</th></tr>
@@ -71,6 +72,7 @@
       {% endfor %}
     </tbody>
   </table>
+  </div>
   {% else %}
   <p class="text-muted-custom small mb-0">Ainda não há vendas suficientes para calcular um ranking de produtos.</p>
   {% endif %}

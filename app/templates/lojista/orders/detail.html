@@ -17,6 +17,7 @@
   <div class="col-lg-8">
     <div class="panel mb-3">
       <div class="panel-title"><i class="bi bi-basket"></i> Itens do pedido</div>
+      <div style="overflow-x: auto;">
       <table class="table table-borderless table-sm mb-0" style="color: var(--card-text);">
         <thead class="text-muted-custom small text-uppercase">
           <tr><th>Produto</th><th class="text-center">Qtd.</th><th class="text-end">Unit.</th><th class="text-end">Subtotal</th></tr>
@@ -41,6 +42,7 @@
           {% endfor %}
         </tbody>
       </table>
+      </div>
       <div class="text-end mt-3 small" style="border-top: 1px solid var(--card-border); padding-top: 12px;">
         <div class="text-muted-custom">Subtotal: R$ {{ "%.2f"|format(order.subtotal_cents / 100) }}</div>
         {% if order.delivery_fee_cents > 0 %}<div class="text-muted-custom">Taxa de entrega: R$ {{ "%.2f"|format(order.delivery_fee_cents / 100) }}</div>{% endif %}

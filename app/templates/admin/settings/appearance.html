@@ -58,8 +58,8 @@
         escolhe a própria cor em Configurações &rarr; Aparência no painel dele.
       </p>
 
-      <div class="mb-3 d-flex align-items-center gap-3">
-        {{ form.accent_color(class="form-control form-control-color", style="width: 70px; height: 46px; padding: 4px;") }}
+      <div class="mb-3 d-flex align-items-center gap-3 flex-wrap">
+        {{ form.accent_color(class="form-control form-control-color", style="width: 70px; height: 46px; padding: 4px; flex-shrink: 0;") }}
         <span class="text-muted-custom small">Escolha a cor de destaque do painel.</span>
       </div>
       {% for error in form.accent_color.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}

@@ -27,6 +27,7 @@
     </div>
 
     {% if open_invoices %}
+    <div style="overflow-x: auto;">
     <table class="table table-borderless table-sm mb-0" style="color: var(--card-text);">
       <thead class="text-muted-custom small text-uppercase"><tr><th>Vencimento</th><th>Valor</th><th>Status</th><th></th></tr></thead>
       <tbody>
@@ -49,6 +50,7 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
     {% if open_invoices|selectattr("payment_link_url")|list|length == 0 %}
     <p class="text-muted-custom small mt-3 mb-0">
       Ainda não há um link de pagamento gerado para essa fatura — entre em
