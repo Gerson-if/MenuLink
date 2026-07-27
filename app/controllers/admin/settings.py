@@ -141,8 +141,12 @@ def settings_legal():
     form = LegalContentForm()
 
     if not form.is_submitted():
-        form.terms_content.data = settings.terms_content or ""
-        form.privacy_content.data = settings.privacy_content or ""
+        # Pré-preenche com o texto ATUALMENTE em vigor (customizado ou o
+        # padrão da plataforma), para o Super Admin poder editar o texto
+        # que já está publicado em vez de só conseguir inserir um novo do
+        # zero a partir de um campo em branco.
+        form.terms_content.data = settings.terms_content_or_default
+        form.privacy_content.data = settings.privacy_content_or_default
 
     if form.validate_on_submit():
         service.update_legal_content(

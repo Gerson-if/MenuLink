@@ -269,6 +269,63 @@ document.body.addEventListener('toastMessage', (evt) => {
 });
 
 /*
+ * Faz o botão/gesto "voltar" do celular fechar a gaveta lateral
+ * (offcanvas) ou modal aberto, em vez de sair da tela inteira por
+ * trás. Sem isso, abrir a gaveta de editar/cadastrar produto,
+ * categoria, banner etc. e apertar "voltar" no Android tirava o
+ * lojista da seção inteira (perdendo o que estava fazendo), porque o
+ * navegador não associa nenhuma entrada de histórico ao overlay — ele
+ * simplesmente navega para a página anterior de verdade.
+ *
+ * Estratégia: ao abrir qualquer offcanvas/modal, empilha uma entrada
+ * "fantasma" no histórico. O botão voltar então consome essa entrada
+ * primeiro (dispara `popstate`), e o listener abaixo fecha o overlay
+ * em vez de deixar a navegação acontecer. Se o usuário fechar pelo X/
+ * clique fora (sem usar o botão voltar), a mesma entrada fantasma é
+ * consumida programaticamente, pra não acumular lixo no histórico.
+ */
+(function () {
+  let overlayOpen = false;
+
+  function onShow() {
+    if (overlayOpen) return;
+    overlayOpen = true;
+    history.pushState({ comandaOverlay: true }, '');
+  }
+
+  function onHidden() {
+    if (!overlayOpen) return;
+    overlayOpen = false;
+    // Só "volta" programaticamente se ainda estivermos na entrada
+    // fantasma (fechou pelo X/fora) — se o popstate abaixo é quem
+    // disparou o fechamento (botão voltar), o navegador já saiu dessa
+    // entrada sozinho, e chamar back() de novo iria pular mais um
+    // passo no histórico do que deveria.
+    if (history.state && history.state.comandaOverlay) {
+      history.back();
+    }
+  }
+
+  document.addEventListener('show.bs.offcanvas', onShow);
+  document.addEventListener('show.bs.modal', onShow);
+  document.addEventListener('hidden.bs.offcanvas', onHidden);
+  document.addEventListener('hidden.bs.modal', onHidden);
+
+  window.addEventListener('popstate', () => {
+    if (!overlayOpen) return;
+    overlayOpen = false;
+    document.querySelectorAll('.offcanvas.show').forEach((el) => {
+      const instance = bootstrap.Offcanvas.getInstance(el);
+      if (instance) instance.hide();
+    });
+    document.querySelectorAll('.modal.show').forEach((el) => {
+      const instance = bootstrap.Modal.getInstance(el);
+      if (instance) instance.hide();
+    });
+  });
+})();
+
+/*
  * "+ Novo produto" cria o rascunho assim que o lojista clica, pra já
  * abrir a edição completa (fotos/complementos disponíveis desde o
  * início — ver lojista.products_create_draft). Se ele fechar a barra

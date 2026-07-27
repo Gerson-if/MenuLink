@@ -5,56 +5,15 @@
 <h1 class="font-display text-white">Política de Privacidade</h1>
 <p class="legal-updated">Última atualização: {{ updated_at }}</p>
 
-{% if platform_settings and platform_settings.privacy_content %}
-{# Texto customizado pelo Super Admin — ver
-   app/controllers/admin/settings.py:settings_legal. #}
-{{ platform_settings.privacy_content|safe }}
-{% else %}
-<p>Esta Política de Privacidade explica como a Comanda coleta, usa e protege dados pessoais de lojistas (usuários do painel) e de clientes finais (visitantes do cardápio público), em conformidade com a Lei Geral de Proteção de Dados (Lei nº 13.709/2018 — LGPD).</p>
-
-<h2>1. Quem somos e a quem esta política se aplica</h2>
-<p>A Comanda é a operadora da plataforma. Esta política se aplica a duas categorias de titulares de dados: (a) lojistas e demais usuários do painel administrativo, e (b) clientes finais que fazem pedidos pelo cardápio público de uma loja.</p>
-
-<h2>2. Dados que coletamos</h2>
-<p><strong>Do lojista/usuário do painel:</strong> nome, e-mail, senha (armazenada apenas de forma criptografada, nunca em texto puro), dados da loja (nome, endereço, telefone/WhatsApp, horários, logotipo, cardápio) e dados necessários para cobrança da assinatura, processados pelo nosso parceiro de pagamentos (Asaas).</p>
-<p><strong>Do cliente final:</strong> nome e telefone informados no checkout de um pedido, e, quando aplicável, endereço de entrega. Esses dados servem para identificar pedidos recorrentes de um mesmo cliente dentro de uma loja específica — nunca são combinados com o histórico do mesmo telefone em outra loja da plataforma.</p>
-
-<h2>3. Para que usamos esses dados</h2>
-<ul>
-  <li>Processar e organizar os pedidos feitos no cardápio público.</li>
-  <li>Permitir que o cliente final consulte seu histórico de pedidos e edite ou remova seu próprio cadastro.</li>
-  <li>Gerar relatórios e estatísticas de vendas e clientes para o lojista (ex.: total de pedidos, ticket médio, clientes recorrentes).</li>
-  <li>Viabilizar a comunicação do pedido via WhatsApp entre cliente final e lojista.</li>
-  <li>Processar a cobrança da assinatura do lojista.</li>
-  <li>Prevenir fraude e abuso (ex.: limites de tentativas de login).</li>
-</ul>
-
-<h2>4. Com quem compartilhamos dados</h2>
-<p>Os dados de um cliente final ficam visíveis apenas para o lojista da loja onde o pedido foi feito — nunca para outros lojistas da plataforma. Compartilhamos dados de cobrança com nosso processador de pagamentos (Asaas) estritamente para viabilizar a cobrança da assinatura. Não vendemos nem alugamos dados pessoais a terceiros para fins de marketing.</p>
-
-<h2>5. Seus direitos como titular de dados</h2>
-<p>Você pode, a qualquer momento:</p>
-<ul>
-  <li><strong>Cliente final:</strong> acessar seu histórico de pedidos, corrigir seu nome/telefone, ou remover seu cadastro diretamente pelo cardápio público, na seção "Meus Dados". Pedidos já realizados permanecem no histórico do lojista (para fins fiscais e de gestão do negócio), mas perdem o vínculo com o cadastro removido.</li>
-  <li><strong>Lojista:</strong> corrigir seus dados cadastrais pelo painel, ou solicitar o encerramento da conta e a exclusão dos dados da loja entrando em contato conosco.</li>
-</ul>
-
-<h2>6. Retenção de dados</h2>
-<p>Mantemos os dados pelo tempo necessário para cumprir as finalidades descritas acima e obrigações legais/fiscais aplicáveis ao lojista. Após a remoção de uma conta (de cliente final ou de lojista), os dados pessoais diretamente identificáveis são removidos ou anonimizados, exceto quando a lei exigir sua conservação por período determinado.</p>
-
-<h2>7. Segurança</h2>
-<p>Adotamos medidas técnicas para proteger os dados armazenados, incluindo senhas com hash (nunca texto puro), conexão criptografada (HTTPS) e isolamento lógico entre os dados de cada loja — nenhum lojista tem acesso aos dados de clientes ou pedidos de outra loja.</p>
-
-<h2>8. Cookies e sessão</h2>
-<p>Usamos cookies estritamente necessários para manter sua sessão ativa (login do painel do lojista/Super Admin, e a identificação opcional do cliente final no cardápio público). Não usamos cookies de rastreamento publicitário.</p>
-
-<h2>9. Menores de idade</h2>
-<p>A plataforma não é direcionada a menores de idade para fins de cadastro como lojista. O uso do cardápio público por menores deve ocorrer sob supervisão de um responsável, conforme a política de cada estabelecimento.</p>
-
-<h2>10. Alterações desta política</h2>
-<p>Podemos atualizar esta Política de Privacidade periodicamente. A data da última atualização é exibida no topo desta página, e alterações relevantes serão comunicadas pelos canais habituais.</p>
-
-<h2>11. Contato</h2>
-<p>Para exercer seus direitos como titular de dados ou tirar dúvidas sobre esta política, entre em contato pelo e-mail de suporte informado no rodapé do site.</p>
-{% endif %}
+{# `content` vem pronto da view (privacy_policy, em app/__init__.py) —
+   texto customizado pelo Super Admin quando preenchido, senão o texto
+   padrão (única fonte de verdade em
+   PlatformSettings.privacy_content_or_default, também usada para
+   pré-preencher a tela de edição em
+   app/controllers/admin/settings.py:settings_legal, pra o Super Admin
+   conseguir editar o texto ATUAL em vez de só inserir um novo do
+   zero). Confiamos nesse HTML porque só o Super Admin (papel mais
+   privilegiado do sistema) consegue editá-lo, o mesmo nível de
+   confiança já dado a landing_content. #}
+{{ content|safe }}
 {% endblock %}

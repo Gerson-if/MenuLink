@@ -94,6 +94,101 @@ DEFAULT_LANDING_CONTENT = {
 }
 
 
+# Texto padrão de Termos de Uso / Política de Privacidade — única fonte
+# de verdade usada tanto pelas páginas públicas (marketing/terms.html,
+# marketing/privacy.html) quanto para PRÉ-PREENCHER a tela de edição do
+# Super Admin (app/controllers/admin/settings.py:settings_legal) com o
+# texto efetivamente em vigor, mesmo antes de qualquer customização —
+# sem isso, a tela de edição aparecia em branco até a primeira gravação,
+# dando a impressão de só dar pra "inserir um texto novo" em vez de
+# editar o que já estava publicado.
+DEFAULT_TERMS_HTML = """<p>Estes Termos de Uso regulam o acesso e uso da plataforma Comanda ("Comanda", "plataforma", "nós"), um serviço de cardápio digital e gestão de pedidos via WhatsApp para estabelecimentos comerciais ("lojista", "loja"). Ao criar uma conta ou usar o cardápio público de uma loja hospedada na Comanda, você concorda com estes termos.</p>
+
+<h2>1. O que é a Comanda</h2>
+<p>A Comanda é uma plataforma de software (SaaS) que permite a um lojista criar e gerenciar um cardápio digital, receber pedidos de clientes finais e organizá-los em um painel de controle. A Comanda não é parte na relação comercial entre o lojista e seus clientes finais — não vendemos produtos, não processamos o pagamento dos pedidos e não somos responsáveis pela qualidade, preço, prazo ou entrega do que é vendido por cada loja.</p>
+
+<h2>2. Cadastro do lojista</h2>
+<ul>
+  <li>O lojista é responsável por fornecer informações verdadeiras e mantê-las atualizadas (nome da loja, e-mail, telefone, endereço, horários de funcionamento e cardápio).</li>
+  <li>O lojista é responsável pela guarda de suas credenciais de acesso e por toda atividade realizada em sua conta.</li>
+  <li>É proibido usar a plataforma para fins ilícitos, para vender produtos proibidos por lei, ou para práticas enganosas com clientes finais.</li>
+</ul>
+
+<h2>3. Cardápio público e clientes finais</h2>
+<p>Ao fazer um pedido pelo cardápio público de uma loja, o cliente final informa nome e telefone para identificação — esses dados pertencem ao contexto daquela loja específica e não são compartilhados com outras lojas da plataforma. O cliente final pode, a qualquer momento, consultar seus pedidos, editar seu cadastro ou solicitar a remoção da própria conta diretamente pelo cardápio ("Meus Dados"). Veja mais detalhes na nossa <a href="/politica-de-privacidade">Política de Privacidade</a>.</p>
+
+<h2>4. Planos e pagamento da assinatura</h2>
+<p>O uso da plataforma pelo lojista pode estar sujeito a um plano de assinatura pago, cobrado recorrentemente através do nosso parceiro de pagamentos (Asaas). O não pagamento de uma cobrança vencida pode resultar na suspensão temporária do acesso ao painel e/ou do cardápio público até a regularização. Cancelamentos podem ser solicitados a qualquer momento; o acesso permanece disponível até o fim do período já pago.</p>
+
+<h2>5. Responsabilidades do lojista</h2>
+<p>O lojista é o único responsável por: preços e disponibilidade dos produtos anunciados, atendimento e comunicação com seus clientes finais, cumprimento das obrigações fiscais e de consumo aplicáveis ao seu negócio, e pela confirmação/entrega dos pedidos recebidos. A Comanda apenas disponibiliza a ferramenta que organiza esse fluxo.</p>
+
+<h2>6. Disponibilidade do serviço</h2>
+<p>Fazemos esforços razoáveis para manter a plataforma disponível e funcionando corretamente, mas não garantimos operação ininterrupta ou livre de falhas. Manutenções programadas ou emergenciais podem causar indisponibilidade temporária.</p>
+
+<h2>7. Propriedade intelectual</h2>
+<p>O software, marca e identidade visual da Comanda são de nossa propriedade. O conteúdo do cardápio (fotos, descrições, preços, banners) cadastrado por cada lojista permanece de propriedade do respectivo lojista, que é responsável por ter os direitos necessários sobre o que publica.</p>
+
+<h2>8. Suspensão e encerramento de conta</h2>
+<p>Podemos suspender ou encerrar contas que violem estes termos, pratiquem fraude, ou deixem de pagar a assinatura por período prolongado, mediante aviso quando possível. O lojista pode encerrar sua conta a qualquer momento entrando em contato conosco.</p>
+
+<h2>9. Alterações destes termos</h2>
+<p>Podemos atualizar estes Termos de Uso periodicamente para refletir mudanças na plataforma ou na legislação aplicável. Alterações relevantes serão comunicadas por e-mail ou aviso no painel. O uso continuado da plataforma após uma atualização representa aceitação dos novos termos.</p>
+
+<h2>10. Lei aplicável</h2>
+<p>Estes termos são regidos pelas leis da República Federativa do Brasil.</p>
+
+<h2>11. Contato</h2>
+<p>Dúvidas sobre estes Termos de Uso podem ser enviadas para o e-mail de suporte informado no rodapé do site ou diretamente ao lojista responsável pela loja acessada, quando a dúvida for sobre um pedido específico.</p>"""
+
+DEFAULT_PRIVACY_HTML = """<p>Esta Política de Privacidade explica como a Comanda coleta, usa e protege dados pessoais de lojistas (usuários do painel) e de clientes finais (visitantes do cardápio público), em conformidade com a Lei Geral de Proteção de Dados (Lei nº 13.709/2018 — LGPD).</p>
+
+<h2>1. Quem somos e a quem esta política se aplica</h2>
+<p>A Comanda é a operadora da plataforma. Esta política se aplica a duas categorias de titulares de dados: (a) lojistas e demais usuários do painel administrativo, e (b) clientes finais que fazem pedidos pelo cardápio público de uma loja.</p>
+
+<h2>2. Dados que coletamos</h2>
+<p><strong>Do lojista/usuário do painel:</strong> nome, e-mail, senha (armazenada apenas de forma criptografada, nunca em texto puro), dados da loja (nome, endereço, telefone/WhatsApp, horários, logotipo, cardápio) e dados necessários para cobrança da assinatura, processados pelo nosso parceiro de pagamentos (Asaas).</p>
+<p><strong>Do cliente final:</strong> nome e telefone informados no checkout de um pedido, e, quando aplicável, endereço de entrega. Esses dados servem para identificar pedidos recorrentes de um mesmo cliente dentro de uma loja específica — nunca são combinados com o histórico do mesmo telefone em outra loja da plataforma.</p>
+
+<h2>3. Para que usamos esses dados</h2>
+<ul>
+  <li>Processar e organizar os pedidos feitos no cardápio público.</li>
+  <li>Permitir que o cliente final consulte seu histórico de pedidos e edite ou remova seu próprio cadastro.</li>
+  <li>Gerar relatórios e estatísticas de vendas e clientes para o lojista (ex.: total de pedidos, ticket médio, clientes recorrentes).</li>
+  <li>Viabilizar a comunicação do pedido via WhatsApp entre cliente final e lojista.</li>
+  <li>Processar a cobrança da assinatura do lojista.</li>
+  <li>Prevenir fraude e abuso (ex.: limites de tentativas de login).</li>
+</ul>
+
+<h2>4. Com quem compartilhamos dados</h2>
+<p>Os dados de um cliente final ficam visíveis apenas para o lojista da loja onde o pedido foi feito — nunca para outros lojistas da plataforma. Compartilhamos dados de cobrança com nosso processador de pagamentos (Asaas) estritamente para viabilizar a cobrança da assinatura. Não vendemos nem alugamos dados pessoais a terceiros para fins de marketing.</p>
+
+<h2>5. Seus direitos como titular de dados</h2>
+<p>Você pode, a qualquer momento:</p>
+<ul>
+  <li><strong>Cliente final:</strong> acessar seu histórico de pedidos, corrigir seu nome/telefone, ou remover seu cadastro diretamente pelo cardápio público, na seção "Meus Dados". Pedidos já realizados permanecem no histórico do lojista (para fins fiscais e de gestão do negócio), mas perdem o vínculo com o cadastro removido.</li>
+  <li><strong>Lojista:</strong> corrigir seus dados cadastrais pelo painel, ou solicitar o encerramento da conta e a exclusão dos dados da loja entrando em contato conosco.</li>
+</ul>
+
+<h2>6. Retenção de dados</h2>
+<p>Mantemos os dados pelo tempo necessário para cumprir as finalidades descritas acima e obrigações legais/fiscais aplicáveis ao lojista. Após a remoção de uma conta (de cliente final ou de lojista), os dados pessoais diretamente identificáveis são removidos ou anonimizados, exceto quando a lei exigir sua conservação por período determinado.</p>
+
+<h2>7. Segurança</h2>
+<p>Adotamos medidas técnicas para proteger os dados armazenados, incluindo senhas com hash (nunca texto puro), conexão criptografada (HTTPS) e isolamento lógico entre os dados de cada loja — nenhum lojista tem acesso aos dados de clientes ou pedidos de outra loja.</p>
+
+<h2>8. Cookies e sessão</h2>
+<p>Usamos cookies estritamente necessários para manter sua sessão ativa (login do painel do lojista/Super Admin, e a identificação opcional do cliente final no cardápio público). Não usamos cookies de rastreamento publicitário.</p>
+
+<h2>9. Menores de idade</h2>
+<p>A plataforma não é direcionada a menores de idade para fins de cadastro como lojista. O uso do cardápio público por menores deve ocorrer sob supervisão de um responsável, conforme a política de cada estabelecimento.</p>
+
+<h2>10. Alterações desta política</h2>
+<p>Podemos atualizar esta Política de Privacidade periodicamente. A data da última atualização é exibida no topo desta página, e alterações relevantes serão comunicadas pelos canais habituais.</p>
+
+<h2>11. Contato</h2>
+<p>Para exercer seus direitos como titular de dados ou tirar dúvidas sobre esta política, entre em contato pelo e-mail de suporte informado no rodapé do site.</p>"""
+
+
 class PlatformSettings(db.Model, TimestampMixin):
     __tablename__ = "platform_settings"
 
@@ -230,6 +325,14 @@ class PlatformSettings(db.Model, TimestampMixin):
     @property
     def trial_reminder_message_or_default(self) -> str:
         return self.trial_reminder_message or DEFAULT_TRIAL_REMINDER_MESSAGE
+
+    @property
+    def terms_content_or_default(self) -> str:
+        return self.terms_content or DEFAULT_TERMS_HTML
+
+    @property
+    def privacy_content_or_default(self) -> str:
+        return self.privacy_content or DEFAULT_PRIVACY_HTML
 
     @property
     def landing_content_or_default(self) -> dict:
