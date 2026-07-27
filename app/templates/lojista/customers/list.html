@@ -18,7 +18,11 @@
 </div>
 
 {% if pagination.items %}
-<div class="panel p-0" style="overflow-x: auto;">
+{# Tabela de 7 colunas fica ilegível/espremida numa tela de celular mesmo
+   com scroll horizontal — abaixo do breakpoint `md` ela dá lugar a um
+   cartão por cliente (mesma ideia dos ticket/order card), com as
+   mesmas informações reorganizadas em pares label/valor. #}
+<div class="panel p-0 d-none d-md-block" style="overflow-x: auto;">
   <table class="table table-sm mb-0" style="color: var(--card-text);">
     <thead>
       <tr class="text-muted-custom small">
@@ -58,6 +62,35 @@
       {% endfor %}
     </tbody>
   </table>
+</div>
+
+<div class="d-md-none">
+  {% for row in pagination.items %}
+  <div class="customer-card">
+    <div class="customer-card-head">
+      <div class="text-white fw-semibold text-truncate">
+        {{ row.customer.name }}
+        {% if row.is_top %}
+        <span class="badge-order ms-1 d-inline-block mt-1" style="background: var(--accent);" title="Um dos clientes que mais compram nesta loja">
+          <i class="bi bi-star-fill"></i> Top cliente
+        </span>
+        {% endif %}
+      </div>
+      <form method="POST" action="{{ url_for('lojista.customers_delete', customer_id=row.customer.id) }}"
+            data-confirm-message="Remover o cadastro de {{ row.customer.name }}? Os pedidos já feitos continuam no seu histórico.">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-sm btn-outline-danger" title="Remover cliente"><i class="bi bi-trash"></i></button>
+      </form>
+    </div>
+    <dl class="customer-card-stats">
+      <dt>Telefone</dt><dd>{{ row.customer.phone or "—" }}</dd>
+      <dt>Pedidos</dt><dd>{{ row.order_count }}</dd>
+      <dt>Total gasto</dt><dd>R$ {{ "%.2f"|format(row.total_spent_cents / 100) }}</dd>
+      <dt>Último pedido</dt><dd>{{ row.last_order_at.strftime("%d/%m/%Y") if row.last_order_at else "—" }}</dd>
+      <dt>Cliente desde</dt><dd>{{ row.customer.created_at.strftime("%d/%m/%Y") }}</dd>
+    </dl>
+  </div>
+  {% endfor %}
 </div>
 {% else %}
 <div class="panel empty-state">
