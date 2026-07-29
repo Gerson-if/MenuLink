@@ -2,6 +2,7 @@ from flask import abort, flash, make_response, redirect, render_template, reques
 from flask_login import current_user
 
 from app.forms.admin_forms import AdminAppearanceForm, AsaasSettingsForm, EmailSettingsForm, EmailTestForm, LandingContentForm, LegalContentForm, TrialSettingsForm
+from app.models.platform_settings import SYSTEM_THEME_SWATCHES
 from app.services.email_service import EmailError
 from app.services.payment_gateway.base import PaymentGatewayError
 from app.services.platform_settings_service import PlatformSettingsService
@@ -199,12 +200,14 @@ def settings_appearance():
     form = AdminAppearanceForm()
 
     if not form.is_submitted():
+        form.system_theme.data = settings.system_theme_or_default
         form.accent_color.data = settings.admin_theme_accent or "#E54A36"
         form.support_whatsapp.data = settings.support_whatsapp or ""
 
     if form.validate_on_submit():
         try:
             service.update_admin_appearance(
+                system_theme=form.system_theme.data,
                 accent_color=form.accent_color.data, reset_to_default=form.reset_to_default.data,
                 platform_logo_file=form.platform_logo.data, support_whatsapp=form.support_whatsapp.data,
             )
@@ -214,7 +217,9 @@ def settings_appearance():
             flash("Aparência do painel atualizada.", "success")
             return redirect(url_for("admin.settings_appearance"))
 
-    return render_template("admin/settings/appearance.html", form=form, settings=settings)
+    return render_template(
+        "admin/settings/appearance.html", form=form, settings=settings, system_theme_swatches=SYSTEM_THEME_SWATCHES,
+    )
 
 
 @admin_bp.route("/configuracoes/aparencia/logo/remover", methods=["POST"])
@@ -248,7 +253,6 @@ def settings_landing():
         form.hero_subtitle.data = content["hero_subtitle"]
         form.hero_image_opacity.data = content.get("hero_image_opacity", 100)
         form.hero_image_blur.data = content.get("hero_image_blur", 0)
-        form.theme.data = content.get("theme", "chili")
         features = content["features"]
         for i in range(3):
             feature = features[i] if i < len(features) else {}
@@ -265,7 +269,6 @@ def settings_landing():
                 hero_image_opacity=form.hero_image_opacity.data,
                 hero_image_blur=form.hero_image_blur.data,
                 hero_video_file=form.hero_video.data,
-                theme=form.theme.data,
                 features=[
                     {
                         "icon": getattr(form, f"feature{i + 1}_icon").data,

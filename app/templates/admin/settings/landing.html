@@ -15,22 +15,11 @@
 {% set destaques_errors = form.feature1_icon.errors or form.feature1_title.errors or form.feature1_description.errors or form.feature1_image.errors
     or form.feature2_icon.errors or form.feature2_title.errors or form.feature2_description.errors or form.feature2_image.errors
     or form.feature3_icon.errors or form.feature3_title.errors or form.feature3_description.errors or form.feature3_image.errors %}
-{% set theme_label = dict(form.theme.choices).get(content.theme, content.theme) %}
 {% import "admin/settings/_media_dropzone.html" as media %}
 
 {% block extra_head %}
 <style>
   .landing-editor { max-width: 900px; }
-  .theme-swatch-group { display: flex; gap: 12px; flex-wrap: wrap; }
-  .theme-swatch { cursor: pointer; }
-  .theme-swatch input { position: absolute; opacity: 0; pointer-events: none; }
-  .theme-swatch-card {
-    width: 120px; border: 2px solid var(--card-border); border-radius: 10px; padding: 10px;
-    transition: border-color .2s, transform .2s;
-  }
-  .theme-swatch input:checked + .theme-swatch-card { border-color: var(--accent); transform: translateY(-2px); }
-  .theme-swatch-preview { height: 46px; border-radius: 6px; margin-bottom: 8px; }
-  .theme-swatch-label { font-size: .78rem; text-align: center; display: block; color: var(--card-text); }
 </style>
 {% endblock %}
 
@@ -38,6 +27,8 @@
 <p class="text-muted-custom small mb-4">
   Edita a <a href="{{ url_for('index') }}" target="_blank" class="link-chili">página inicial pública</a>
   (a que os visitantes veem antes de criar uma conta). Clique em uma seção abaixo para editá-la.
+  O tema de cores da landing page agora é escolhido junto com o resto do sistema em
+  <a href="{{ url_for('admin.settings_appearance') }}" class="link-chili">Configurações &rarr; Aparência</a>.
 </p>
 
 {# Um único <form> por trás de tudo — os "cards" de opção só abrem a
@@ -80,14 +71,6 @@
       </div>
       <div class="settings-option-title">Vídeo de fundo do hero</div>
       <div class="settings-option-preview">{{ "Vídeo configurado — toca em loop atrás do texto" if content.hero_video else "Nenhum vídeo enviado" }}</div>
-    </button>
-
-    <button type="button" class="settings-option" data-bs-toggle="offcanvas" data-bs-target="#editTema" aria-controls="editTema">
-      <div class="settings-option-head">
-        <div class="settings-option-icon"><i class="bi bi-palette2"></i></div>
-      </div>
-      <div class="settings-option-title">Tema da landing page</div>
-      <div class="settings-option-preview">{{ theme_label }}</div>
     </button>
 
     <button type="button" class="settings-option" data-bs-toggle="offcanvas" data-bs-target="#editDestaques" aria-controls="editDestaques">
@@ -172,27 +155,6 @@
         MP4 ou WEBM, até 25MB. O vídeo é otimizado automaticamente ao enviar (recomprimido e limitado a 1080p).
       </p>
       {{ media.video_dropzone(form.hero_video, content.hero_video, url_for('admin.settings_landing_remove_media', field='hero_video')) }}
-      <div class="drawer-actions mt-auto">{{ form.submit(class="btn btn-chili w-100") }}</div>
-    </div>
-  </div>
-
-  <div class="offcanvas offcanvas-end drawer-narrow" tabindex="-1" id="editTema">
-    <div class="offcanvas-header">
-      <h5 class="offcanvas-title"><i class="bi bi-palette2 me-2"></i>Tema da landing page</h5>
-      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
-    </div>
-    <div class="offcanvas-body d-flex flex-column">
-      <div class="theme-swatch-group">
-        {% for value, label in form.theme.choices %}
-        <label class="theme-swatch">
-          <input type="radio" name="theme" value="{{ value }}" {{ "checked" if form.theme.data == value }}>
-          <div class="theme-swatch-card">
-            <div class="theme-swatch-preview" style="background: {{ {'chili': 'linear-gradient(135deg,#1A1612,#E54A36)', 'blue': 'linear-gradient(135deg,#0F111A,#4361EE)', 'light': 'linear-gradient(135deg,#F7F1E4,#E54A36)'}[value] }};"></div>
-            <span class="theme-swatch-label">{{ label }}</span>
-          </div>
-        </label>
-        {% endfor %}
-      </div>
       <div class="drawer-actions mt-auto">{{ form.submit(class="btn btn-chili w-100") }}</div>
     </div>
   </div>

@@ -142,10 +142,16 @@ class PlatformSettingsService:
         return self.settings
 
     def update_admin_appearance(
-        self, *, accent_color=None, reset_to_default=False, platform_logo_file=None, support_whatsapp=None,
+        self, *, system_theme=None, accent_color=None, reset_to_default=False,
+        platform_logo_file=None, support_whatsapp=None,
     ):
+        from app.models.platform_settings import SYSTEM_THEME_CHOICES
         from app.utils.colors import normalize_hex
         from app.utils.uploads import PLATFORM_LOGO_DIMENSION, InvalidImageError, delete_product_image_file, save_platform_image
+
+        valid_themes = {key for key, _label in SYSTEM_THEME_CHOICES}
+        if system_theme in valid_themes:
+            self.settings.system_theme = system_theme
 
         if reset_to_default:
             self.settings.admin_theme_accent = None
@@ -185,7 +191,7 @@ class PlatformSettingsService:
         self, *, hero_title: str, hero_subtitle: str, features: list[dict],
         hero_image_file=None, feature_image_files: list = None,
         hero_image_opacity: int = 100, hero_image_blur: int = 0,
-        hero_video_file=None, theme: str = "chili",
+        hero_video_file=None,
     ) -> PlatformSettings:
         """
         `hero_image_file`, `hero_video_file` e cada item de
@@ -271,7 +277,6 @@ class PlatformSettingsService:
             "hero_image_opacity": min(max(int(hero_image_opacity or 100), 10), 100),
             "hero_image_blur": min(max(int(hero_image_blur or 0), 0), 20),
             "hero_video": hero_video,
-            "theme": theme if theme in ("chili", "blue", "light") else "chili",
             "features": new_features,
         }
         db.session.commit()

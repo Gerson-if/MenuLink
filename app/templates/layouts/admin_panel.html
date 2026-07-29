@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block body_class %}theme-chili{% endblock %}
+{% block body_class %}theme-{{ platform_settings.system_theme_or_default if platform_settings else 'chili' }}{% endblock %}
 
 {% block extra_head %}
 {% if platform_settings and platform_settings.admin_theme_css_vars %}
-<style>:root, .theme-chili { --accent: {{ platform_settings.admin_theme_css_vars.accent }}; --accent-dark: {{ platform_settings.admin_theme_css_vars.accent_dark }}; }</style>
+<style>:root, .theme-{{ platform_settings.system_theme_or_default }} { --accent: {{ platform_settings.admin_theme_css_vars.accent }}; --accent-dark: {{ platform_settings.admin_theme_css_vars.accent_dark }}; }</style>
 {% endif %}
 {% endblock %}
 

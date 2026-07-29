@@ -1,19 +1,19 @@
 /* ==========================================================================
    Comanda — Design System
-   .theme-chili (padrão): usado em todo o back-office — marketing,
-   autenticação, painel do lojista e painel do Super Admin. Os dois
-   painéis internos compartilham a mesma identidade visual da marca
-   (antes o Super Admin usava um tema azulado à parte; unificado a
-   pedido, para reforçar uma identidade única do produto).
+   Tema UNIFICADO do sistema inteiro: .theme-chili (padrão), .theme-ocean,
+   .theme-forest e .theme-midnight (ver SYSTEM_THEME_CHOICES em
+   app/models/platform_settings.py) — cada um é uma paleta completa
+   aplicada como classe no <body>, escolhida pelo Super Admin em
+   Configurações → Aparência e usada ao mesmo tempo pela landing page
+   pública, pelo painel do lojista, pelo painel do Super Admin e pelas
+   telas de autenticação (login/cadastro/recuperação de senha) — os 4
+   compartilham a mesma identidade visual, trocada de uma vez só.
 
-   A cor de destaque (--accent/--accent-dark) pode ser sobrescrita em
-   tempo de execução pelo Super Admin (Configurações → Aparência,
-   PlatformSettings.admin_theme_accent) — ver bloco <style> injetado em
-   layouts/admin_panel.html e layouts/lojista_panel.html.
-
-   .theme-blue permanece definida abaixo por compatibilidade (reaproveitada
-   como opção de tema "escuro alternativo" da landing page), mas não é
-   aplicada por nenhum layout de painel.
+   A cor de destaque (--accent/--accent-dark) do tema escolhido pode
+   ainda ser afinada pelo Super Admin (PlatformSettings.admin_theme_accent)
+   — ver bloco <style> injetado em layouts/admin_panel.html e
+   layouts/lojista_panel.html, que sobrescreve só essas duas variáveis
+   por cima do tema selecionado.
 
    Modo claro/escuro: alternado via atributo [data-theme] no <html>
    (persistido em localStorage, ver sidebarShell() em comanda.js),
@@ -61,22 +61,109 @@ html[data-theme="light"] .theme-chili {
   --line:#E4DAC5;
 }
 
-.theme-blue {
-  --ink:#0F111A;
-  --charcoal:#161925;
+/* .theme-blue mantida por compatibilidade (variável antiga hoje sem
+   nenhum lugar que a gere mais — o tema equivalente atual é
+   .theme-ocean, abaixo, escolhido em Configurações → Aparência via
+   PlatformSettings.system_theme, ver SYSTEM_THEME_CHOICES). */
+.theme-blue, .theme-ocean {
+  --ink:#0B1220;
+  --charcoal:#101826;
   --paper:#FAF4E8;
-  --paper-2:#E7E9F5;
-  --accent:#4361EE;
-  --accent-dark:#3046C5;
+  --paper-2:#E4ECF3;
+  --accent:#2E86AB;
+  --accent-dark:#20627E;
   --turmeric:#F0AD4E;
   --sage:#7AA06D;
-  --line:#2B304A;
+  --line:#233047;
   --radius:12px;
-  --card-bg:#1E2235;
+  --card-bg:#16202F;
   --card-text:#FAF4E8;
-  --card-border:#2B304A;
-  --muted-text:#8F95B2;
+  --card-border:#233047;
+  --muted-text:#8FA0B8;
 }
+
+html[data-theme="light"] .theme-ocean {
+  --charcoal:#EEF3F8;
+  --paper:#0F1826;
+  --paper-2:#FFFFFF;
+  --card-bg:#FFFFFF;
+  --card-text:#0F1826;
+  --card-border:#DCE6F0;
+  --muted-text:#5C7089;
+  --line:#DCE6F0;
+}
+
+.theme-forest {
+  --ink:#101A12;
+  --charcoal:#17241A;
+  --paper:#F5F4EA;
+  --paper-2:#E9E4D0;
+  --accent:#3E8E5B;
+  --accent-dark:#2C6B41;
+  --turmeric:#F0AD4E;
+  --sage:#7AA06D;
+  --line:#3A4A34;
+  --radius:12px;
+  --card-bg:#1F2E20;
+  --card-text:#F5F4EA;
+  --card-border:#334233;
+  --muted-text:#9CAC91;
+}
+
+html[data-theme="light"] .theme-forest {
+  --charcoal:#F1F0E4;
+  --paper:#1B2A1D;
+  --paper-2:#FFFFFF;
+  --card-bg:#FFFFFF;
+  --card-text:#1B2A1D;
+  --card-border:#DCE3D2;
+  --muted-text:#6D7B63;
+  --line:#DCE3D2;
+}
+
+.theme-midnight {
+  --ink:#0C0A16;
+  --charcoal:#15111F;
+  --paper:#F3F1FA;
+  --paper-2:#E7E1F5;
+  --accent:#8B5CF6;
+  --accent-dark:#6D3FD1;
+  --turmeric:#F0AD4E;
+  --sage:#7AA06D;
+  --line:#332A47;
+  --radius:12px;
+  --card-bg:#1D1830;
+  --card-text:#F3F1FA;
+  --card-border:#332A47;
+  --muted-text:#A79CC2;
+}
+
+html[data-theme="light"] .theme-midnight {
+  --charcoal:#F0EDFA;
+  --paper:#170F28;
+  --paper-2:#FFFFFF;
+  --card-bg:#FFFFFF;
+  --card-text:#170F28;
+  --card-border:#E2DBF2;
+  --muted-text:#6E6389;
+  --line:#E2DBF2;
+}
+
+/* Seletor visual de tema (cards com prévia em gradiente) — usado na
+   tela Configurações → Aparência do Super Admin, para escolher entre
+   SYSTEM_THEME_CHOICES. Extraído de admin/settings/landing.html (onde
+   era só do tema da landing page) para cá, para virar reutilizável
+   agora que o tema é unificado (ver app/models/platform_settings.py). */
+.theme-swatch-group { display: flex; gap: 12px; flex-wrap: wrap; }
+.theme-swatch { cursor: pointer; }
+.theme-swatch input { position: absolute; opacity: 0; pointer-events: none; }
+.theme-swatch-card {
+  width: 120px; border: 2px solid var(--card-border); border-radius: 10px; padding: 10px;
+  transition: border-color .2s, transform .2s;
+}
+.theme-swatch input:checked + .theme-swatch-card { border-color: var(--accent); transform: translateY(-2px); }
+.theme-swatch-preview { height: 46px; border-radius: 6px; margin-bottom: 8px; }
+.theme-swatch-label { font-size: .78rem; text-align: center; display: block; color: var(--card-text); }
 
 * { box-sizing: border-box; }
 

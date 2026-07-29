@@ -5,7 +5,7 @@ from flask_wtf.file import FileAllowed, FileField
 from wtforms import BooleanField, DateField, DecimalField, IntegerField, PasswordField, SelectField, StringField, SubmitField, TextAreaField
 from wtforms.validators import DataRequired, Email, EqualTo, Length, NumberRange, Optional, ValidationError
 
-from app.models.platform_settings import ASAAS_BILLING_TYPE_CHOICES, ASAAS_ENVIRONMENT_CHOICES, LANDING_THEME_CHOICES
+from app.models.platform_settings import ASAAS_BILLING_TYPE_CHOICES, ASAAS_ENVIRONMENT_CHOICES, SYSTEM_THEME_CHOICES
 from app.utils.colors import normalize_hex
 from app.utils.validators import bounded_length, not_blank, password_max_bytes, phone_number
 
@@ -232,6 +232,10 @@ class AdminAppearanceForm(FlaskForm):
     favicon e telas de autenticação — ver PlatformSettings.platform_logo;
     não afeta a logo de cada loja nem o painel do lojista)."""
 
+    system_theme = SelectField(
+        "Tema do sistema", choices=SYSTEM_THEME_CHOICES, default="chili", validators=[Optional()],
+    )
+
     accent_color = StringField(
         "Cor de destaque do painel",
         validators=[Optional(), Length(max=7)],
@@ -279,8 +283,6 @@ class LandingContentForm(FlaskForm):
         "Vídeo de fundo do hero (opcional — substitui a arte de destaque)",
         validators=[FileAllowed(["mp4", "webm"], message="Formato não suportado. Use MP4 ou WEBM.")],
     )
-    theme = SelectField("Tema da landing page", choices=LANDING_THEME_CHOICES, default="chili")
-
     feature1_icon = StringField("Ícone 1 (Bootstrap Icons)", validators=[DataRequired(), Length(max=40)])
     feature1_title = StringField("Título 1", validators=[DataRequired(), Length(max=100), not_blank])
     feature1_description = TextAreaField("Descrição 1", validators=[DataRequired(), Length(max=300), not_blank])

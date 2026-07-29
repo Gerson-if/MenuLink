@@ -39,9 +39,39 @@ ASAAS_BILLING_TYPE_CHOICES = [
     ("CREDIT_CARD", "Somente cartão de crédito"),
 ]
 
-# Textos atuais de app/templates/marketing/landing.html, hardcoded lá
-# até agora — viram o default aqui, então nada muda visualmente pra quem
-# nunca editar a landing page pelo painel do Super Admin.
+# Tema VISUAL UNIFICADO de todo o sistema (landing page pública + painel
+# do lojista + painel do Super Admin) — escolhido pelo Super Admin em
+# Configurações → Aparência (substituiu os 2 seletores que existiam
+# antes, separados: "tema da landing page" e "cor de destaque do
+# painel"). Cada opção é uma paleta completa (não só uma cor), definida
+# em app/static/css/comanda.css como uma classe .theme-<chave> aplicada
+# no <body> (ver body_class de layouts/admin_panel.html,
+# layouts/lojista_panel.html, layouts/auth.html e marketing/landing.html).
+# Modo claro/escuro continua sendo um eixo À PARTE (atributo
+# data-theme="light" no <html>, alternado pelo próprio usuário) — os 4
+# temas abaixo têm as duas variações prontas.
+SYSTEM_THEME_CHOICES = [
+    ("chili", "Picante (padrão)"),
+    ("ocean", "Oceano"),
+    ("forest", "Floresta"),
+    ("midnight", "Meia-noite"),
+]
+
+# Cores usadas só para desenhar a prévia (swatch) de cada tema na tela
+# de configuração — não afetam o CSS de verdade (esse vive em
+# comanda.css); mantidas aqui, ao lado das choices, para não duplicar a
+# lista de temas em dois lugares.
+SYSTEM_THEME_SWATCHES = {
+    "chili": "linear-gradient(135deg,#1A1612,#E54A36)",
+    "ocean": "linear-gradient(135deg,#0B1220,#2E86AB)",
+    "forest": "linear-gradient(135deg,#101A12,#3E8E5B)",
+    "midnight": "linear-gradient(135deg,#0C0A16,#8B5CF6)",
+}
+
+# Mantido só por compatibilidade com dados antigos já gravados em
+# landing_content["theme"] (loja que nunca abrir a tela de Aparência de
+# novo) — não é mais editável por nenhuma tela; o tema agora é sempre
+# lido de `PlatformSettings.system_theme`.
 LANDING_THEME_CHOICES = [
     ("chili", "Atual (marca)"),
     ("blue", "Escuro alternativo"),
@@ -200,9 +230,16 @@ class PlatformSettings(db.Model, TimestampMixin):
     # "PIX" por padrão — ver ASAAS_BILLING_TYPE_CHOICES acima.
     asaas_billing_type = Column(String(20), nullable=False, default="PIX", server_default="PIX")
 
+    # Tema visual unificado do sistema inteiro — ver SYSTEM_THEME_CHOICES
+    # acima. Controla a classe .theme-<chave> aplicada no <body> da
+    # landing page, do painel do lojista e do painel do Super Admin.
+    system_theme = Column(String(20), nullable=False, default="chili", server_default="chili")
+
     # Cor de destaque (accent) do painel administrativo (Super Admin +
-    # lojista compartilham o mesmo design system "chili"). Se vazio, usa
-    # o vermelho-tijolo padrão da marca — nunca fica sem cor definida.
+    # lojista compartilham o mesmo design system "chili") — sobrescreve
+    # SÓ a cor de destaque do tema escolhido acima, para quem quiser
+    # ajustar ainda mais fino sem trocar de tema. Se vazio, usa a cor de
+    # destaque padrão do tema selecionado.
     admin_theme_accent = Column(String(7), nullable=True)
 
     # Logo da própria plataforma (não confundir com Tenant.logo_path, a
@@ -307,6 +344,15 @@ class PlatformSettings(db.Model, TimestampMixin):
     @property
     def email_configured(self) -> bool:
         return bool(self.smtp_host and self.smtp_from_email)
+
+    @property
+    def system_theme_or_default(self) -> str:
+        """Sempre retorna uma chave válida de SYSTEM_THEME_CHOICES — nunca
+        None nem um valor obsoleto/desconhecido (ex.: linha antiga sem a
+        coluna preenchida, migração parcial etc.), então os templates
+        podem usar direto na classe .theme-<valor> sem checagem extra."""
+        valid_keys = {key for key, _label in SYSTEM_THEME_CHOICES}
+        return self.system_theme if self.system_theme in valid_keys else "chili"
 
     @property
     def admin_theme_css_vars(self) -> dict | None:

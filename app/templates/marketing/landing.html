@@ -1,9 +1,11 @@
 {% extends "base.html" %}
 {% block title %}Comanda — Cardápio Digital e Gestão via WhatsApp{% endblock %}
-{% block body_class %}theme-{{ 'blue' if landing.theme == 'blue' else 'chili' }}{% endblock %}
-{% block html_attrs %}{% if landing.theme == 'light' %}data-theme="light"{% endif %}{% endblock %}
+{% block body_class %}theme-{{ platform_settings.system_theme_or_default if platform_settings else 'chili' }}{% endblock %}
 
 {% block extra_head %}
+{% if platform_settings and platform_settings.admin_theme_css_vars %}
+<style>:root, .theme-{{ platform_settings.system_theme_or_default }} { --accent: {{ platform_settings.admin_theme_css_vars.accent }}; --accent-dark: {{ platform_settings.admin_theme_css_vars.accent_dark }}; }</style>
+{% endif %}
 <style>
   .hero-section { position: relative; overflow: hidden; padding: 140px 0 80px 0; background: radial-gradient(circle at 80% 20%, rgba(229,74,54,0.08) 0%, transparent 50%); }
   .hero-section .container { position: relative; z-index: 2; }

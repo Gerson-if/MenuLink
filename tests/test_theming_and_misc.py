@@ -196,3 +196,56 @@ class TestAdminPanelTheme:
         login_as(client, "lojista@braseiroecia.com.br", "lojista123")
         resp = client.get("/admin/configuracoes/aparencia")
         assert resp.status_code in (302, 403)
+
+
+class TestUnifiedSystemTheme:
+    def test_defaults_to_chili(self, app):
+        with app.app_context():
+            settings = PlatformSettings.get_or_create()
+            assert settings.system_theme_or_default == "chili"
+
+    def test_landing_page_uses_default_theme_class(self, app, client):
+        resp = client.get("/")
+        assert "theme-chili" in resp.get_data(as_text=True)
+
+    def test_settings_appearance_saves_system_theme_and_reflects_everywhere(self, app, client, login_as):
+        login_as(client, "admin@cardapio.saas", "admin123")
+        resp = client.post(
+            "/admin/configuracoes/aparencia",
+            data={"system_theme": "ocean", "accent_color": ""},
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+
+        with app.app_context():
+            settings = PlatformSettings.get_or_create()
+            assert settings.system_theme == "ocean"
+
+        # painel do admin
+        resp = client.get("/admin/lojistas")
+        assert "theme-ocean" in resp.get_data(as_text=True)
+
+        # painel do lojista
+        client.get("/logout")
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        resp = client.get("/painel/dashboard")
+        assert "theme-ocean" in resp.get_data(as_text=True)
+
+        # landing page pública
+        client.get("/logout")
+        resp = client.get("/")
+        assert "theme-ocean" in resp.get_data(as_text=True)
+
+        # tela de login
+        resp = client.get("/login")
+        assert "theme-ocean" in resp.get_data(as_text=True)
+
+    def test_invalid_system_theme_is_ignored(self, app, client, login_as):
+        login_as(client, "admin@cardapio.saas", "admin123")
+        client.post(
+            "/admin/configuracoes/aparencia",
+            data={"system_theme": "nao-existe", "accent_color": ""},
+        )
+        with app.app_context():
+            settings = PlatformSettings.get_or_create()
+            assert settings.system_theme_or_default == "chili"

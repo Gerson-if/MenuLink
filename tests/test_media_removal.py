@@ -56,7 +56,7 @@ class TestPlatformSettingsServiceRemoveLandingMedia:
         with app.app_context():
             service = PlatformSettingsService()
             service.update_landing_content(
-                hero_title="T", hero_subtitle="S", theme="chili",
+                hero_title="T", hero_subtitle="S",
                 features=[{"icon": "bi-star", "title": "F1", "description": "D1"}] * 3,
             )
             service.settings.landing_content = {**service.settings.landing_content_or_default, "hero_image": "uploads/platform/landing/x.png"}
@@ -70,7 +70,7 @@ class TestPlatformSettingsServiceRemoveLandingMedia:
         with app.app_context():
             service = PlatformSettingsService()
             service.update_landing_content(
-                hero_title="T", hero_subtitle="S", theme="chili",
+                hero_title="T", hero_subtitle="S",
                 features=[{"icon": "bi-star", "title": f"F{i}", "description": f"D{i}"} for i in range(3)],
             )
             content = dict(service.settings.landing_content_or_default)

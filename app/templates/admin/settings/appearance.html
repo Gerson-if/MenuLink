@@ -7,7 +7,7 @@
 {% block panel_content %}
 <p class="text-muted-custom small mb-4">Clique num card abaixo para editar.</p>
 
-{# Um único <form> por trás dos dois cards (mesmo padrão de
+{# Um único <form> por trás dos cards (mesmo padrão de
    admin/settings/landing.html) — os cards só abrem a gaveta
    correspondente; os campos de cada uma continuam dentro deste mesmo
    <form>, então salvar em qualquer gaveta envia tudo junto. #}
@@ -15,13 +15,21 @@
   {{ form.hidden_tag() }}
 
   <div class="settings-option-grid" style="max-width: 480px;">
+    <button type="button" class="settings-option" data-bs-toggle="offcanvas" data-bs-target="#editSystemTheme" aria-controls="editSystemTheme">
+      <div class="settings-option-head">
+        <div class="settings-option-icon"><i class="bi bi-palette2"></i></div>
+      </div>
+      <div class="settings-option-title">Tema do sistema</div>
+      <div class="settings-option-preview">{{ dict(form.system_theme.choices).get(settings.system_theme_or_default) }} — afeta a landing page, o painel do lojista e este painel juntos.</div>
+    </button>
+
     <button type="button" class="settings-option" data-bs-toggle="offcanvas" data-bs-target="#editAppearance" aria-controls="editAppearance">
       <div class="settings-option-head">
         <div class="settings-option-icon"><i class="bi bi-palette"></i></div>
         <span class="settings-option-swatch" style="background: {{ settings.admin_theme_accent or '#E54A36' }};"></span>
       </div>
-      <div class="settings-option-title">Cor de destaque</div>
-      <div class="settings-option-preview">Usada nos botões, links e destaques deste painel e do painel dos lojistas.</div>
+      <div class="settings-option-title">Cor de destaque (avançado)</div>
+      <div class="settings-option-preview">Ajuste fino opcional por cima do tema escolhido acima.</div>
     </button>
 
     <button type="button" class="settings-option" data-bs-toggle="offcanvas" data-bs-target="#editLogo" aria-controls="editLogo">
@@ -45,9 +53,37 @@
     </button>
   </div>
 
+  <div class="offcanvas offcanvas-end drawer-narrow" tabindex="-1" id="editSystemTheme" aria-labelledby="editSystemThemeLabel">
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title" id="editSystemThemeLabel"><i class="bi bi-palette2 me-2"></i>Tema do sistema</h5>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+    </div>
+    <div class="offcanvas-body d-flex flex-column">
+      <p class="text-muted-custom small mb-3">
+        Escolha uma paleta completa para o sistema inteiro: a página inicial (landing page),
+        o painel do lojista e este painel administrativo mudam juntos, de uma vez só, mantendo
+        a mesma identidade visual em todo lugar.
+      </p>
+
+      <div class="theme-swatch-group mb-3">
+        {% for value, label in form.system_theme.choices %}
+        <label class="theme-swatch">
+          <input type="radio" name="system_theme" value="{{ value }}" {{ "checked" if form.system_theme.data == value }}>
+          <div class="theme-swatch-card">
+            <div class="theme-swatch-preview" style="background: {{ system_theme_swatches[value] }};"></div>
+            <span class="theme-swatch-label">{{ label }}</span>
+          </div>
+        </label>
+        {% endfor %}
+      </div>
+
+      <div class="drawer-actions mt-auto">{{ form.submit(class="btn btn-chili w-100") }}</div>
+    </div>
+  </div>
+
   <div class="offcanvas offcanvas-end drawer-narrow" tabindex="-1" id="editAppearance" aria-labelledby="editAppearanceLabel">
     <div class="offcanvas-header">
-      <h5 class="offcanvas-title" id="editAppearanceLabel"><i class="bi bi-palette me-2"></i>Cor de destaque</h5>
+      <h5 class="offcanvas-title" id="editAppearanceLabel"><i class="bi bi-palette me-2"></i>Cor de destaque (avançado)</h5>
       <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
     </div>
     <div class="offcanvas-body d-flex flex-column">
