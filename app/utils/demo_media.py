@@ -351,8 +351,68 @@ def _caption(image: Image.Image, text: str, font_size: int) -> None:
 
 
 # --------------------------------------------------------------------
-# API pública
+# Ícones prontos (PNG com transparência) — alternativa aos ícones
+# vetoriais desenhados acima. Usados no starter kit de loja nova (ver
+# app/services/starter_content_service.py) com arquivos fornecidos pelo
+# próprio usuário e versionados em app/static/starter_content/icons/ —
+# mais "acabados" visualmente do que os desenhados via ImageDraw, sem
+# depender de nenhum download em tempo de execução (ficam no repositório).
 # --------------------------------------------------------------------
+
+def _paste_icon_image(background: Image.Image, icon_path: str, center: tuple[float, float], target_size: float) -> None:
+    """Cola um PNG com transparência (ex.: app/static/starter_content/icons/*.png)
+    centralizado em `center`, redimensionado (mantendo proporção) pra
+    caber num quadrado de `target_size` — usa o próprio canal alfa do
+    PNG, então funciona igual não importa o formato original do ícone."""
+    icon = Image.open(icon_path).convert("RGBA")
+    icon.thumbnail((int(target_size), int(target_size)), Image.LANCZOS)
+    paste_x = int(center[0] - icon.width / 2)
+    paste_y = int(center[1] - icon.height / 2)
+    background.paste(icon, (paste_x, paste_y), icon)
+
+
+def generate_product_card_from_icon(icon_path: str, product_name: str, glyph: str = "combo", size: int = 900) -> Image.Image:
+    """Igual a `generate_product_card`, mas usando um PNG pronto (ver
+    `_paste_icon_image`) no lugar do ícone vetorial desenhado — o
+    `glyph` só decide a paleta de cores do fundo/disco, o ícone em si
+    vem do arquivo."""
+    badge_center = (size / 2, size * 0.38)
+    badge_r = size * 0.32
+    image = _decorated_background((size, size), glyph, badge_center, badge_r)
+    _paste_icon_image(image, icon_path, badge_center, badge_r * 1.5)
+    _caption(image, product_name, font_size=int(size * 0.052))
+    return image
+
+
+def generate_banner_from_icon(icon_path: str, glyph: str, title: str, subtitle: str, size: tuple[int, int] = (1600, 500)) -> Image.Image:
+    """Igual a `generate_banner`, mas usando um PNG pronto no lugar do
+    ícone vetorial desenhado à esquerda."""
+    width, height = size
+    badge_center = (width * 0.20, height * 0.52)
+    badge_r = height * 0.46
+    image = _decorated_background(size, glyph, badge_center, badge_r)
+    _paste_icon_image(image, icon_path, badge_center, badge_r * 1.7)
+    draw = ImageDraw.Draw(image)
+    _, edge_color = _PALETTE.get(glyph, _PALETTE["combo"])
+
+    text_x = int(width * 0.40)
+    max_text_width = width - text_x - int(width * 0.04)
+    title_font, title_bbox = _fit_font(draw, title, max_width=max_text_width, start_size=int(height * 0.14))
+    subtitle_font, subtitle_bbox = _fit_font(draw, subtitle, max_width=max_text_width, start_size=int(height * 0.075))
+
+    title_y = int(height * 0.28)
+    draw.text((text_x, title_y), title, font=title_font, fill=_GLYPH_COLOR, stroke_width=3, stroke_fill=edge_color)
+
+    chip_y = int(height * 0.60)
+    chip_pad_x, chip_pad_y = int(height * 0.035), int(height * 0.03)
+    chip_box = [
+        text_x - chip_pad_x, chip_y - chip_pad_y,
+        text_x + (subtitle_bbox[2] - subtitle_bbox[0]) + chip_pad_x, chip_y + (subtitle_bbox[3] - subtitle_bbox[1]) + chip_pad_y * 2,
+    ]
+    draw.rounded_rectangle(chip_box, radius=chip_pad_y * 1.4, fill=_blend(edge_color, (255, 255, 255), 0.18))
+    draw.text((text_x, chip_y - subtitle_bbox[1]), subtitle, font=subtitle_font, fill=_GLYPH_COLOR)
+    return image
+
 
 def generate_product_card(glyph: str, product_name: str, size: int = 900) -> Image.Image:
     """Imagem quadrada para um ProductImage: degradê decorado + disco

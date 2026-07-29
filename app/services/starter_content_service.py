@@ -27,7 +27,14 @@ esqueleto pra praticamente qualquer tipo de comida.
 
 from app.extensions import db
 from app.models import Banner, Category, ComplementGroup, ComplementOption, Product, ProductImage
-from app.utils.demo_media import generate_banner, generate_logo, generate_product_card, save_generated_image
+from app.utils.demo_media import (
+    generate_banner_from_icon,
+    generate_logo,
+    generate_product_card_from_icon,
+    save_generated_image,
+)
+
+_ICONS_DIR = "starter_content/icons"
 
 _EXAMPLE_TAG = "Exemplo"
 _EXAMPLE_DESCRIPTION = (
@@ -49,30 +56,35 @@ _EXAMPLE_DESCRIPTION_WITH_COMPLEMENTS = (
 _STARTER_CATEGORIES = [
     {
         "category": "Entradas", "icon": "other", "glyph": "bowl",
+        "static_icon": "entrada-bowl.png",
         "product": "Entrada de exemplo", "price_cents": 1490,
     },
     {
         "category": "Pratos principais", "icon": "other", "glyph": "prato",
+        "static_icon": "prato-combo.png",
         "product": "Prato de exemplo", "price_cents": 3490,
         "with_complements": True,
     },
     {
         "category": "Bebidas", "icon": "drink", "glyph": "cup",
+        "static_icon": "bebida-copo.png",
         "product": "Bebida de exemplo", "price_cents": 890,
     },
     {
         "category": "Sobremesas", "icon": "dessert", "glyph": "cupcake",
+        "static_icon": "sobremesa-sorvete.png",
         "product": "Sobremesa de exemplo", "price_cents": 1290,
     },
 ]
 
-# (glifo, título, subtítulo) — mais de um banner de propósito: com só um,
-# o carrossel do cardápio público não tem o que "carrossel-ar" (não dá
-# pra notar o recurso de arrastar/trocar de slide com uma imagem só).
+# (glifo, ícone estático, título, subtítulo) — mais de um banner de
+# propósito: com só um, o carrossel do cardápio público não tem o que
+# "carrossel-ar" (não dá pra notar o recurso de arrastar/trocar de slide
+# com uma imagem só).
 _STARTER_BANNERS = [
-    ("combo", "Bem-vindo(a) ao seu cardápio digital!", "Personalize este banner e suas fotos quando quiser."),
-    ("prato", "Arraste para o lado →", "Cadastre quantos banners quiser nesse carrossel."),
-    ("cup", "Compartilhe seu link e QR Code", "Seus clientes pedem direto pelo celular, sem baixar nada."),
+    ("combo", "banner-burger.png", "Bem-vindo(a) ao seu cardápio digital!", "Personalize este banner e suas fotos quando quiser."),
+    ("prato", "banner-pizza.png", "Arraste para o lado", "Cadastre quantos banners quiser nesse carrossel."),
+    ("cup", "banner-loja.png", "Compartilhe seu link e QR Code", "Seus clientes pedem direto pelo celular, sem baixar nada."),
 ]
 
 # Grupo de variação (obrigatório, escolha única) + grupo de adicionais
@@ -81,6 +93,14 @@ _STARTER_BANNERS = [
 # recurso sem inflar o starter kit inteiro com isso.
 _EXAMPLE_VARIATION_OPTIONS = [("Pequena", 0), ("Média", 500), ("Grande", 900)]
 _EXAMPLE_ADDON_OPTIONS = [("Molho especial", 300), ("Porção extra", 600), ("Acompanhamento", 400)]
+
+
+def _icon_path(filename: str) -> str:
+    import os
+
+    from flask import current_app
+
+    return os.path.join(current_app.static_folder, _ICONS_DIR, filename)
 
 
 def _unique_slug(base_text: str, model, tenant_id: int) -> str:
@@ -128,7 +148,8 @@ def seed_starter_content(tenant) -> None:
             db.session.add(product)
             db.session.flush()
 
-            card = generate_product_card(entry["glyph"], product_name)
+            icon_path = _icon_path(entry["static_icon"])
+            card = generate_product_card_from_icon(icon_path, product_name, glyph=entry["glyph"])
             relative_path, color = save_generated_image(card, f"tenant_{tenant.id}/products/{product.id}")
             db.session.add(ProductImage(
                 tenant_id=tenant.id,
@@ -165,8 +186,9 @@ def seed_starter_content(tenant) -> None:
                         extra_price_cents=extra_cents, is_active=True, display_order=option_order,
                     ))
 
-        for order, (glyph, title, subtitle) in enumerate(_STARTER_BANNERS):
-            banner_image = generate_banner(glyph, title, subtitle)
+        for order, (glyph, icon_file, title, subtitle) in enumerate(_STARTER_BANNERS):
+            banner_icon_path = _icon_path(icon_file)
+            banner_image = generate_banner_from_icon(banner_icon_path, glyph, title, subtitle)
             banner_path, banner_color = save_generated_image(banner_image, f"tenant_{tenant.id}/banners")
             db.session.add(Banner(
                 tenant_id=tenant.id,
