@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block body_class %}theme-chili{% endblock %}
+{% block body_class %}theme-{{ platform_settings.system_theme_or_default if platform_settings else 'chili' }}{% endblock %}
 
 {% block extra_head %}
 <style>

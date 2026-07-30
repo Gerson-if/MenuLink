@@ -41,7 +41,7 @@
       <div class="panel-title"><i class="bi bi-star"></i> Seu plano atual</div>
       {% if tenant.plan %}
       {% set cycle = subscription.billing_cycle.value if subscription else tenant.plan.billing_cycle.value %}
-      <div class="text-white fw-bold fs-4 font-display">{{ tenant.plan.name }}</div>
+      <div class="fw-bold fs-4 font-display">{{ tenant.plan.name }}</div>
       <div class="text-accent fs-5 mb-2">R$ {{ "%.2f"|format(tenant.plan.price_cents / 100) }}<span class="text-muted-custom small">/{{ "ano" if cycle == "yearly" else "mês" }}</span></div>
       <ul class="text-muted-custom small">
         <li>{{ tenant.plan.max_products if tenant.plan.max_products is not none else "Produtos ilimitados" }}{{ " produtos" if tenant.plan.max_products is not none else "" }}</li>

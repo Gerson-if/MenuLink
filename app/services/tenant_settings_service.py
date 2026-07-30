@@ -278,14 +278,18 @@ class TenantSettingsService:
         db.session.commit()
         return self.tenant
 
-    def update_appearance(self, *, accent_color=None, reset_to_default=False, theme_mode=None):
+    def update_appearance(self, *, accent_color=None, reset_to_default=False, theme_mode=None, panel_theme=None):
         """
         `theme_settings` é um JSON livre (pensado pra "cores, fontes
         etc." desde que o campo foi criado) — guarda a cor de destaque e
-        o modo (claro/escuro) escolhidos pelo lojista para o cardápio
-        público. Usa merge em vez de sobrescrever o dict inteiro, para
-        não perder outras chaves que venham a existir aí no futuro.
+        o modo (claro/escuro) escolhidos pelo lojista para o CARDÁPIO
+        PÚBLICO, e também (chave `panel_theme`) o tema escolhido pelo
+        lojista para a PRÓPRIA área de acesso (painel de gestão) — ver
+        Tenant.panel_theme. Usa merge em vez de sobrescrever o dict
+        inteiro, para não perder outras chaves que venham a existir aí
+        no futuro.
         """
+        from app.models.platform_settings import SYSTEM_THEME_CHOICES
         from app.utils.colors import normalize_hex
 
         settings = dict(self.tenant.theme_settings or {})
@@ -299,6 +303,13 @@ class TenantSettingsService:
             settings["mode"] = "light"
         else:
             settings.pop("mode", None)
+
+        valid_panel_themes = {key for key, _label in SYSTEM_THEME_CHOICES}
+        if panel_theme in valid_panel_themes:
+            settings["panel_theme"] = panel_theme
+        else:
+            settings.pop("panel_theme", None)
+
         self.tenant.theme_settings = settings or None
         db.session.commit()
         return self.tenant

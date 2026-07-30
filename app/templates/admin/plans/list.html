@@ -18,13 +18,13 @@
   <div class="col-md-4">
     <div class="panel h-100">
       <div class="d-flex justify-content-between align-items-start mb-2">
-        <strong class="text-white">{{ plan.name }}</strong>
+        <strong>{{ plan.name }}</strong>
         <div class="d-flex gap-1">
           {% if plan.is_featured %}<span class="status-badge status-trial">Destaque</span>{% endif %}
           {% include "admin/plans/_status_badge.html" %}
         </div>
       </div>
-      <div class="font-display h3 text-white mb-1">R$ {{ "%.2f"|format(plan.price_cents / 100) }}</div>
+      <div class="font-display h3 mb-1">R$ {{ "%.2f"|format(plan.price_cents / 100) }}</div>
       <div class="text-muted-custom small mb-3">{{ "Mensal" if plan.billing_cycle.value == "monthly" else "Anual" }}</div>
       {% if plan.description %}<p class="text-muted-custom small mb-3">{{ plan.description }}</p>{% endif %}
       <ul class="text-muted-custom small mb-4">

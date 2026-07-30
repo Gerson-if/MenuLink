@@ -4,9 +4,20 @@ from wtforms import BooleanField, DecimalField, FormField, SelectField, StringFi
 from wtforms import Form as NoCsrfForm
 from wtforms.validators import DataRequired, Length, Optional, NumberRange, Regexp, ValidationError
 
+from app.models.platform_settings import SYSTEM_THEME_CHOICES
 from app.models.tenant import WEEKDAY_KEYS, WEEKDAY_LABELS
 from app.utils.colors import normalize_hex
 from app.utils.validators import cpf_cnpj, not_blank, phone_number, slug_format
+
+# Escolha do PAINEL de gestão do próprio lojista (diferente do tema do
+# cardápio público, controlado por accent_color/theme_mode abaixo) — a
+# opção vazia ("") significa "acompanhar o tema definido pelo Super
+# Admin para a plataforma inteira" (ver Tenant.panel_theme e
+# PlatformSettings.system_theme). Reaproveita as mesmas 4 paletas do
+# tema unificado do sistema (SYSTEM_THEME_CHOICES), pelo mesmo motivo:
+# são as paletas já prontas/testadas no design system, sem inventar um
+# conjunto de temas paralelo só para o lojista.
+PANEL_THEME_CHOICES = [("", "Padrão da plataforma")] + SYSTEM_THEME_CHOICES
 
 # HH:MM, 24 horas (aceita "9:00" ou "09:00")
 _TIME_FORMAT = Regexp(r"^([01]?\d|2[0-3]):[0-5]\d$", message="Use o formato HH:MM (ex: 18:30).")
@@ -75,6 +86,12 @@ class AppearanceSettingsForm(FlaskForm):
         "Tema do cardápio",
         choices=[("dark", "Escuro (atual)"), ("light", "Claro")],
         default="dark",
+    )
+    panel_theme = SelectField(
+        "Tema do meu painel de gestão",
+        choices=PANEL_THEME_CHOICES,
+        default="",
+        validators=[Optional()],
     )
     submit = SubmitField("Salvar aparência")
 

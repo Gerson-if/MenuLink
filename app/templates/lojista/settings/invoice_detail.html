@@ -13,7 +13,7 @@
       <div class="panel-title"><i class="bi bi-receipt"></i> Fatura de {{ invoice.due_date.strftime("%d/%m/%Y") }}</div>
 
       <div class="d-flex align-items-center justify-content-between mb-3">
-        <div class="text-white fw-bold fs-3 font-display">R$ {{ "%.2f"|format(invoice.amount_cents / 100) }}</div>
+        <div class="fw-bold fs-3 font-display">R$ {{ "%.2f"|format(invoice.amount_cents / 100) }}</div>
         {% if invoice.status.value == 'paid' %}<span class="status-badge status-active">Paga</span>
         {% elif invoice.status.value == 'overdue' %}<span class="status-badge status-blocked">Vencida</span>
         {% elif invoice.status.value == 'canceled' %}<span class="status-badge status-suspended">Cancelada</span>

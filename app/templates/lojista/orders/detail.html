@@ -46,14 +46,14 @@
       <div class="text-end mt-3 small" style="border-top: 1px solid var(--card-border); padding-top: 12px;">
         <div class="text-muted-custom">Subtotal: R$ {{ "%.2f"|format(order.subtotal_cents / 100) }}</div>
         {% if order.delivery_fee_cents > 0 %}<div class="text-muted-custom">Taxa de entrega: R$ {{ "%.2f"|format(order.delivery_fee_cents / 100) }}</div>{% endif %}
-        <div class="text-white fw-bold fs-5 mt-1">Total: R$ {{ "%.2f"|format(order.total_cents / 100) }}</div>
+        <div class="fw-bold fs-5 mt-1">Total: R$ {{ "%.2f"|format(order.total_cents / 100) }}</div>
       </div>
     </div>
 
     <div class="panel mb-3">
       <div class="panel-title"><i class="bi bi-{{ 'geo-alt' if order.delivery_type.value == 'delivery' else 'shop' }}"></i> {{ "Entrega" if order.delivery_type.value == "delivery" else "Retirada no local" }}</div>
       {% if order.delivery_type.value == "delivery" %}
-      <p class="mb-0 small text-white">
+      <p class="mb-0 small">
         {{ order.address_street }}, {{ order.address_number }}
         {% if order.address_complement %} ({{ order.address_complement }}){% endif %}<br>
         {{ order.address_neighborhood }}{% if order.address_city %}, {{ order.address_city }}{% endif %}
@@ -67,7 +67,7 @@
     {% if order.notes %}
     <div class="panel">
       <div class="panel-title"><i class="bi bi-chat-left-text"></i> Observações do cliente</div>
-      <p class="mb-0 small text-white">{{ order.notes }}</p>
+      <p class="mb-0 small">{{ order.notes }}</p>
     </div>
     {% endif %}
   </div>
@@ -76,9 +76,9 @@
     <div class="panel mb-3">
       <div class="panel-title"><i class="bi bi-person"></i> Cliente</div>
       <dl class="small mb-0">
-        <dt class="text-muted-custom">Nome</dt><dd class="text-white">{{ order.customer_name }}</dd>
-        <dt class="text-muted-custom">Telefone</dt><dd class="text-white">{{ order.customer_phone }}</dd>
-        <dt class="text-muted-custom mb-0">Pagamento</dt><dd class="text-white mb-0">
+        <dt class="text-muted-custom">Nome</dt><dd>{{ order.customer_name }}</dd>
+        <dt class="text-muted-custom">Telefone</dt><dd>{{ order.customer_phone }}</dd>
+        <dt class="text-muted-custom mb-0">Pagamento</dt><dd class="mb-0">
           {% if order.payment_method.value == 'cash' %}Dinheiro
           {% elif order.payment_method.value == 'card' %}Cartão
           {% elif order.payment_method.value == 'pix' %}Pix

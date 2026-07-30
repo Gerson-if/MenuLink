@@ -157,6 +157,76 @@ class TestTenantPublicTheme:
             assert not (tenant.theme_settings or {}).get("accent")
 
 
+class TestTenantPanelTheme:
+    def test_defaults_to_none_and_follows_platform_theme(self, app, client, login_as):
+        with app.app_context():
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            assert tenant.panel_theme is None
+
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        resp = client.get("/painel/dashboard")
+        assert "theme-chili" in resp.get_data(as_text=True)
+
+    def test_settings_route_saves_panel_theme(self, app, client, login_as):
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        resp = client.post(
+            "/painel/configuracoes/aparencia",
+            data={"accent_color": "#E8A33D", "theme_mode": "dark", "panel_theme": "ocean"},
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+
+        with app.app_context():
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            assert tenant.panel_theme == "ocean"
+
+        resp = client.get("/painel/dashboard")
+        assert "theme-ocean" in resp.get_data(as_text=True)
+
+    def test_panel_theme_independent_from_other_tenants(self, app, client, login_as):
+        # Um lojista escolher o próprio tema não deve afetar o painel de
+        # outra loja nem o painel do Super Admin — cada um segue sua
+        # própria configuração (Tenant.panel_theme x PlatformSettings.system_theme).
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        client.post(
+            "/painel/configuracoes/aparencia",
+            data={"accent_color": "#E8A33D", "theme_mode": "dark", "panel_theme": "midnight"},
+        )
+        client.get("/logout")
+
+        login_as(client, "admin@cardapio.saas", "admin123")
+        resp = client.get("/admin/lojistas")
+        html = resp.get_data(as_text=True)
+        assert "theme-midnight" not in html
+        assert "theme-chili" in html
+
+    def test_reset_to_platform_default(self, app, client, login_as):
+        with app.app_context():
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            tenant.theme_settings = {**(tenant.theme_settings or {}), "panel_theme": "forest"}
+            db.session.commit()
+
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        client.post(
+            "/painel/configuracoes/aparencia",
+            data={"accent_color": "#E8A33D", "theme_mode": "dark", "panel_theme": ""},
+        )
+
+        with app.app_context():
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            assert tenant.panel_theme is None
+
+    def test_invalid_panel_theme_is_ignored(self, app, client, login_as):
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        client.post(
+            "/painel/configuracoes/aparencia",
+            data={"accent_color": "#E8A33D", "theme_mode": "dark", "panel_theme": "nao-existe"},
+        )
+        with app.app_context():
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            assert tenant.panel_theme is None
+
+
 class TestAdminPanelTheme:
     def test_admin_panel_defaults_to_chili_not_blue(self, app, client, login_as):
         login_as(client, "admin@cardapio.saas", "admin123")

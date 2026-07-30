@@ -1,9 +1,22 @@
 {% extends "base.html" %}
-{% block body_class %}theme-{{ platform_settings.system_theme_or_default if platform_settings else 'chili' }}{% endblock %}
+
+{# O lojista pode escolher um tema PRÓPRIO para esta área de acesso
+   (Tenant.panel_theme, ver Configurações → Aparência), independente do
+   tema padrão que o Super Admin definiu para a plataforma inteira —
+   sem escolha própria, cai no padrão da plataforma (nunca fica sem
+   tema). Variável de topo (fora de qualquer {% block %}) fica visível
+   nos dois blocos abaixo, mesmo padrão já usado em
+   admin/settings/landing.html. #}
+{% set panel_theme_key = (current_tenant.panel_theme if current_tenant else None) or (platform_settings.system_theme_or_default if platform_settings else 'chili') %}
+{% block body_class %}theme-{{ panel_theme_key }}{% endblock %}
 
 {% block extra_head %}
-{% if platform_settings and platform_settings.admin_theme_css_vars %}
-<style>:root, .theme-{{ platform_settings.system_theme_or_default }} { --accent: {{ platform_settings.admin_theme_css_vars.accent }}; --accent-dark: {{ platform_settings.admin_theme_css_vars.accent_dark }}; }</style>
+{# O ajuste fino de cor do Super Admin (admin_theme_accent) só se aplica
+   quando o lojista está seguindo o tema padrão da plataforma — se ele
+   escolheu o PRÓPRIO tema, essa escolha vale por inteiro, sem o Super
+   Admin sobrescrever a cor por cima sem o lojista pedir. #}
+{% if platform_settings and platform_settings.admin_theme_css_vars and not (current_tenant and current_tenant.panel_theme) %}
+<style>:root, .theme-{{ panel_theme_key }} { --accent: {{ platform_settings.admin_theme_css_vars.accent }}; --accent-dark: {{ platform_settings.admin_theme_css_vars.accent_dark }}; }</style>
 {% endif %}
 {% endblock %}
 

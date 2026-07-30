@@ -44,7 +44,7 @@
         {% for status, count in status_counts.items() %}
         <li class="d-flex justify-content-between py-1" style="border-bottom: 1px solid var(--card-border);">
           <span class="text-muted-custom">{{ status_labels.get(status, status) if status_labels else status }}</span>
-          <span class="text-white fw-semibold">{{ count }}</span>
+          <span class="fw-semibold">{{ count }}</span>
         </li>
         {% else %}
         <li class="text-muted-custom">Nenhum pedido registrado ainda.</li>

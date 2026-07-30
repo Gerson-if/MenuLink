@@ -5,45 +5,73 @@
 {% block panel_content %}
 {% include "lojista/settings/_tabs.html" %}
 
-<div class="settings-option-grid" style="max-width: 480px;">
-  <button type="button" class="settings-option" data-bs-toggle="offcanvas" data-bs-target="#editAppearance" aria-controls="editAppearance">
-    <div class="settings-option-head">
-      <div class="settings-option-icon"><i class="bi bi-palette"></i></div>
-      <span class="settings-option-swatch" style="background: {{ form.accent_color.data }};"></span>
-    </div>
-    <div class="settings-option-title">Cor e tema do cardápio</div>
-    <div class="settings-option-preview">Tema {{ dict(form.theme_mode.choices).get(form.theme_mode.data, form.theme_mode.data)|lower }} — cor de destaque {{ form.accent_color.data }}.</div>
-  </button>
-</div>
+{# Um único <form> por trás dos dois cards (mesmo padrão de
+   admin/settings/appearance.html) — os cards só abrem a gaveta
+   correspondente; os campos de cada uma continuam dentro deste mesmo
+   <form>, então salvar em qualquer gaveta envia tudo junto. #}
+<form method="POST" novalidate>
+  {{ form.hidden_tag() }}
 
-<div class="offcanvas offcanvas-end drawer-narrow" tabindex="-1" id="editAppearance" aria-labelledby="editAppearanceLabel">
-  <div class="offcanvas-header">
-    <h5 class="offcanvas-title" id="editAppearanceLabel"><i class="bi bi-palette me-2"></i>Cor de destaque do cardápio</h5>
-    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+  <div class="settings-option-grid" style="max-width: 480px;">
+    <button type="button" class="settings-option" data-bs-toggle="offcanvas" data-bs-target="#editAppearance" aria-controls="editAppearance">
+      <div class="settings-option-head">
+        <div class="settings-option-icon"><i class="bi bi-palette"></i></div>
+        <span class="settings-option-swatch" style="background: {{ form.accent_color.data }};"></span>
+      </div>
+      <div class="settings-option-title">Cor e tema do cardápio</div>
+      <div class="settings-option-preview">Tema {{ dict(form.theme_mode.choices).get(form.theme_mode.data, form.theme_mode.data)|lower }} — cor de destaque {{ form.accent_color.data }}.</div>
+    </button>
+
+    <button type="button" class="settings-option" data-bs-toggle="offcanvas" data-bs-target="#editPanelTheme" aria-controls="editPanelTheme">
+      <div class="settings-option-head">
+        <div class="settings-option-icon"><i class="bi bi-palette2"></i></div>
+      </div>
+      <div class="settings-option-title">Tema do meu painel</div>
+      <div class="settings-option-preview">{{ dict(form.panel_theme.choices).get(form.panel_theme.data) or "Padrão da plataforma" }} — não afeta o cardápio público.</div>
+    </button>
   </div>
-  <div class="offcanvas-body d-flex flex-column">
-    <p class="upload-meta mb-3">
-      Essa é a cor usada nos botões, preços e destaques do seu cardápio público
-      (a página que o cliente vê ao escanear o QR Code ou abrir o link da loja).
-      Não afeta este painel de gestão.
-    </p>
 
-    <form method="POST" novalidate>
-      {{ form.hidden_tag() }}
+  <div class="offcanvas offcanvas-end drawer-narrow" tabindex="-1" id="editAppearance" aria-labelledby="editAppearanceLabel">
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title" id="editAppearanceLabel"><i class="bi bi-palette me-2"></i>Cor de destaque do cardápio</h5>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+    </div>
+    <div class="offcanvas-body d-flex flex-column">
+      <p class="upload-meta mb-3">
+        Essa é a cor usada nos botões, preços e destaques do seu cardápio público
+        (a página que o cliente vê ao escanear o QR Code ou abrir o link da loja).
+        Não afeta este painel de gestão.
+      </p>
 
       {# Seletor de cor nativo + campo de texto hexadecimal, sincronizados
          nos dois sentidos via Alpine — só o input[type=color] é de fato
-         o campo do form (name="accent_color"); o campo de texto é uma UI
-         auxiliar que escreve no valor dele antes do submit. O $watch só
-         aplica o valor digitado ao seletor quando já for um hex completo
-         e válido (6 dígitos) — evita "resetar" o seletor a cada tecla
-         digitada, enquanto o hex ainda está incompleto. #}
-      <div class="mb-3 d-flex align-items-center gap-3 flex-wrap"
-           x-data='{ hex: {{ form.accent_color.data|tojson }} }'
+         o campo do form (name="accent_color"); o campo de texto e os
+         atalhos de cor abaixo são UI auxiliar que escreve no valor dele
+         antes do submit. O $watch só aplica o valor digitado ao seletor
+         quando já for um hex completo e válido (6 dígitos) — evita
+         "resetar" o seletor a cada tecla digitada, enquanto o hex ainda
+         está incompleto. Atalhos e campo de texto ficam no MESMO
+         x-data do seletor de cor, para compartilhar a variável `hex`. #}
+      <div x-data='{ hex: {{ form.accent_color.data|tojson }} }'
            x-init="$watch('hex', value => { if (/^#[0-9a-fA-F]{6}$/.test(value)) { $refs.accentPicker.value = value; } })">
-        {{ form.accent_color(class="form-control form-control-color", style="width: 70px; height: 46px; padding: 4px; flex-shrink: 0;", **{"x-ref": "accentPicker", "@input": "hex = $event.target.value"}) }}
-        <input type="text" class="form-control" style="max-width: 130px; flex-shrink: 0;" maxlength="7" placeholder="#E8A33D" x-model="hex">
-        <span class="text-muted-custom small">Escolha uma cor que combine com a identidade da sua loja.</span>
+        <div class="mb-3 d-flex align-items-center gap-3 flex-wrap">
+          {{ form.accent_color(class="form-control form-control-color", style="width: 70px; height: 46px; padding: 4px; flex-shrink: 0;", **{"x-ref": "accentPicker", "@input": "hex = $event.target.value"}) }}
+          <input type="text" class="form-control" style="max-width: 130px; flex-shrink: 0;" maxlength="7" placeholder="#E8A33D" x-model="hex">
+          <span class="text-muted-custom small">Escolha uma cor que combine com a identidade da sua loja, ou use um dos atalhos abaixo.</span>
+        </div>
+
+        {# Atalhos rápidos: reaproveitam a cor de destaque de cada um dos 4
+           temas prontos do sistema (mesma paleta que o Super Admin usa em
+           Configurações → Aparência) — só preenchem o seletor de cor
+           acima, sem mexer em nenhum campo novo do formulário. #}
+        <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
+          <span class="text-muted-custom small me-1">Atalhos:</span>
+          {% for value, accent in system_theme_accents.items() %}
+          <button type="button" class="btn p-0 border-0" title="{{ dict(form.panel_theme.choices).get(value, value) }}"
+                  style="width: 28px; height: 28px; border-radius: 50%; background: {{ accent }}; border: 2px solid var(--card-border);"
+                  @click="hex = '{{ accent }}'"></button>
+          {% endfor %}
+        </div>
       </div>
       {% for error in form.accent_color.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
 
@@ -69,7 +97,41 @@
           <i class="bi bi-box-arrow-up-right"></i> Ver cardápio
         </a>
       </div>
-    </form>
+    </div>
   </div>
-</div>
+
+  <div class="offcanvas offcanvas-end drawer-narrow" tabindex="-1" id="editPanelTheme" aria-labelledby="editPanelThemeLabel">
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title" id="editPanelThemeLabel"><i class="bi bi-palette2 me-2"></i>Tema do meu painel</h5>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+    </div>
+    <div class="offcanvas-body d-flex flex-column">
+      <p class="upload-meta mb-3">
+        Escolha um tema só para a SUA área de acesso (este painel de gestão) — diferente
+        da cor do cardápio público, ao lado. Sem escolher nada, este painel segue o tema
+        padrão que o administrador da plataforma definiu.
+      </p>
+
+      <div class="theme-swatch-group mb-3">
+        {% for value, label in form.panel_theme.choices %}
+        <label class="theme-swatch">
+          <input type="radio" name="panel_theme" value="{{ value }}" {{ "checked" if form.panel_theme.data == value }}>
+          <div class="theme-swatch-card">
+            {% if value %}
+            <div class="theme-swatch-preview" style="background: {{ system_theme_swatches[value] }};"></div>
+            {% else %}
+            <div class="theme-swatch-preview d-flex align-items-center justify-content-center" style="background: color-mix(in srgb, var(--card-text) 8%, transparent);">
+              <i class="bi bi-arrow-repeat" style="color: var(--muted-text);"></i>
+            </div>
+            {% endif %}
+            <span class="theme-swatch-label">{{ label }}</span>
+          </div>
+        </label>
+        {% endfor %}
+      </div>
+
+      <div class="drawer-actions mt-auto">{{ form.submit(class="btn btn-chili") }}</div>
+    </div>
+  </div>
+</form>
 {% endblock %}

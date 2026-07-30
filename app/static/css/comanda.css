@@ -593,6 +593,18 @@ body:has(.app-shell) .toast-flash-stack { top: 84px; }
 .reveal-pending { opacity: 0; transform: translateY(24px); transition: opacity .6s ease, transform .6s ease; transition-delay: var(--reveal-delay, 0ms); }
 .reveal-pending.is-visible { opacity: 1; transform: none; }
 
+/* ---------- Caixa de ícone com fundo na cor de destaque ----------
+   Usada na landing page (3 destaques do hero) e no dashboard do
+   lojista (atalhos rápidos) — extraída para cá (era duplicada como
+   <style> local da landing page + estilo inline no dashboard, os dois
+   com a cor do tema "chili" fixa em rgba(), que não acompanhava a
+   troca de tema do sistema) para as duas fontes sempre acompanharem o
+   tema ativo (color-mix com var(--accent), não mais uma cor fixa). */
+.feature-icon-box {
+  width: 48px; height: 48px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent);
+  display: flex; align-items: center; justify-content: center; font-size: 1.4rem; margin-bottom: 20px;
+}
+
 /* ---------- Cards de opção que abrem uma gaveta de edição ----------
    Genérico, usado em qualquer tela de configuração dividida em seções
    (landing page, aparência do admin, aparência do lojista): cada card
@@ -610,7 +622,7 @@ body:has(.app-shell) .toast-flash-stack { top: 84px; }
 .settings-option:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(0,0,0,.18); border-color: var(--accent); }
 .settings-option-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .settings-option-icon {
-  width: 42px; height: 42px; border-radius: 10px; background: rgba(229,74,54,.12); color: var(--accent);
+  width: 42px; height: 42px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent);
   display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0;
 }
 .settings-option-title { font-weight: 600; color: var(--card-text); }

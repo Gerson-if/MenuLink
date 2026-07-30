@@ -207,15 +207,22 @@ def settings_appearance():
             accent_color=form.accent_color.data,
             reset_to_default=form.reset_to_default.data,
             theme_mode=form.theme_mode.data,
+            panel_theme=form.panel_theme.data,
         )
-        flash("Aparência do cardápio atualizada.", "success")
+        flash("Aparência atualizada.", "success")
         return redirect(url_for("lojista.settings_appearance"))
 
     if not form.is_submitted():
         form.accent_color.data = (tenant.theme_settings or {}).get("accent") or "#E8A33D"
         form.theme_mode.data = (tenant.theme_settings or {}).get("mode") or "dark"
+        form.panel_theme.data = tenant.panel_theme or ""
 
-    return render_template("lojista/settings/appearance.html", form=form, tenant=tenant)
+    from app.models.platform_settings import SYSTEM_THEME_ACCENTS, SYSTEM_THEME_SWATCHES
+
+    return render_template(
+        "lojista/settings/appearance.html", form=form, tenant=tenant,
+        system_theme_swatches=SYSTEM_THEME_SWATCHES, system_theme_accents=SYSTEM_THEME_ACCENTS,
+    )
 
 
 @lojista_bp.route("/configuracoes/assinatura")

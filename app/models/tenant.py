@@ -315,6 +315,23 @@ class Tenant(db.Model, TimestampMixin):
         return None
 
     @property
+    def panel_theme(self) -> str | None:
+        """Tema escolhido pelo lojista para a PRÓPRIA área de acesso
+        (painel de gestão, em `theme_settings["panel_theme"]`) —
+        sobrescreve, só para esta loja, o tema padrão definido pelo Super
+        Admin para a plataforma inteira (PlatformSettings.system_theme).
+        None (nunca customizado, ou valor desconhecido/obsoleto) = usa o
+        padrão da plataforma — ver body_class de layouts/lojista_panel.html.
+        Diferente de `public_theme_css_vars` (cor livre do CARDÁPIO
+        PÚBLICO, logo abaixo): aqui é sempre uma das 4 paletas prontas
+        do sistema, não uma cor livre."""
+        from app.models.platform_settings import SYSTEM_THEME_CHOICES
+
+        value = (self.theme_settings or {}).get("panel_theme")
+        valid_keys = {key for key, _label in SYSTEM_THEME_CHOICES}
+        return value if value in valid_keys else None
+
+    @property
     def public_theme_css_vars(self) -> dict | None:
         """
         Variáveis CSS derivadas da cor de destaque escolhida pelo

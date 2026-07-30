@@ -68,6 +68,19 @@ SYSTEM_THEME_SWATCHES = {
     "midnight": "linear-gradient(135deg,#0C0A16,#8B5CF6)",
 }
 
+# Só a cor de destaque (--accent) de cada tema — usada como atalho
+# rápido de cor no seletor livre de accent_color do CARDÁPIO PÚBLICO de
+# cada lojista (app/templates/lojista/settings/appearance.html): clicar
+# num atalho preenche o seletor de cor com o valor abaixo, sem trocar
+# de tela nem exigir um campo de formulário novo. Precisa bater com o
+# --accent de cada classe .theme-<chave> em comanda.css.
+SYSTEM_THEME_ACCENTS = {
+    "chili": "#E54A36",
+    "ocean": "#2E86AB",
+    "forest": "#3E8E5B",
+    "midnight": "#8B5CF6",
+}
+
 # Mantido só por compatibilidade com dados antigos já gravados em
 # landing_content["theme"] (loja que nunca abrir a tela de Aparência de
 # novo) — não é mais editável por nenhuma tela; o tema agora é sempre

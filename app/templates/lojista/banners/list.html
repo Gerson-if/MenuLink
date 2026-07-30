@@ -18,7 +18,7 @@
   <div class="banner-row-main">
     <img src="{{ url_for('static', filename=banner.image_path) }}" alt="{{ banner.title }}">
     <div class="flex-grow-1 min-w-0">
-      <div class="text-white fw-semibold text-truncate">{{ banner.title }}</div>
+      <div class="fw-semibold text-truncate">{{ banner.title }}</div>
       {% if banner.subtitle %}<div class="text-muted-custom small text-truncate">{{ banner.subtitle }}</div>{% endif %}
     </div>
   </div>
