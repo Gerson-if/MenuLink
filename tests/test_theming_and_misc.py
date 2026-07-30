@@ -249,3 +249,29 @@ class TestUnifiedSystemTheme:
         with app.app_context():
             settings = PlatformSettings.get_or_create()
             assert settings.system_theme_or_default == "chili"
+
+
+class TestAuthBackgroundVideo:
+    def test_login_page_has_no_video_by_default(self, app, client):
+        resp = client.get("/login")
+        html = resp.get_data(as_text=True)
+        assert "auth-video-bg" not in html
+        assert "auth-shell-with-video" not in html
+
+    def test_login_page_shows_configured_video(self, app, client):
+        with app.app_context():
+            settings = PlatformSettings.get_or_create()
+            settings.auth_background_video = "uploads/platform/auth/bg.mp4"
+            db.session.commit()
+
+        try:
+            for path in ("/login", "/cadastro", "/recuperar-senha"):
+                resp = client.get(path)
+                html = resp.get_data(as_text=True)
+                assert "auth-video-bg" in html, f"vídeo não apareceu em {path}"
+                assert "uploads/platform/auth/bg.mp4" in html
+        finally:
+            with app.app_context():
+                settings = PlatformSettings.get_or_create()
+                settings.auth_background_video = None
+                db.session.commit()

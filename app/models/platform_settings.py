@@ -242,6 +242,15 @@ class PlatformSettings(db.Model, TimestampMixin):
     # destaque padrão do tema selecionado.
     admin_theme_accent = Column(String(7), nullable=True)
 
+    # Vídeo de fundo (em loop) das telas de autenticação — login,
+    # cadastro de loja e recuperação de senha (app/templates/layouts/auth.html).
+    # Opcional: sem vídeo enviado, essas telas continuam com o fundo
+    # padrão (sólido), como sempre foi. Mesmo formato/validação de
+    # landing_content["hero_video"] (ver app/utils/uploads.py:save_platform_video),
+    # mas guardado num campo próprio (não é conteúdo editorial da
+    # landing page, é decoração compartilhada por 4 telas diferentes).
+    auth_background_video = Column(String(255), nullable=True)
+
     # Logo da própria plataforma (não confundir com Tenant.logo_path, a
     # logo de cada loja) — usada na landing page, no favicon padrão do
     # site e nas telas de autenticação (login, cadastro, recuperação de

@@ -143,11 +143,18 @@ class PlatformSettingsService:
 
     def update_admin_appearance(
         self, *, system_theme=None, accent_color=None, reset_to_default=False,
-        platform_logo_file=None, support_whatsapp=None,
+        platform_logo_file=None, support_whatsapp=None, auth_background_video_file=None,
     ):
         from app.models.platform_settings import SYSTEM_THEME_CHOICES
         from app.utils.colors import normalize_hex
-        from app.utils.uploads import PLATFORM_LOGO_DIMENSION, InvalidImageError, delete_product_image_file, save_platform_image
+        from app.utils.uploads import (
+            PLATFORM_LOGO_DIMENSION,
+            InvalidImageError,
+            InvalidVideoError,
+            delete_product_image_file,
+            save_platform_image,
+            save_platform_video,
+        )
 
         valid_themes = {key for key, _label in SYSTEM_THEME_CHOICES}
         if system_theme in valid_themes:
@@ -172,6 +179,30 @@ class PlatformSettingsService:
                     delete_product_image_file(self.settings.platform_logo)
                 self.settings.platform_logo = new_logo
 
+        # video_compression_warning: mesmo padrão de update_landing_content
+        # (ver settings_appearance no controller) — some se o ffmpeg não
+        # estiver instalado no servidor; não impede o vídeo de ser salvo.
+        # Vive em self.settings (não é uma coluna real, só um atributo
+        # solto no objeto para o controller ler antes do redirect).
+        self.settings.video_compression_warning = None
+        if auth_background_video_file and auth_background_video_file.filename:
+            try:
+                new_video, compressed = save_platform_video("auth", auth_background_video_file)
+            except InvalidVideoError:
+                raise
+            else:
+                if self.settings.auth_background_video:
+                    delete_product_image_file(self.settings.auth_background_video)
+                self.settings.auth_background_video = new_video
+                if not compressed:
+                    self.settings.video_compression_warning = (
+                        "O vídeo foi salvo sem otimização (o servidor não tem o ffmpeg "
+                        "instalado, ou a compressão falhou/expirou) — sem isso o vídeo pode "
+                        "demorar para começar a tocar ou travar em conexões mais lentas. "
+                        "Instale o ffmpeg no servidor (ou rode o instalador de novo) para "
+                        "otimizar automaticamente os próximos vídeos enviados."
+                    )
+
         db.session.commit()
         return self.settings
 
@@ -184,6 +215,17 @@ class PlatformSettingsService:
         if self.settings.platform_logo:
             delete_product_image_file(self.settings.platform_logo)
             self.settings.platform_logo = None
+            db.session.commit()
+        return self.settings
+
+    def remove_auth_background_video(self) -> PlatformSettings:
+        """Ação isolada do ícone de remover no dropzone do vídeo de fundo
+        das telas de autenticação — mesmo padrão de `remove_platform_logo`."""
+        from app.utils.uploads import delete_product_image_file
+
+        if self.settings.auth_background_video:
+            delete_product_image_file(self.settings.auth_background_video)
+            self.settings.auth_background_video = None
             db.session.commit()
         return self.settings
 

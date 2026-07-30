@@ -44,6 +44,14 @@
       {% endif %}
     </button>
 
+    <button type="button" class="settings-option" data-bs-toggle="offcanvas" data-bs-target="#editAuthVideo" aria-controls="editAuthVideo">
+      <div class="settings-option-head">
+        <div class="settings-option-icon"><i class="bi bi-camera-reels"></i></div>
+      </div>
+      <div class="settings-option-title">Vídeo — login, cadastro e recuperação</div>
+      <div class="settings-option-preview">{{ "Vídeo configurado — toca em loop atrás do formulário" if settings.auth_background_video else "Nenhum vídeo enviado — fundo padrão" }}</div>
+    </button>
+
     <button type="button" class="settings-option" data-bs-toggle="offcanvas" data-bs-target="#editSuporte" aria-controls="editSuporte">
       <div class="settings-option-head">
         <div class="settings-option-icon"><i class="bi bi-whatsapp"></i></div>
@@ -125,6 +133,23 @@
 
       {{ media.image_dropzone(form.platform_logo, settings.platform_logo, url_for('admin.settings_appearance_remove_logo'), 'Clique para enviar a logo do sistema') }}
 
+      <div class="drawer-actions mt-auto">{{ form.submit(class="btn btn-chili w-100") }}</div>
+    </div>
+  </div>
+
+  <div class="offcanvas offcanvas-end drawer-narrow" tabindex="-1" id="editAuthVideo" aria-labelledby="editAuthVideoLabel">
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title" id="editAuthVideoLabel"><i class="bi bi-camera-reels me-2"></i>Vídeo — login, cadastro e recuperação</h5>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+    </div>
+    <div class="offcanvas-body d-flex flex-column">
+      <p class="text-muted-custom small mb-3">
+        Opcional — toca em loop automático atrás do formulário nas telas de login, cadastro de loja
+        e recuperação de senha (as 4 telas de autenticação, ver <code>layouts/auth.html</code>).
+        MP4 ou WEBM, até 25MB. O vídeo é otimizado automaticamente ao enviar (recomprimido e limitado a 1080p).
+        Sem vídeo, essas telas continuam com o fundo padrão.
+      </p>
+      {{ media.video_dropzone(form.auth_background_video, settings.auth_background_video, url_for('admin.settings_appearance_remove_auth_video')) }}
       <div class="drawer-actions mt-auto">{{ form.submit(class="btn btn-chili w-100") }}</div>
     </div>
   </div>

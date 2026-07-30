@@ -546,9 +546,28 @@ body:has(.app-shell) .toast-flash-stack { top: 84px; }
 .toast-flash-leave-start { opacity: 1; transform: scale(1); max-height: 100px; }
 .toast-flash-leave-end { opacity: 0; transform: scale(.97) translateX(8px); max-height: 0; margin-top: -10px; }
 
-/* ---------- Painel de autenticação (login/cadastro/recuperar) ---------- */
-.auth-shell { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 16px; gap: 20px; }
-.auth-panel { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius); padding: 40px 30px; width: 100%; max-width: 440px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); animation: authPanelIn .5s ease both; }
+/* ---------- Painel de autenticação (login/cadastro/recuperar) ----------
+   Vídeo de fundo é OPCIONAL (PlatformSettings.auth_background_video,
+   configurado pelo Super Admin em Configurações → Aparência) — sem ele,
+   .auth-shell continua com o fundo sólido padrão do tema ativo. Com
+   vídeo, .auth-video-bg cobre a tela inteira (mesmo padrão de
+   .hero-video-bg da landing page) e .auth-panel vira um cartão "vidro
+   fosco" (glassmorphism) flutuando por cima, pra continuar legível
+   sobre qualquer cena do vídeo. */
+.auth-shell { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 16px; gap: 20px; position: relative; overflow: hidden; }
+.auth-video-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
+.auth-video-overlay { position: absolute; inset: 0; z-index: 1; background: linear-gradient(180deg, color-mix(in srgb, var(--ink) 55%, transparent), color-mix(in srgb, var(--ink) 88%, transparent)); }
+.auth-shell-with-video .auth-back-link,
+.auth-shell-with-video .auth-tabs,
+.auth-shell-with-video .auth-panel { position: relative; z-index: 2; }
+.auth-shell-with-video .auth-panel {
+  background: color-mix(in srgb, var(--card-bg) 78%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-color: color-mix(in srgb, var(--card-text) 14%, transparent);
+}
+.auth-shell-with-video .auth-tabs { background: color-mix(in srgb, var(--ink) 40%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.auth-panel { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: calc(var(--radius) + 4px); padding: 40px 30px; width: 100%; max-width: 440px; box-shadow: 0 20px 50px rgba(0,0,0,0.35); animation: authPanelIn .5s ease both; }
 .auth-back-link { display: inline-flex; align-items: center; gap: 6px; color: var(--muted-text); text-decoration: none; font-size: .85rem; }
 .auth-back-link:hover { color: var(--card-text); }
 /* As abas Entrar/Criar Loja são NAVEGAÇÃO (trocam de tela), não uma
@@ -567,6 +586,7 @@ body:has(.app-shell) .toast-flash-stack { top: 84px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .auth-panel { animation: none; }
+  .auth-video-bg { display: none; }
 }
 
 /* ---------- "Revelar ao rolar" genérico (data-reveal, ver comanda.js) ---------- */

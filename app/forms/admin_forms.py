@@ -248,6 +248,11 @@ class AdminAppearanceForm(FlaskForm):
         validators=[FileAllowed(["png", "jpg", "jpeg", "webp"], message="Formato não suportado.")],
     )
 
+    auth_background_video = FileField(
+        "Vídeo de fundo do login/cadastro/recuperação de senha (opcional)",
+        validators=[FileAllowed(["mp4", "webm"], message="Formato não suportado. Use MP4 ou WEBM.")],
+    )
+
     support_whatsapp = StringField(
         "WhatsApp de suporte (com DDI+DDD, ex: 5567999998888)",
         validators=[Optional(), Length(max=20), phone_number()],

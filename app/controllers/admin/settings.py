@@ -210,11 +210,14 @@ def settings_appearance():
                 system_theme=form.system_theme.data,
                 accent_color=form.accent_color.data, reset_to_default=form.reset_to_default.data,
                 platform_logo_file=form.platform_logo.data, support_whatsapp=form.support_whatsapp.data,
+                auth_background_video_file=form.auth_background_video.data,
             )
-        except InvalidImageError as exc:
+        except (InvalidImageError, InvalidVideoError) as exc:
             flash(str(exc), "danger")
         else:
             flash("Aparência do painel atualizada.", "success")
+            if getattr(settings, "video_compression_warning", None):
+                flash(settings.video_compression_warning, "warning")
             return redirect(url_for("admin.settings_appearance"))
 
     return render_template(
@@ -237,6 +240,23 @@ def settings_appearance_remove_logo():
 
     form = AdminAppearanceForm()
     html = render_template("admin/settings/_logo_dropzone_fragment.html", form=form, settings=settings)
+    return make_response(html)
+
+
+@admin_bp.route("/configuracoes/aparencia/video-login/remover", methods=["POST"])
+@super_admin_required
+def settings_appearance_remove_auth_video():
+    """Ação isolada do ícone de remover no dropzone do vídeo de fundo das
+    telas de autenticação — mesmo padrão de settings_appearance_remove_logo."""
+    if not request.headers.get("HX-Request"):
+        return "", 400
+
+    service = PlatformSettingsService()
+    service.remove_auth_background_video()
+    settings = service.settings
+
+    form = AdminAppearanceForm()
+    html = render_template("admin/settings/_auth_video_dropzone_fragment.html", form=form, settings=settings)
     return make_response(html)
 
 

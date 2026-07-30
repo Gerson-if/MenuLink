@@ -1,0 +1,2 @@
+{% import "admin/settings/_media_dropzone.html" as media %}
+{{ media.video_dropzone(form.auth_background_video, settings.auth_background_video, url_for('admin.settings_appearance_remove_auth_video')) }}

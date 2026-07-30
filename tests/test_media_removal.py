@@ -95,6 +95,60 @@ class TestPlatformSettingsServiceRemoveLandingMedia:
                 service.remove_landing_media("not_a_real_field")
 
 
+class TestPlatformSettingsServiceRemoveAuthVideo:
+    def test_removes_auth_background_video(self, app):
+        with app.app_context():
+            service = PlatformSettingsService()
+            service.settings.auth_background_video = "uploads/platform/auth/x.mp4"
+            db.session.commit()
+
+            service.remove_auth_background_video()
+
+            assert service.settings.auth_background_video is None
+
+    def test_is_a_no_op_when_no_video(self, app):
+        with app.app_context():
+            service = PlatformSettingsService()
+            service.settings.auth_background_video = None
+            db.session.commit()
+
+            service.remove_auth_background_video()  # não deve levantar erro
+
+            assert service.settings.auth_background_video is None
+
+
+class TestRemoveAuthVideoRoute:
+    def test_requires_htmx_header(self, app, client, login_as):
+        login_as(client, "admin@cardapio.saas", "admin123")
+        resp = client.post("/admin/configuracoes/aparencia/video-login/remover")
+        assert resp.status_code == 400
+
+    def test_removes_video_and_returns_fragment(self, app, client, login_as):
+        with app.app_context():
+            from app.models.platform_settings import PlatformSettings
+
+            settings = PlatformSettings.get_or_create()
+            settings.auth_background_video = "uploads/platform/auth/x.mp4"
+            db.session.commit()
+
+        login_as(client, "admin@cardapio.saas", "admin123")
+        resp = client.post("/admin/configuracoes/aparencia/video-login/remover", headers={"HX-Request": "true"})
+
+        assert resp.status_code == 200
+        assert b"dropzone-remove-existing" not in resp.data
+
+        with app.app_context():
+            from app.models.platform_settings import PlatformSettings
+
+            settings = PlatformSettings.get_or_create()
+            assert settings.auth_background_video is None
+
+    def test_requires_super_admin(self, app, client, login_as):
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        resp = client.post("/admin/configuracoes/aparencia/video-login/remover", headers={"HX-Request": "true"})
+        assert resp.status_code in (302, 403)
+
+
 class TestRemoveLogoRoute:
     def test_requires_htmx_header(self, app, client, login_as):
         login_as(client, "lojista@braseiroecia.com.br", "lojista123")

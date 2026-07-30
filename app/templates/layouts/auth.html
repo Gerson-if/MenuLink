@@ -8,7 +8,13 @@
 {% endblock %}
 
 {% block content %}
-<div class="auth-shell">
+<div class="auth-shell{{ ' auth-shell-with-video' if platform_settings and platform_settings.auth_background_video }}">
+  {% if platform_settings and platform_settings.auth_background_video %}
+  <video class="auth-video-bg" autoplay muted loop playsinline
+         src="{{ url_for('static', filename=platform_settings.auth_background_video) }}"></video>
+  <div class="auth-video-overlay"></div>
+  {% endif %}
+
   <a href="{{ url_for('index') }}" class="auth-back-link"><i class="bi bi-arrow-left"></i> Voltar ao site</a>
 
   {# Navegação Entrar / Criar Loja fica ACIMA do formulário de propósito:
