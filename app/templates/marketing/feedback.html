@@ -1,0 +1,40 @@
+{% extends "marketing/_legal_layout.html" %}
+{% block title %}Sugestões &amp; Reportar um problema — Comanda{% endblock %}
+
+{% block legal_content %}
+<h1 class="font-display">Sugestões &amp; Reportar um problema</h1>
+<p class="legal-updated">
+  Encontrou algo que não funcionou como esperado, ou tem uma ideia para melhorar a Comanda?
+  Conte pra gente abaixo — toda mensagem chega direto para a nossa equipe.
+</p>
+
+<form method="POST" novalidate class="mx-auto" style="max-width: 520px;">
+  {{ form.hidden_tag() }}
+
+  <div class="mb-3">
+    {{ form.kind.label(class="form-label small fw-semibold") }}
+    {{ form.kind(class="form-select" + (" border-danger" if form.kind.errors else "")) }}
+    {% for error in form.kind.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+  </div>
+
+  <div class="mb-3">
+    {{ form.name.label(class="form-label small fw-semibold") }}
+    {{ form.name(class="form-control" + (" border-danger" if form.name.errors else ""), placeholder="Seu nome", maxlength=150) }}
+    {% for error in form.name.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+  </div>
+
+  <div class="mb-3">
+    {{ form.email.label(class="form-label small fw-semibold") }}
+    {{ form.email(class="form-control" + (" border-danger" if form.email.errors else ""), placeholder="nome@email.com", maxlength=255) }}
+    {% for error in form.email.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+  </div>
+
+  <div class="mb-4">
+    {{ form.message.label(class="form-label small fw-semibold") }}
+    {{ form.message(class="form-control" + (" border-danger" if form.message.errors else ""), rows=5, placeholder="Descreva com o máximo de detalhes que puder...") }}
+    {% for error in form.message.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+  </div>
+
+  {{ form.submit(class="btn btn-chili w-100") }}
+</form>
+{% endblock %}

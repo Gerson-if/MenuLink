@@ -77,6 +77,11 @@
         {% set unread = admin_unread_chat_count() %}
         {% if unread %}<span class="status-badge status-blocked ms-1">{{ unread }}</span>{% endif %}
       </a>
+      <a href="{{ url_for('admin.feedback_list') }}" class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.feedback') }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Sugestões &amp; Erros">
+        <i class="bi bi-lightbulb"></i><span class="nav-label">Sugestões &amp; Erros</span>
+        {% set new_feedback = admin_new_feedback_count() %}
+        {% if new_feedback %}<span class="status-badge status-blocked ms-1">{{ new_feedback }}</span>{% endif %}
+      </a>
     </nav>
 
     <div class="sidebar-foot">

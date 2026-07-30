@@ -109,6 +109,9 @@
         {% set unread = lojista_unread_chat_count() %}
         {% if unread %}<span class="status-badge status-blocked ms-1">{{ unread }}</span>{% endif %}
       </a>
+      <a href="{{ url_for('lojista.feedback') }}" class="nav-link {{ 'active' if request.endpoint == 'lojista.feedback' }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Sugestões &amp; Erros">
+        <i class="bi bi-lightbulb"></i><span class="nav-label">Sugestões &amp; Erros</span>
+      </a>
       {# Seção própria (fora de "Configurações") de propósito — é onde o
          plano, as faturas e o próprio período de teste vivem, e merece
          mais destaque do que uma aba a mais dentro de configurações

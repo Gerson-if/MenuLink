@@ -1,0 +1,63 @@
+{% extends "layouts/lojista_panel.html" %}
+{% block title %}Sugestões &amp; Erros — Comanda{% endblock %}
+{% block page_title %}Sugestões &amp; Erros{% endblock %}
+
+{% block panel_content %}
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="panel">
+      <div class="panel-title"><i class="bi bi-lightbulb"></i> Enviar sugestão ou reportar um problema</div>
+      <p class="text-muted-custom small mb-3">
+        Tem uma ideia para melhorar a Comanda, ou algo não funcionou como esperado? Conte pra gente abaixo.
+      </p>
+
+      <form method="POST" novalidate>
+        {{ form.hidden_tag() }}
+
+        <div class="mb-3">
+          {{ form.kind.label(class="form-label small fw-semibold") }}
+          {{ form.kind(class="form-select" + (" border-danger" if form.kind.errors else "")) }}
+          {% for error in form.kind.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+        </div>
+
+        <div class="mb-3">
+          {{ form.message.label(class="form-label small fw-semibold") }}
+          {{ form.message(class="form-control" + (" border-danger" if form.message.errors else ""), rows=5, placeholder="Descreva com o máximo de detalhes que puder...") }}
+          {% for error in form.message.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+        </div>
+
+        {{ form.submit(class="btn btn-chili") }}
+      </form>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="panel">
+      <div class="panel-title"><i class="bi bi-clock-history"></i> Suas mensagens anteriores</div>
+      {% if previous_feedback %}
+      <ul class="list-unstyled mb-0">
+        {% for item in previous_feedback %}
+        <li class="d-flex justify-content-between align-items-start gap-2 py-2" style="border-top: 1px solid var(--card-border);">
+          <div class="small">
+            <div>
+              <span class="fw-semibold">{{ item.kind_label }}</span>
+              <span class="text-muted-custom">· {{ item.created_at.strftime("%d/%m/%Y") }}</span>
+            </div>
+            <div class="text-muted-custom text-truncate" style="max-width: 320px;">{{ item.message }}</div>
+          </div>
+          <span class="status-badge
+            {%- if item.status.value == 'resolved' %} status-active
+            {%- elif item.status.value == 'in_review' %} status-trial
+            {%- elif item.status.value == 'archived' %} status-suspended
+            {%- else %} status-blocked
+            {%- endif %} flex-shrink-0">{{ item.status_label }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="text-muted-custom small mb-0">Você ainda não enviou nenhuma sugestão ou reporte.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

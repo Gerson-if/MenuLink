@@ -24,6 +24,7 @@ from app.models.billing import Subscription, Invoice, SubscriptionStatus, Invoic
 from app.models.banner import Banner
 from app.models.chat_message import ChatMessage, ChatSenderRole
 from app.models.platform_settings import PlatformSettings, ASAAS_ENVIRONMENT_CHOICES
+from app.models.feedback import Feedback, FeedbackKind, FeedbackStatus
 
 __all__ = [
     "Tenant",
@@ -54,4 +55,7 @@ __all__ = [
     "ChatSenderRole",
     "PlatformSettings",
     "ASAAS_ENVIRONMENT_CHOICES",
+    "Feedback",
+    "FeedbackKind",
+    "FeedbackStatus",
 ]

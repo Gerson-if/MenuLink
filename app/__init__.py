@@ -82,11 +82,13 @@ def _register_blueprints(app: Flask) -> None:
     from app.controllers.admin import admin_bp
     from app.controllers.lojista import lojista_bp
     from app.controllers.public_controller import public_bp
+    from app.controllers.feedback_public_controller import feedback_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(lojista_bp)
     app.register_blueprint(public_bp)
+    app.register_blueprint(feedback_bp)
 
     from app.controllers.webhooks_controller import webhooks_bp
 
@@ -236,6 +238,15 @@ def _register_template_filters(app: Flask) -> None:
         from app.services.chat_service import ChatService
 
         return len(ChatService.tenant_ids_with_unread_messages_for_admin())
+
+    @app.template_global("admin_new_feedback_count")
+    def admin_new_feedback_count() -> int:
+        """Selo de sugestões/reportes ainda não tratados na sidebar do
+        Super Admin (ver layouts/admin_panel.html) — mesma ideia do selo
+        de chat não lido, ver admin_unread_chat_count acima."""
+        from app.services.feedback_service import FeedbackService
+
+        return FeedbackService.new_count()
 
     @app.template_global("cheapest_plan_name")
     def cheapest_plan_name() -> str | None:

@@ -1,0 +1,80 @@
+{% extends "layouts/admin_panel.html" %}
+{% block title %}Sugestões &amp; Erros — Comanda Admin{% endblock %}
+{% block page_title %}Sugestões &amp; Erros{% endblock %}
+
+{% block panel_content %}
+<p class="text-muted-custom small mb-4">
+  Sugestões e reportes de erro enviados por visitantes da landing page e por lojistas, direto do painel.
+</p>
+
+<form method="GET" class="d-flex flex-wrap gap-2 mb-4">
+  <select name="status" class="form-select form-select-sm" style="max-width: 200px;" onchange="this.form.submit()">
+    <option value="" {{ "selected" if not status }}>Todos os status</option>
+    <option value="new" {{ "selected" if status == "new" }}>Novo</option>
+    <option value="in_review" {{ "selected" if status == "in_review" }}>Em análise</option>
+    <option value="resolved" {{ "selected" if status == "resolved" }}>Resolvido</option>
+    <option value="archived" {{ "selected" if status == "archived" }}>Arquivado</option>
+  </select>
+  <select name="kind" class="form-select form-select-sm" style="max-width: 200px;" onchange="this.form.submit()">
+    <option value="" {{ "selected" if not kind }}>Todos os tipos</option>
+    <option value="suggestion" {{ "selected" if kind == "suggestion" }}>Sugestão</option>
+    <option value="bug_report" {{ "selected" if kind == "bug_report" }}>Reporte de erro</option>
+  </select>
+  {% if status or kind %}<a href="{{ url_for('admin.feedback_list') }}" class="btn btn-sm btn-outline-secondary">Limpar</a>{% endif %}
+</form>
+
+{% if items %}
+<div class="d-flex flex-column gap-3">
+  {% for item in items %}
+  <div class="panel">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+      <div>
+        <span class="status-badge
+          {%- if item.kind.value == 'bug_report' %} status-blocked
+          {%- else %} status-trial
+          {%- endif %}">{{ item.kind_label }}</span>
+        <span class="status-badge
+          {%- if item.status.value == 'resolved' %} status-active
+          {%- elif item.status.value == 'in_review' %} status-trial
+          {%- elif item.status.value == 'archived' %} status-suspended
+          {%- else %} status-blocked
+          {%- endif %} ms-1">{{ item.status_label }}</span>
+      </div>
+      <span class="text-muted-custom small">{{ item.created_at.strftime("%d/%m/%Y às %H:%M") }}</span>
+    </div>
+
+    <p class="mb-2" style="white-space: pre-wrap;">{{ item.message }}</p>
+
+    <p class="text-muted-custom small mb-3">
+      {% if item.tenant %}
+      <i class="bi bi-shop"></i> {{ item.tenant.name }}
+      {% elif item.name or item.email %}
+      <i class="bi bi-person"></i> {{ item.name or "Visitante" }}{% if item.email %} · {{ item.email }}{% endif %}
+      {% else %}
+      <i class="bi bi-incognito"></i> Visitante anônimo
+      {% endif %}
+    </p>
+
+    <form method="POST" action="{{ url_for('admin.feedback_update_status', feedback_id=item.id, status=status, kind=kind, page=pagination.page) }}" class="d-flex flex-wrap align-items-start gap-2">
+      {{ status_form.hidden_tag() }}
+      <select name="status" class="form-select form-select-sm" style="max-width: 180px;">
+        <option value="new" {{ "selected" if item.status.value == "new" }}>Novo</option>
+        <option value="in_review" {{ "selected" if item.status.value == "in_review" }}>Em análise</option>
+        <option value="resolved" {{ "selected" if item.status.value == "resolved" }}>Resolvido</option>
+        <option value="archived" {{ "selected" if item.status.value == "archived" }}>Arquivado</option>
+      </select>
+      <input type="text" name="admin_notes" class="form-control form-control-sm flex-grow-1" style="min-width: 200px;"
+             placeholder="Anotação interna (opcional)" value="{{ item.admin_notes or '' }}">
+      <button type="submit" class="btn btn-sm btn-outline-secondary">Salvar</button>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="panel empty-state">
+  <i class="bi bi-lightbulb"></i>
+  Nenhuma sugestão ou reporte {% if status or kind %}com esse filtro{% else %}ainda{% endif %}.
+</div>
+{% endif %}
+{% include "_pagination.html" %}
+{% endblock %}
