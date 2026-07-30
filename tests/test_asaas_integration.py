@@ -329,6 +329,21 @@ class TestAsaasWebhook:
             assert tenant.status == TenantStatus.ACTIVE
             assert tenant.blocked_reason is None
 
+            # Confirmação "em tempo real" via chat de suporte (ver
+            # AdminBillingService._send_payment_confirmed_message) — o
+            # lojista vê essa mensagem no próximo poll de 5s do chat,
+            # com os dados da fatura paga.
+            from app.models import ChatMessage, ChatSenderRole
+
+            system_message = (
+                ChatMessage.query.filter_by(tenant_id=tenant.id, sender_role=ChatSenderRole.SUPER_ADMIN)
+                .order_by(ChatMessage.created_at.desc())
+                .first()
+            )
+            assert system_message is not None
+            assert "Pagamento confirmado" in system_message.body
+            assert "49.90" in system_message.body or "49,90" in system_message.body
+
     def test_webhook_ignores_unknown_payment_id(self, app, client):
         with app.app_context():
             app.config["ASAAS_WEBHOOK_TOKEN"] = "segredo-correto"

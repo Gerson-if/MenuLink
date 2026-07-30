@@ -1,0 +1,78 @@
+{# Painel de faturas — extraído à parte para poder ser recarregado
+   sozinho via polling HTMX (ver settings_subscription_billing_fragment
+   em app/controllers/lojista/settings.py) enquanto houver uma fatura
+   aguardando pagamento via Pix. Isso é o que dá a sensação de "tempo
+   real": assim que o webhook do Asaas confirma o Pix (ver
+   AdminBillingService.mark_paid), o próximo poll já mostra a fatura
+   como "Paga" sozinho, sem precisar dar F5 — mesma ideia de polling já
+   usada no chat de suporte (ver lojista/_chat_messages.html). Espera
+   `invoices`, `awaiting_payment` e `recently_paid_invoice` no
+   contexto. #}
+<div
+  id="billing-invoices-panel" class="panel"
+  {% if awaiting_payment %}
+  hx-get="{{ url_for('lojista.settings_subscription_billing_fragment') }}"
+  hx-trigger="every 8s" hx-swap="outerHTML" hx-select="#billing-invoices-panel"
+  {% endif %}
+>
+  <div class="panel-title"><i class="bi bi-receipt-cutoff"></i> Faturas</div>
+
+  {% if recently_paid_invoice %}
+  {# Só aparece por alguns minutos após a confirmação (ver `RECENTLY_PAID_WINDOW_MINUTES`
+     em settings.py) — a mesma confirmação também chega pelo chat de
+     suporte, que fica registrada pra sempre; este banner aqui é só o
+     "flash" imediato de quem estava com a tela de assinatura aberta
+     esperando o Pix cair. #}
+  <div class="alert alert-success py-2 small mb-3 d-flex align-items-start gap-2">
+    <i class="bi bi-check-circle-fill mt-1"></i>
+    <div>
+      <strong>Pagamento confirmado!</strong> Recebemos R$ {{ "%.2f"|format(recently_paid_invoice.amount_cents / 100) }}
+      referente à fatura de {{ recently_paid_invoice.due_date.strftime("%d/%m/%Y") }}{% if recently_paid_invoice.subscription and recently_paid_invoice.subscription.plan %} do plano '{{ recently_paid_invoice.subscription.plan.name }}'{% endif %},
+      confirmado em {{ recently_paid_invoice.paid_at.strftime("%d/%m/%Y às %H:%M") }}.
+    </div>
+  </div>
+  {% endif %}
+
+  {% if invoices %}
+  <div style="overflow-x: auto;">
+  <table class="table table-borderless table-sm mb-0" style="color: var(--card-text);">
+    <thead class="text-muted-custom small text-uppercase"><tr><th>Vencimento</th><th>Valor</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for invoice in invoices %}
+      <tr style="border-top: 1px solid var(--card-border);">
+        <td>
+          {{ invoice.due_date.strftime("%d/%m/%Y") }}
+          {% if invoice.description %}<div class="text-muted-custom" style="font-size: .72rem;">{{ invoice.description }}</div>{% endif %}
+        </td>
+        <td>R$ {{ "%.2f"|format(invoice.amount_cents / 100) }}</td>
+        <td>
+          {% if invoice.status.value == 'paid' %}<span class="status-badge status-active">Paga</span>
+          {% elif invoice.status.value == 'overdue' %}<span class="status-badge status-blocked">Vencida</span>
+          {% elif invoice.status.value == 'canceled' %}<span class="status-badge status-suspended">Cancelada</span>
+          {% else %}<span class="status-badge status-trial">Pendente</span>{% endif %}
+        </td>
+        <td class="text-end">
+          <a href="{{ url_for('lojista.settings_subscription_invoice_detail', invoice_id=invoice.id) }}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-eye"></i> Detalhes
+          </a>
+          {% if invoice.payment_link_url and invoice.status.value in ('pending', 'overdue') %}
+          <a href="{{ invoice.payment_link_url }}" target="_blank" rel="noopener" class="btn btn-sm btn-chili">
+            <i class="bi bi-box-arrow-up-right"></i> Pagar agora
+          </a>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% if awaiting_payment %}
+  <p class="text-muted-custom small mt-3 mb-0">
+    <span class="spinner-border spinner-border-sm" style="width: .8rem; height: .8rem;"></span>
+    Aguardando confirmação do pagamento — assim que o Pix cair, esta página atualiza sozinha.
+  </p>
+  {% endif %}
+  {% else %}
+  <p class="text-muted-custom small mb-0">Nenhuma fatura lançada ainda.</p>
+  {% endif %}
+</div>

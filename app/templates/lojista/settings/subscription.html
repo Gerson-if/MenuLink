@@ -115,45 +115,7 @@
   </div>
 
   <div class="col-lg-7">
-    <div class="panel">
-      <div class="panel-title"><i class="bi bi-receipt-cutoff"></i> Faturas</div>
-      {% if invoices %}
-      <div style="overflow-x: auto;">
-      <table class="table table-borderless table-sm mb-0" style="color: var(--card-text);">
-        <thead class="text-muted-custom small text-uppercase"><tr><th>Vencimento</th><th>Valor</th><th>Status</th><th></th></tr></thead>
-        <tbody>
-          {% for invoice in invoices %}
-          <tr style="border-top: 1px solid var(--card-border);">
-            <td>
-              {{ invoice.due_date.strftime("%d/%m/%Y") }}
-              {% if invoice.description %}<div class="text-muted-custom" style="font-size: .72rem;">{{ invoice.description }}</div>{% endif %}
-            </td>
-            <td>R$ {{ "%.2f"|format(invoice.amount_cents / 100) }}</td>
-            <td>
-              {% if invoice.status.value == 'paid' %}<span class="status-badge status-active">Paga</span>
-              {% elif invoice.status.value == 'overdue' %}<span class="status-badge status-blocked">Vencida</span>
-              {% elif invoice.status.value == 'canceled' %}<span class="status-badge status-suspended">Cancelada</span>
-              {% else %}<span class="status-badge status-trial">Pendente</span>{% endif %}
-            </td>
-            <td class="text-end">
-              <a href="{{ url_for('lojista.settings_subscription_invoice_detail', invoice_id=invoice.id) }}" class="btn btn-sm btn-outline-secondary">
-                <i class="bi bi-eye"></i> Detalhes
-              </a>
-              {% if invoice.payment_link_url and invoice.status.value in ('pending', 'overdue') %}
-              <a href="{{ invoice.payment_link_url }}" target="_blank" rel="noopener" class="btn btn-sm btn-chili">
-                <i class="bi bi-box-arrow-up-right"></i> Pagar agora
-              </a>
-              {% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      </div>
-      {% else %}
-      <p class="text-muted-custom small mb-0">Nenhuma fatura lançada ainda.</p>
-      {% endif %}
-    </div>
+    {% include "lojista/settings/_invoices_panel.html" %}
   </div>
 </div>
 {% endblock %}

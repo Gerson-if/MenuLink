@@ -17,7 +17,7 @@ Fluxo:
 """
 
 from calendar import monthrange
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 
 from app.extensions import db
 from app.models import BillingCycle, Invoice, InvoiceStatus, Subscription, SubscriptionStatus, TenantStatus
@@ -276,7 +276,14 @@ class AdminBillingService:
 
     def mark_paid(self, invoice: Invoice):
         """Marca a fatura como paga e libera o tenant se ele estava
-        bloqueado por inadimplência (validação de pagamento)."""
+        bloqueado por inadimplência (validação de pagamento). Chamado
+        tanto pelo webhook do Asaas (Pix confirmado automaticamente,
+        ver app/controllers/webhooks_controller.py) quanto por uma
+        marcação manual do Super Admin — nos dois casos, o lojista é
+        avisado pelo chat de suporte (ver `_send_payment_confirmed_message`
+        abaixo), que já é o canal "em tempo real" (polling HTMX a cada
+        5s) usado no resto do app para avisos automáticos, ex.: lembretes
+        de fim de período de teste em TrialService."""
         invoice.status = InvoiceStatus.PAID
         invoice.paid_at = datetime.now(timezone.utc)
 
@@ -290,7 +297,32 @@ class AdminBillingService:
             invoice.subscription.status = SubscriptionStatus.ACTIVE
 
         db.session.commit()
+        self._send_payment_confirmed_message(invoice)
         return invoice
+
+    def _send_payment_confirmed_message(self, invoice: Invoice) -> None:
+        """Mensagem automática de confirmação de pagamento — a parte
+        "em tempo real" pedida para o Pix: assim que o webhook do Asaas
+        confirma o pagamento (ou o Super Admin marca manualmente), o
+        lojista vê a mensagem aparecer no chat de suporte no próximo
+        poll de 5s, com os dados da fatura paga (valor, vencimento,
+        plano) sem precisar atualizar a página."""
+        from app.services.chat_service import ChatService
+
+        tenant = invoice.tenant
+        if tenant is None:
+            return
+
+        plan = invoice.subscription.plan if invoice.subscription else tenant.plan
+        plan_line = f" do plano '{plan.name}'" if plan else ""
+        paid_at_label = invoice.paid_at.strftime("%d/%m/%Y às %H:%M") if invoice.paid_at else ""
+
+        ChatService.send_system_message(
+            tenant.id,
+            f"✅ Pagamento confirmado! Recebemos R$ {invoice.amount_cents / 100:.2f} referente à "
+            f"fatura de vencimento {invoice.due_date.strftime('%d/%m/%Y')}{plan_line}, "
+            f"confirmado em {paid_at_label}. Sua assinatura está em dia — obrigado!",
+        )
 
     def mark_overdue(self, invoice: Invoice):
         invoice.status = InvoiceStatus.OVERDUE

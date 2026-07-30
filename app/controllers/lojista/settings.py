@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 from flask import flash, make_response, redirect, render_template, request, url_for, Response
 
 from app.forms.tenant_settings_forms import (
@@ -12,6 +14,36 @@ from app.utils.tenant_context import get_current_tenant
 from app.utils.uploads import InvalidImageError
 
 from app.controllers.lojista import lojista_bp
+
+# Janela em que o banner "Pagamento confirmado!" continua aparecendo no
+# topo do painel de Faturas (ver _invoices_panel.html) depois de uma
+# fatura ser marcada como paga — passado esse tempo, some sozinho (a
+# confirmação já ficou registrada pra sempre no chat de suporte, ver
+# AdminBillingService._send_payment_confirmed_message).
+RECENTLY_PAID_WINDOW_MINUTES = 5
+
+
+def _billing_panel_context(tenant, service: AdminBillingService) -> dict:
+    """Contexto compartilhado por settings_subscription e seu fragmento
+    de polling (settings_subscription_billing_fragment) — mantém as
+    duas rotas sempre calculando `awaiting_payment`/`recently_paid_invoice`
+    do mesmo jeito, ver lojista/settings/_invoices_panel.html."""
+    invoices = service.list_invoices_for_tenant(tenant.id)
+
+    awaiting_payment = any(
+        inv.payment_link_url and inv.status in (InvoiceStatus.PENDING, InvoiceStatus.OVERDUE) for inv in invoices
+    )
+
+    recently_paid_invoice = None
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=RECENTLY_PAID_WINDOW_MINUTES)
+    paid_invoices = [inv for inv in invoices if inv.status == InvoiceStatus.PAID and inv.paid_at]
+    if paid_invoices:
+        most_recent = max(paid_invoices, key=lambda inv: inv.paid_at)
+        paid_at = most_recent.paid_at if most_recent.paid_at.tzinfo else most_recent.paid_at.replace(tzinfo=timezone.utc)
+        if paid_at >= cutoff:
+            recently_paid_invoice = most_recent
+
+    return {"invoices": invoices, "awaiting_payment": awaiting_payment, "recently_paid_invoice": recently_paid_invoice}
 
 
 @lojista_bp.route("/conta-bloqueada")
@@ -230,13 +262,26 @@ def settings_appearance():
 def settings_subscription():
     tenant = get_current_tenant()
     service = AdminBillingService()
-    invoices = service.list_invoices_for_tenant(tenant.id)
     subscription = service.get_subscription_for_tenant(tenant.id)
     available_plans = PlanRepository().list_active_for_landing()
     return render_template(
-        "lojista/settings/subscription.html", tenant=tenant, invoices=invoices, subscription=subscription,
-        available_plans=available_plans,
+        "lojista/settings/subscription.html", tenant=tenant, subscription=subscription,
+        available_plans=available_plans, **_billing_panel_context(tenant, service),
     )
+
+
+@lojista_bp.route("/configuracoes/assinatura/fragmento")
+@lojista_required
+def settings_subscription_billing_fragment():
+    """Fragmento reaproveitado pelo polling HTMX do painel de Faturas
+    (ver lojista/settings/_invoices_panel.html, hx-trigger="every 8s")
+    enquanto houver uma fatura aguardando pagamento via Pix — é o que dá
+    a sensação de "tempo real" quando o webhook do Asaas confirma o
+    pagamento (ver AdminBillingService.mark_paid) sem o lojista precisar
+    atualizar a página manualmente."""
+    tenant = get_current_tenant()
+    service = AdminBillingService()
+    return render_template("lojista/settings/_invoices_panel.html", **_billing_panel_context(tenant, service))
 
 
 @lojista_bp.route("/configuracoes/assinatura/faturas/<int:invoice_id>")
