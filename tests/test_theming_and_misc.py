@@ -6,7 +6,7 @@ painel administrativo (Super Admin).
 """
 
 from app.extensions import db
-from app.models import Category, Product, Tenant
+from app.models import Category, Product, Tenant, TenantStatus
 from app.models.platform_settings import PlatformSettings
 from app.utils.colors import darken_hex, hex_to_rgba_css, normalize_hex
 
@@ -227,6 +227,88 @@ class TestTenantPanelTheme:
             assert tenant.panel_theme is None
 
 
+class TestTenantPublicThemePreset:
+    """Tema PRONTO do CARDÁPIO PÚBLICO (Tenant.public_theme) — distinto
+    da cor livre customizada testada em TestTenantPublicTheme acima e de
+    panel_theme (área de gestão, ver TestTenantPanelTheme abaixo). Ver
+    Tenant.public_theme_css_vars e
+    app/controllers/lojista/settings.py:settings_appearance."""
+
+    def test_defaults_to_none_and_uses_custom_accent(self, app):
+        with app.app_context():
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            assert tenant.public_theme is None
+            assert tenant.public_theme_css_vars is None  # nunca customizou nada ainda
+
+    def test_settings_route_saves_public_theme_and_overrides_accent(self, app, client, login_as):
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        resp = client.post(
+            "/painel/configuracoes/aparencia",
+            data={"accent_color": "#E8A33D", "theme_mode": "dark", "panel_theme": "", "public_theme": "ocean"},
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+
+        with app.app_context():
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            assert tenant.public_theme == "ocean"
+            # A cor de destaque do cardápio vem do TEMA, não do accent_color
+            # livre submetido junto (que fica guardado, mas não tem prioridade).
+            assert tenant.public_theme_css_vars["accent"] == "#2E86AB"
+
+    def test_custom_accent_kept_when_switching_back_to_personalized(self, app, client, login_as):
+        # Escolher um tema pronto não apaga a cor livre já salva — só
+        # sai de prioridade. Voltando para "Personalizado" (public_theme=""),
+        # a cor livre volta a valer, sem o lojista precisar escolher de novo.
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        client.post(
+            "/painel/configuracoes/aparencia",
+            data={"accent_color": "#123456", "theme_mode": "dark", "panel_theme": "", "public_theme": ""},
+        )
+        client.post(
+            "/painel/configuracoes/aparencia",
+            data={"accent_color": "#123456", "theme_mode": "dark", "panel_theme": "", "public_theme": "forest"},
+        )
+        with app.app_context():
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            assert tenant.public_theme_css_vars["accent"] == "#3E8E5B"
+
+        client.post(
+            "/painel/configuracoes/aparencia",
+            data={"accent_color": "#123456", "theme_mode": "dark", "panel_theme": "", "public_theme": ""},
+        )
+        with app.app_context():
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            assert tenant.public_theme is None
+            assert tenant.public_theme_css_vars["accent"] == "#123456"
+
+    def test_invalid_public_theme_is_ignored(self, app, client, login_as):
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        client.post(
+            "/painel/configuracoes/aparencia",
+            data={"accent_color": "#E8A33D", "theme_mode": "dark", "panel_theme": "", "public_theme": "nao-existe"},
+        )
+        with app.app_context():
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            assert tenant.public_theme is None
+
+    def test_public_theme_reflected_on_store_menu_page(self, app, client, login_as):
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        client.post(
+            "/painel/configuracoes/aparencia",
+            data={"accent_color": "#E8A33D", "theme_mode": "dark", "panel_theme": "", "public_theme": "midnight"},
+        )
+
+        with app.app_context():
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            slug = tenant.slug
+            tenant.status = TenantStatus.ACTIVE
+            db.session.commit()
+
+        resp = client.get(f"/loja/{slug}")
+        assert "#8B5CF6" in resp.get_data(as_text=True)  # accent do tema "midnight"
+
+
 class TestAdminPanelTheme:
     def test_admin_panel_defaults_to_chili_not_blue(self, app, client, login_as):
         login_as(client, "admin@cardapio.saas", "admin123")
@@ -243,7 +325,7 @@ class TestAdminPanelTheme:
     def test_settings_appearance_route_saves_and_reflects_in_panel(self, app, client, login_as):
         login_as(client, "admin@cardapio.saas", "admin123")
         resp = client.post(
-            "/admin/configuracoes/aparencia",
+            "/admin/configuracoes/aparencia/cor",
             data={"accent_color": "#123456"},
             follow_redirects=True,
         )
@@ -267,6 +349,68 @@ class TestAdminPanelTheme:
         resp = client.get("/admin/configuracoes/aparencia")
         assert resp.status_code in (302, 403)
 
+    def test_saving_system_theme_does_not_reintroduce_stale_accent_override(self, app, client, login_as):
+        """Bug relatado: trocar de tema só mudava 'algumas cores e mantinha
+        as cores antigas'. Causa raiz: as 5 gavetas viviam num único
+        <form>, então salvar o tema reenviava também o valor (desatualizado)
+        do campo de cor avançada, recriando um `admin_theme_accent`
+        obsoleto. Agora cada gaveta salva isolada — trocar só o tema não
+        deve tocar em `admin_theme_accent`."""
+        login_as(client, "admin@cardapio.saas", "admin123")
+
+        # define uma cor avançada customizada sobre o tema chili (padrão)
+        client.post("/admin/configuracoes/aparencia/cor", data={"accent_color": "#123456"})
+        with app.app_context():
+            settings = PlatformSettings.get_or_create()
+            assert settings.admin_theme_accent == "#123456"
+
+        # troca só o tema — a gaveta de cor não é reenviada
+        resp = client.post(
+            "/admin/configuracoes/aparencia/tema",
+            data={"system_theme": "ocean"},
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+
+        with app.app_context():
+            settings = PlatformSettings.get_or_create()
+            assert settings.system_theme == "ocean"
+            # a cor customizada antiga (do tema chili) continua intacta —
+            # não foi apagada nem sobrescrita silenciosamente
+            assert settings.admin_theme_accent == "#123456"
+
+        resp = client.get("/admin/lojistas")
+        html = resp.get_data(as_text=True)
+        assert "theme-ocean" in html
+        assert "#123456" in html
+
+    def test_saving_accent_matching_current_theme_default_does_not_create_override(self, app, client, login_as):
+        login_as(client, "admin@cardapio.saas", "admin123")
+        from app.models.platform_settings import SYSTEM_THEME_ACCENTS
+
+        chili_default = SYSTEM_THEME_ACCENTS["chili"]
+        client.post("/admin/configuracoes/aparencia/cor", data={"accent_color": chili_default})
+        with app.app_context():
+            settings = PlatformSettings.get_or_create()
+            assert settings.admin_theme_accent is None
+
+    def test_saving_support_whatsapp_does_not_clear_accent_override(self, app, client, login_as):
+        login_as(client, "admin@cardapio.saas", "admin123")
+        client.post("/admin/configuracoes/aparencia/cor", data={"accent_color": "#123456"})
+        client.post("/admin/configuracoes/aparencia/suporte", data={"support_whatsapp": "5567999998888"})
+        with app.app_context():
+            settings = PlatformSettings.get_or_create()
+            assert settings.admin_theme_accent == "#123456"
+            assert settings.support_whatsapp == "5567999998888"
+
+    def test_saving_accent_does_not_clear_support_whatsapp(self, app, client, login_as):
+        login_as(client, "admin@cardapio.saas", "admin123")
+        client.post("/admin/configuracoes/aparencia/suporte", data={"support_whatsapp": "5567999998888"})
+        client.post("/admin/configuracoes/aparencia/tema", data={"system_theme": "ocean"})
+        with app.app_context():
+            settings = PlatformSettings.get_or_create()
+            assert settings.support_whatsapp == "5567999998888"
+
 
 class TestUnifiedSystemTheme:
     def test_defaults_to_chili(self, app):
@@ -281,8 +425,8 @@ class TestUnifiedSystemTheme:
     def test_settings_appearance_saves_system_theme_and_reflects_everywhere(self, app, client, login_as):
         login_as(client, "admin@cardapio.saas", "admin123")
         resp = client.post(
-            "/admin/configuracoes/aparencia",
-            data={"system_theme": "ocean", "accent_color": ""},
+            "/admin/configuracoes/aparencia/tema",
+            data={"system_theme": "ocean"},
             follow_redirects=True,
         )
         assert resp.status_code == 200
@@ -313,8 +457,8 @@ class TestUnifiedSystemTheme:
     def test_invalid_system_theme_is_ignored(self, app, client, login_as):
         login_as(client, "admin@cardapio.saas", "admin123")
         client.post(
-            "/admin/configuracoes/aparencia",
-            data={"system_theme": "nao-existe", "accent_color": ""},
+            "/admin/configuracoes/aparencia/tema",
+            data={"system_theme": "nao-existe"},
         )
         with app.app_context():
             settings = PlatformSettings.get_or_create()

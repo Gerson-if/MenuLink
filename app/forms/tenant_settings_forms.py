@@ -19,6 +19,15 @@ from app.utils.validators import cpf_cnpj, not_blank, phone_number, slug_format
 # conjunto de temas paralelo só para o lojista.
 PANEL_THEME_CHOICES = [("", "Padrão da plataforma")] + SYSTEM_THEME_CHOICES
 
+# Tema PRONTO do CARDÁPIO PÚBLICO (diferente de PANEL_THEME_CHOICES
+# acima, que é para a área de gestão) — a opção vazia ("") significa
+# "cor personalizada", isto é, continuar usando a cor livre escolhida
+# em accent_color logo abaixo (comportamento padrão, sempre existiu).
+# Mesmas 4 paletas do tema unificado do sistema, pelo mesmo motivo de
+# PANEL_THEME_CHOICES: são atalhos para paletas já prontas, não um
+# conjunto de temas paralelo.
+PUBLIC_THEME_CHOICES = [("", "Personalizado (cor livre abaixo)")] + SYSTEM_THEME_CHOICES
+
 # HH:MM, 24 horas (aceita "9:00" ou "09:00")
 _TIME_FORMAT = Regexp(r"^([01]?\d|2[0-3]):[0-5]\d$", message="Use o formato HH:MM (ex: 18:30).")
 
@@ -76,6 +85,12 @@ class CheckoutSettingsForm(FlaskForm):
 
 
 class AppearanceSettingsForm(FlaskForm):
+    public_theme = SelectField(
+        "Tema do cardápio",
+        choices=PUBLIC_THEME_CHOICES,
+        default="",
+        validators=[Optional()],
+    )
     accent_color = StringField(
         "Cor de destaque do cardápio",
         validators=[Optional(), Length(max=7)],
@@ -83,7 +98,7 @@ class AppearanceSettingsForm(FlaskForm):
     )
     reset_to_default = BooleanField("Voltar para a cor padrão (âmbar)")
     theme_mode = SelectField(
-        "Tema do cardápio",
+        "Modo do cardápio",
         choices=[("dark", "Escuro (atual)"), ("light", "Claro")],
         default="dark",
     )

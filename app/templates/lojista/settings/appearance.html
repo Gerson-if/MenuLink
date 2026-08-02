@@ -16,10 +16,13 @@
     <button type="button" class="settings-option" data-bs-toggle="offcanvas" data-bs-target="#editAppearance" aria-controls="editAppearance">
       <div class="settings-option-head">
         <div class="settings-option-icon"><i class="bi bi-palette"></i></div>
-        <span class="settings-option-swatch" style="background: {{ form.accent_color.data }};"></span>
+        <span class="settings-option-swatch" style="background: {{ system_theme_accents[form.public_theme.data] if form.public_theme.data else form.accent_color.data }};"></span>
       </div>
-      <div class="settings-option-title">Cor e tema do cardápio</div>
-      <div class="settings-option-preview">Tema {{ dict(form.theme_mode.choices).get(form.theme_mode.data, form.theme_mode.data)|lower }} — cor de destaque {{ form.accent_color.data }}.</div>
+      <div class="settings-option-title">Tema e cor do cardápio</div>
+      <div class="settings-option-preview">
+        {% if form.public_theme.data %}{{ dict(form.public_theme.choices).get(form.public_theme.data) }}{% else %}Personalizado ({{ form.accent_color.data }}){% endif %}
+        — modo {{ dict(form.theme_mode.choices).get(form.theme_mode.data, form.theme_mode.data)|lower }}.
+      </div>
     </button>
 
     <button type="button" class="settings-option" data-bs-toggle="offcanvas" data-bs-target="#editPanelTheme" aria-controls="editPanelTheme">
@@ -33,51 +36,63 @@
 
   <div class="offcanvas offcanvas-end drawer-narrow" tabindex="-1" id="editAppearance" aria-labelledby="editAppearanceLabel">
     <div class="offcanvas-header">
-      <h5 class="offcanvas-title" id="editAppearanceLabel"><i class="bi bi-palette me-2"></i>Cor de destaque do cardápio</h5>
+      <h5 class="offcanvas-title" id="editAppearanceLabel"><i class="bi bi-palette me-2"></i>Tema e cor do cardápio</h5>
       <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
     </div>
-    <div class="offcanvas-body d-flex flex-column">
+    {# `presetTheme` guarda o tema pronto escolhido (public_theme) — quando
+       vazio ("Personalizado"), a seção de cor livre abaixo aparece;
+       escolhendo um dos 4 temas prontos, ela some (a cor de destaque
+       passa a vir do tema, ver Tenant.public_theme_css_vars). Mesmo
+       x-data cobre também o seletor de cor livre, pelo mesmo motivo de
+       antes: os atalhos de cor e o campo de texto hexadecimal precisam
+       compartilhar a variável `hex` com o input[type=color] real. #}
+    <div class="offcanvas-body d-flex flex-column"
+         x-data='{ presetTheme: {{ form.public_theme.data|tojson }}, hex: {{ form.accent_color.data|tojson }} }'
+         x-init="$watch('hex', value => { if (/^#[0-9a-fA-F]{6}$/.test(value)) { $refs.accentPicker.value = value; } })">
       <p class="upload-meta mb-3">
-        Essa é a cor usada nos botões, preços e destaques do seu cardápio público
-        (a página que o cliente vê ao escanear o QR Code ou abrir o link da loja).
-        Não afeta este painel de gestão.
+        Escolha um tema pronto, ou personalize com uma cor livre — usados nos botões,
+        preços e destaques do seu cardápio público (a página que o cliente vê ao
+        escanear o QR Code ou abrir o link da loja). Não afeta este painel de gestão.
       </p>
 
-      {# Seletor de cor nativo + campo de texto hexadecimal, sincronizados
-         nos dois sentidos via Alpine — só o input[type=color] é de fato
-         o campo do form (name="accent_color"); o campo de texto e os
-         atalhos de cor abaixo são UI auxiliar que escreve no valor dele
-         antes do submit. O $watch só aplica o valor digitado ao seletor
-         quando já for um hex completo e válido (6 dígitos) — evita
-         "resetar" o seletor a cada tecla digitada, enquanto o hex ainda
-         está incompleto. Atalhos e campo de texto ficam no MESMO
-         x-data do seletor de cor, para compartilhar a variável `hex`. #}
-      <div x-data='{ hex: {{ form.accent_color.data|tojson }} }'
-           x-init="$watch('hex', value => { if (/^#[0-9a-fA-F]{6}$/.test(value)) { $refs.accentPicker.value = value; } })">
+      <div class="theme-swatch-group mb-3">
+        {% for value, label in form.public_theme.choices %}
+        <label class="theme-swatch">
+          <input type="radio" name="public_theme" value="{{ value }}" x-model="presetTheme">
+          <div class="theme-swatch-card">
+            {% if value %}
+            <div class="theme-swatch-preview" style="background: {{ system_theme_swatches[value] }};"></div>
+            {% else %}
+            <div class="theme-swatch-preview d-flex align-items-center justify-content-center" style="background: color-mix(in srgb, var(--card-text) 8%, transparent);">
+              <i class="bi bi-eyedropper" style="color: var(--muted-text);"></i>
+            </div>
+            {% endif %}
+            <span class="theme-swatch-label">{{ label }}</span>
+          </div>
+        </label>
+        {% endfor %}
+      </div>
+
+      <div x-show="presetTheme === ''" x-cloak>
+        {# Seletor de cor nativo + campo de texto hexadecimal, sincronizados
+           nos dois sentidos via Alpine — só o input[type=color] é de fato
+           o campo do form (name="accent_color"); o campo de texto e os
+           atalhos de cor abaixo são UI auxiliar que escreve no valor dele
+           antes do submit. O $watch (acima, no x-data do drawer) só
+           aplica o valor digitado ao seletor quando já for um hex
+           completo e válido (6 dígitos) — evita "resetar" o seletor a
+           cada tecla digitada, enquanto o hex ainda está incompleto. #}
         <div class="mb-3 d-flex align-items-center gap-3 flex-wrap">
           {{ form.accent_color(class="form-control form-control-color", style="width: 70px; height: 46px; padding: 4px; flex-shrink: 0;", **{"x-ref": "accentPicker", "@input": "hex = $event.target.value"}) }}
           <input type="text" class="form-control" style="max-width: 130px; flex-shrink: 0;" maxlength="7" placeholder="#E8A33D" x-model="hex">
-          <span class="text-muted-custom small">Escolha uma cor que combine com a identidade da sua loja, ou use um dos atalhos abaixo.</span>
+          <span class="text-muted-custom small">Escolha uma cor que combine com a identidade da sua loja.</span>
         </div>
+        {% for error in form.accent_color.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
 
-        {# Atalhos rápidos: reaproveitam a cor de destaque de cada um dos 4
-           temas prontos do sistema (mesma paleta que o Super Admin usa em
-           Configurações → Aparência) — só preenchem o seletor de cor
-           acima, sem mexer em nenhum campo novo do formulário. #}
-        <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
-          <span class="text-muted-custom small me-1">Atalhos:</span>
-          {% for value, accent in system_theme_accents.items() %}
-          <button type="button" class="btn p-0 border-0" title="{{ dict(form.panel_theme.choices).get(value, value) }}"
-                  style="width: 28px; height: 28px; border-radius: 50%; background: {{ accent }}; border: 2px solid var(--card-border);"
-                  @click="hex = '{{ accent }}'"></button>
-          {% endfor %}
+        <div class="form-check mb-3">
+          {{ form.reset_to_default(class="form-check-input") }}
+          {{ form.reset_to_default.label(class="form-check-label") }}
         </div>
-      </div>
-      {% for error in form.accent_color.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
-
-      <div class="form-check mb-4">
-        {{ form.reset_to_default(class="form-check-input") }}
-        {{ form.reset_to_default.label(class="form-check-label") }}
       </div>
 
       <div class="mb-4">
@@ -88,7 +103,7 @@
           <label class="btn btn-outline-chili" for="theme_mode_{{ value }}">{{ label }}</label>
           {% endfor %}
         </div>
-        <p class="upload-meta mb-0 mt-2">O tema claro/escuro muda o fundo e as cores do cardápio público — não afeta este painel.</p>
+        <p class="upload-meta mb-0 mt-2">O modo claro/escuro muda o fundo e as cores do cardápio público — não afeta este painel.</p>
       </div>
 
       <div class="drawer-actions mt-auto">

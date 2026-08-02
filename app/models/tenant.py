@@ -332,18 +332,47 @@ class Tenant(db.Model, TimestampMixin):
         return value if value in valid_keys else None
 
     @property
+    def public_theme(self) -> str | None:
+        """Tema PRONTO escolhido pelo lojista para o CARDÁPIO PÚBLICO
+        (`theme_settings["public_theme"]`) — uma das 4 paletas do
+        sistema (mesmas identidades do tema do painel/plataforma),
+        usada como atalho para a cor de destaque em vez de escolher uma
+        cor livre. None (nunca escolhido, ou valor desconhecido) = usa
+        a cor livre/personalizada de `theme_settings["accent"]`, exatamente
+        como sempre funcionou — escolher um preset aqui não é
+        obrigatório, é só uma forma mais rápida de customizar. Mesmo
+        espírito de `panel_theme` acima, mas para o cardápio, não para
+        esta área de gestão."""
+        from app.models.platform_settings import SYSTEM_THEME_CHOICES
+
+        value = (self.theme_settings or {}).get("public_theme")
+        valid_keys = {key for key, _label in SYSTEM_THEME_CHOICES}
+        return value if value in valid_keys else None
+
+    @property
     def public_theme_css_vars(self) -> dict | None:
         """
-        Variáveis CSS derivadas da cor de destaque escolhida pelo
-        lojista para o CARDÁPIO PÚBLICO (armazenada em
-        `theme_settings["accent"]`) — ou None se o lojista nunca
-        customizou, caso em que o cardápio usa o âmbar padrão do
-        template. Diferente do tema do painel administrativo
+        Variáveis CSS para o CARDÁPIO PÚBLICO — ou None se o lojista
+        nunca customizou nada, caso em que o cardápio usa o âmbar
+        padrão do template. Duas fontes possíveis para a cor de
+        destaque, nesta ordem de prioridade:
+        1. Um tema PRONTO escolhido (`public_theme`, ver acima) — usa a
+           cor de destaque daquele tema (SYSTEM_THEME_ACCENTS).
+        2. Uma cor LIVRE escolhida à mão (`theme_settings["accent"]`),
+           quando não há tema pronto selecionado.
+        Diferente do tema do painel administrativo
         (PlatformSettings.admin_theme_css_vars): esta cor é a
         identidade visual da LOJA para os clientes dela, não do painel
         interno de gestão.
         """
-        accent = (self.theme_settings or {}).get("accent")
+        preset = self.public_theme
+        if preset:
+            from app.models.platform_settings import SYSTEM_THEME_ACCENTS
+
+            accent = SYSTEM_THEME_ACCENTS.get(preset)
+        else:
+            accent = (self.theme_settings or {}).get("accent")
+
         if not accent:
             return None
         from app.utils.colors import darken_hex, hex_to_rgba_css

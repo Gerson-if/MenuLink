@@ -2,7 +2,7 @@ from flask import abort, flash, make_response, redirect, render_template, reques
 from flask_login import current_user
 
 from app.forms.admin_forms import AdminAppearanceForm, AsaasSettingsForm, EmailSettingsForm, EmailTestForm, LandingContentForm, LegalContentForm, TrialSettingsForm
-from app.models.platform_settings import SYSTEM_THEME_SWATCHES
+from app.models.platform_settings import SYSTEM_THEME_ACCENTS, SYSTEM_THEME_SWATCHES
 from app.services.email_service import EmailError
 from app.services.payment_gateway.base import PaymentGatewayError
 from app.services.platform_settings_service import PlatformSettingsService
@@ -192,37 +192,109 @@ def settings_trial():
     return render_template("admin/settings/trial.html", form=form, settings=settings)
 
 
-@admin_bp.route("/configuracoes/aparencia", methods=["GET", "POST"])
+@admin_bp.route("/configuracoes/aparencia", methods=["GET"])
 @super_admin_required
 def settings_appearance():
+    """Somente exibe a tela — cada gaveta (tema, cor, logo, vídeo,
+    WhatsApp) agora salva na SUA própria rota abaixo, cada uma chamando
+    `update_admin_appearance` só com o(s) parâmetro(s) da sua própria
+    gaveta (ver docstring do serviço). Isso corrige um bug onde salvar
+    qualquer gaveta reenviava (e regravava) os campos de todas as
+    outras, já que tudo vivia dentro de um único <form> — o sintoma
+    reportado era o tema mudar só parcialmente, com a cor de destaque
+    "grudando" num valor antigo.
+    """
     service = PlatformSettingsService()
     settings = service.settings
     form = AdminAppearanceForm()
 
-    if not form.is_submitted():
-        form.system_theme.data = settings.system_theme_or_default
-        form.accent_color.data = settings.admin_theme_accent or "#E54A36"
-        form.support_whatsapp.data = settings.support_whatsapp or ""
-
-    if form.validate_on_submit():
-        try:
-            service.update_admin_appearance(
-                system_theme=form.system_theme.data,
-                accent_color=form.accent_color.data, reset_to_default=form.reset_to_default.data,
-                platform_logo_file=form.platform_logo.data, support_whatsapp=form.support_whatsapp.data,
-                auth_background_video_file=form.auth_background_video.data,
-            )
-        except (InvalidImageError, InvalidVideoError) as exc:
-            flash(str(exc), "danger")
-        else:
-            flash("Aparência do painel atualizada.", "success")
-            if getattr(settings, "video_compression_warning", None):
-                flash(settings.video_compression_warning, "warning")
-            return redirect(url_for("admin.settings_appearance"))
+    effective_theme = settings.system_theme_or_default
+    form.system_theme.data = effective_theme
+    # A cor de destaque avançada é opcional (some por cima do tema
+    # escolhido acima) — pré-preenche com a cor do tema ATUAL quando não
+    # houver override, em vez de um hex fixo (o valor fixo antigo era a
+    # causa raiz do bug: ao trocar de tema, o campo continuava mostrando
+    # a cor do tema anterior e essa cor "vazava" para o novo tema).
+    form.accent_color.data = settings.admin_theme_accent or SYSTEM_THEME_ACCENTS.get(effective_theme, "#E54A36")
+    form.support_whatsapp.data = settings.support_whatsapp or ""
 
     return render_template(
         "admin/settings/appearance.html", form=form, settings=settings, system_theme_swatches=SYSTEM_THEME_SWATCHES,
     )
+
+
+@admin_bp.route("/configuracoes/aparencia/tema", methods=["POST"])
+@super_admin_required
+def settings_appearance_system_theme():
+    form = AdminAppearanceForm()
+    service = PlatformSettingsService()
+    if form.validate_on_submit() and form.system_theme.data:
+        service.update_admin_appearance(system_theme=form.system_theme.data)
+        flash("Tema do sistema atualizado.", "success")
+    return redirect(url_for("admin.settings_appearance"))
+
+
+@admin_bp.route("/configuracoes/aparencia/cor", methods=["POST"])
+@super_admin_required
+def settings_appearance_accent():
+    form = AdminAppearanceForm()
+    service = PlatformSettingsService()
+    if form.validate_on_submit():
+        service.update_admin_appearance(
+            accent_color=form.accent_color.data, reset_to_default=form.reset_to_default.data,
+        )
+        flash("Cor de destaque atualizada.", "success")
+    else:
+        for error in form.accent_color.errors:
+            flash(error, "danger")
+    return redirect(url_for("admin.settings_appearance"))
+
+
+@admin_bp.route("/configuracoes/aparencia/logo", methods=["POST"])
+@super_admin_required
+def settings_appearance_logo():
+    form = AdminAppearanceForm()
+    service = PlatformSettingsService()
+    if form.validate_on_submit() and form.platform_logo.data and form.platform_logo.data.filename:
+        try:
+            service.update_admin_appearance(platform_logo_file=form.platform_logo.data)
+        except InvalidImageError as exc:
+            flash(str(exc), "danger")
+        else:
+            flash("Logo do sistema atualizada.", "success")
+    return redirect(url_for("admin.settings_appearance"))
+
+
+@admin_bp.route("/configuracoes/aparencia/video-login", methods=["POST"])
+@super_admin_required
+def settings_appearance_video():
+    form = AdminAppearanceForm()
+    service = PlatformSettingsService()
+    settings = service.settings
+    if form.validate_on_submit() and form.auth_background_video.data and form.auth_background_video.data.filename:
+        try:
+            service.update_admin_appearance(auth_background_video_file=form.auth_background_video.data)
+        except InvalidVideoError as exc:
+            flash(str(exc), "danger")
+        else:
+            flash("Vídeo de fundo atualizado.", "success")
+            if getattr(settings, "video_compression_warning", None):
+                flash(settings.video_compression_warning, "warning")
+    return redirect(url_for("admin.settings_appearance"))
+
+
+@admin_bp.route("/configuracoes/aparencia/suporte", methods=["POST"])
+@super_admin_required
+def settings_appearance_support():
+    form = AdminAppearanceForm()
+    service = PlatformSettingsService()
+    if form.validate_on_submit():
+        service.update_admin_appearance(support_whatsapp=form.support_whatsapp.data)
+        flash("WhatsApp de suporte atualizado.", "success")
+    else:
+        for error in form.support_whatsapp.errors:
+            flash(error, "danger")
+    return redirect(url_for("admin.settings_appearance"))
 
 
 @admin_bp.route("/configuracoes/aparencia/logo/remover", methods=["POST"])

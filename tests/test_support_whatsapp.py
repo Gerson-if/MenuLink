@@ -19,7 +19,7 @@ class TestSupportWhatsappSetting:
         if csrf:
             data["csrf_token"] = csrf
 
-        client.post("/admin/configuracoes/aparencia", data=data, follow_redirects=True)
+        client.post("/admin/configuracoes/aparencia/suporte", data=data, follow_redirects=True)
 
         with app.app_context():
             settings = PlatformSettingsService().settings
@@ -33,7 +33,7 @@ class TestSupportWhatsappSetting:
         if csrf:
             data["csrf_token"] = csrf
 
-        resp = client.post("/admin/configuracoes/aparencia", data=data, follow_redirects=True)
+        resp = client.post("/admin/configuracoes/aparencia/suporte", data=data, follow_redirects=True)
         assert "Telefone inválido" in resp.get_data(as_text=True)
 
 

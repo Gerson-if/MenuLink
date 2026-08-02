@@ -240,6 +240,7 @@ def settings_appearance():
             reset_to_default=form.reset_to_default.data,
             theme_mode=form.theme_mode.data,
             panel_theme=form.panel_theme.data,
+            public_theme=form.public_theme.data,
         )
         flash("Aparência atualizada.", "success")
         return redirect(url_for("lojista.settings_appearance"))
@@ -248,6 +249,7 @@ def settings_appearance():
         form.accent_color.data = (tenant.theme_settings or {}).get("accent") or "#E8A33D"
         form.theme_mode.data = (tenant.theme_settings or {}).get("mode") or "dark"
         form.panel_theme.data = tenant.panel_theme or ""
+        form.public_theme.data = tenant.public_theme or ""
 
     from app.models.platform_settings import SYSTEM_THEME_ACCENTS, SYSTEM_THEME_SWATCHES
 

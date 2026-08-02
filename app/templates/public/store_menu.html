@@ -306,10 +306,40 @@
   .opt-option-qty .extra { font-family: var(--font-mono); font-size: .7rem; margin-left: 6px; color: var(--text-faint); }
 
   /* ===== CHECKOUT ===== */
+  /* Seletor de retirar/entregar — deliberadamente NÃO parece um botão
+     (nada de preenchimento sólido tipo .btn-accent): o cliente confundia
+     com o botão de enviar pedido. Usa o mesmo padrão visual "seleção
+     suave" já usado em .opt-option.checked / .nav-list button.active
+     (fundo --accent-soft + texto --accent), que no resto da página
+     já significa "opção escolhida", não "ação a executar". */
+  .delivery-toggle { display: flex; gap: 8px; }
+  .delivery-toggle button {
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line-strong);
+    background: var(--surface); color: var(--text-dim); font-weight: 600; font-size: .88rem;
+    transition: all .15s; cursor: pointer;
+  }
+  .delivery-toggle button:hover { border-color: var(--line-strong); background: var(--surface-2); }
+  .delivery-toggle button.is-selected { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
+  .delivery-toggle button .bi { font-size: 1rem; }
   .checkout-form .form-control, .checkout-form .form-select { background: var(--surface); color: var(--text); border-color: var(--line-strong); }
   .checkout-form .form-control:focus, .checkout-form .form-select:focus { background: var(--surface); color: var(--text); border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
   .checkout-form .form-control::placeholder { color: var(--text-faint); font-size: .85rem; }
   .checkout-form label { font-weight: 600; font-size: .85rem; color: var(--text-dim); margin-bottom: 4px; display: block; }
+
+  /* ===== ALERTAS/ERROS (cliente final) ===== */
+  /* Componente único de aviso — ícone + texto + transição suave — usado
+     em todo lugar que hoje mostra um erro/aviso pro cliente (checkout,
+     modal de produto, login por telefone, perfil): antes era uma mistura
+     de <div class="alert ...border-vermelho"> e texto solto colorido, sem
+     entrada/saída animada. Duas variantes: perigo (campo inválido, falha
+     de envio) e aviso (informativo, não bloqueia o pedido). */
+  .form-alert { display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px; border-radius: 10px; font-size: .85rem; font-weight: 600; line-height: 1.35; }
+  .form-alert .bi { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+  .form-alert-danger { background: color-mix(in srgb, var(--rust) 12%, transparent); color: var(--rust); }
+  .form-alert-warning { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent-dark); }
+  .form-alert-success { background: color-mix(in srgb, var(--herb) 14%, transparent); color: var(--herb); }
+  .form-alert-inline { padding: 0; background: none; font-weight: 500; }
 
   [x-cloak] { display: none !important; }
 </style>
@@ -523,9 +553,10 @@
               <p class="mt-3" style="color: var(--text-dim);" x-show="selectedProduct.description" x-text="selectedProduct.description"></p>
               <div class="fw-bold fs-4" style="color: var(--accent);" x-text="'R$ ' + formatCents(modalUnitPriceCents())"></div>
 
-              <template x-if="modalValidationError">
-                <div class="alert alert-danger py-2 small mt-2" x-text="modalValidationError"></div>
-              </template>
+              <div class="form-alert form-alert-danger mt-2" x-show="modalValidationError" x-cloak x-transition>
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <span x-text="modalValidationError"></span>
+              </div>
 
               <template x-if="variationGroups(selectedProduct).length">
                 <div class="mt-3">
@@ -667,7 +698,10 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
         </div>
         <div class="modal-body checkout-form">
-          <template x-if="errorMessage"><div class="alert alert-danger py-2 small" x-text="errorMessage"></div></template>
+          <div class="form-alert form-alert-danger mb-3" x-show="errorMessage" x-cloak x-transition>
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <span x-text="errorMessage"></span>
+          </div>
 
           <div class="ticket mb-3">
             <div class="d-flex justify-content-between"><span>Itens (<span x-text="itemCount()"></span>)</span><span x-text="'R$ ' + formatCents(subtotalCents())"></span></div>
@@ -676,23 +710,34 @@
 
           <div class="mb-3">
             <label>Seu nome</label>
-            <input type="text" class="form-control" x-model="checkout.customer_name" maxlength="150" placeholder="Ex: João Silva">
+            <input type="text" class="form-control" x-model="checkout.customer_name" @blur="checkoutNameTouched = true" maxlength="150" placeholder="Ex: João Silva">
+            <div class="form-alert form-alert-danger form-alert-inline mt-1" x-show="checkoutNameTouched && !checkout.customer_name.trim()" x-cloak x-transition>
+              <i class="bi bi-exclamation-circle-fill"></i>
+              <span>Informe seu nome para continuar.</span>
+            </div>
           </div>
 
           <div class="mb-3">
             <label>WhatsApp / telefone</label>
             <input type="tel" class="form-control" :value="checkout.customer_phone" @input="checkout.customer_phone = maskPhone($event.target.value)" @blur="checkoutPhoneTouched = true" maxlength="16" placeholder="(67) 99999-9999">
-            <div class="small mt-1" style="color: var(--rust);" x-show="checkoutPhoneTouched && checkout.customer_phone && !isPhoneValid(checkout.customer_phone)">Número inválido. Informe o telefone com DDD, como (67) 99999-9999.</div>
+            <div class="form-alert form-alert-danger form-alert-inline mt-1" x-show="checkoutPhoneTouched && checkout.customer_phone && !isPhoneValid(checkout.customer_phone)" x-cloak x-transition>
+              <i class="bi bi-exclamation-circle-fill"></i>
+              <span>Número inválido. Informe o telefone com DDD, como (67) 99999-9999.</span>
+            </div>
           </div>
 
           <div class="mb-3">
             <label>Forma de entrega</label>
-            <div class="d-flex gap-2">
+            <div class="delivery-toggle" role="radiogroup" aria-label="Forma de entrega">
               <template x-if="tenant.pickup_enabled">
-                <button type="button" class="btn flex-fill" :class="checkout.delivery_type === 'pickup' ? 'btn-accent' : 'btn-ghost-menu'" @click="checkout.delivery_type = 'pickup'">Retirar</button>
+                <button type="button" role="radio" :aria-checked="checkout.delivery_type === 'pickup'" :class="{ 'is-selected': checkout.delivery_type === 'pickup' }" @click="checkout.delivery_type = 'pickup'">
+                  <i class="bi bi-shop"></i> Retirar no local
+                </button>
               </template>
               <template x-if="tenant.delivery_enabled">
-                <button type="button" class="btn flex-fill" :class="checkout.delivery_type === 'delivery' ? 'btn-accent' : 'btn-ghost-menu'" @click="checkout.delivery_type = 'delivery'">Entrega</button>
+                <button type="button" role="radio" :aria-checked="checkout.delivery_type === 'delivery'" :class="{ 'is-selected': checkout.delivery_type === 'delivery' }" @click="checkout.delivery_type = 'delivery'">
+                  <i class="bi bi-geo-alt"></i> Receber em casa
+                </button>
               </template>
             </div>
           </div>
@@ -701,12 +746,27 @@
             <div class="p-3 mb-3 rounded" style="background: var(--surface); border: 1px solid var(--line);">
               <p class="small mb-2" style="color: var(--text-dim);">Informe rua, número e bairro (complemento e cidade opcionais).</p>
               <div class="row g-2">
-                <div class="col-8"><label>Rua</label><input type="text" class="form-control form-control-sm" x-model="checkout.address_street" maxlength="180"></div>
-                <div class="col-4"><label>Número</label><input type="text" class="form-control form-control-sm" x-model="checkout.address_number" maxlength="20"></div>
-                <div class="col-6"><label>Bairro</label><input type="text" class="form-control form-control-sm" x-model="checkout.address_neighborhood" maxlength="100"></div>
+                <div class="col-8">
+                  <label>Rua</label>
+                  <input type="text" class="form-control form-control-sm" x-model="checkout.address_street" @blur="checkoutAddressTouched = true" maxlength="180">
+                </div>
+                <div class="col-4">
+                  <label>Número</label>
+                  <input type="text" class="form-control form-control-sm" x-model="checkout.address_number" @blur="checkoutAddressTouched = true" maxlength="20">
+                </div>
+                <div class="col-6">
+                  <label>Bairro</label>
+                  <input type="text" class="form-control form-control-sm" x-model="checkout.address_neighborhood" @blur="checkoutAddressTouched = true" maxlength="100">
+                </div>
                 <div class="col-6"><label>Complemento</label><input type="text" class="form-control form-control-sm" x-model="checkout.address_complement" maxlength="120"></div>
                 <div class="col-6"><label>Cidade</label><input type="text" class="form-control form-control-sm" x-model="checkout.address_city" maxlength="100"></div>
                 <div class="col-6"><label>Referência</label><input type="text" class="form-control form-control-sm" x-model="checkout.address_reference" maxlength="180"></div>
+              </div>
+              <div class="form-alert form-alert-danger form-alert-inline mt-2"
+                   x-show="checkoutAddressTouched && (!checkout.address_street.trim() || !checkout.address_number.trim() || !checkout.address_neighborhood.trim())"
+                   x-cloak x-transition>
+                <i class="bi bi-exclamation-circle-fill"></i>
+                <span>Rua, número e bairro são obrigatórios para entrega.</span>
               </div>
               <template x-if="tenant.delivery_fee_cents > 0"><p class="small mt-2 mb-0" style="color: var(--text-dim);">Taxa de entrega: R$ <span x-text="formatCents(tenant.delivery_fee_cents)"></span></p></template>
               <template x-if="tenant.free_delivery_above_cents > 0"><p class="small mt-1 mb-0" style="color: var(--text-dim);">Entrega grátis acima de R$ <span x-text="formatCents(tenant.free_delivery_above_cents)"></span></p></template>
@@ -727,9 +787,10 @@
             <textarea class="form-control" rows="2" x-model="checkout.notes" maxlength="1000" :placeholder="tenant.notes_placeholder"></textarea>
           </div>
 
-          <template x-if="tenant.min_order_cents > 0 && subtotalCents() < tenant.min_order_cents">
-            <div class="alert alert-warning py-2 small">Pedido mínimo: R$ <span x-text="formatCents(tenant.min_order_cents)"></span></div>
-          </template>
+          <div class="form-alert form-alert-warning" x-show="tenant.min_order_cents > 0 && subtotalCents() < tenant.min_order_cents" x-cloak x-transition>
+            <i class="bi bi-info-circle-fill"></i>
+            <span>Pedido mínimo: R$ <span x-text="formatCents(tenant.min_order_cents)"></span> — adicione mais itens para continuar.</span>
+          </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-ghost-menu" @click="backToCart()">Voltar</button>
@@ -771,8 +832,14 @@
             <div>
               <label class="form-label small mb-1">Telefone usado no pedido</label>
               <input type="tel" class="form-control mb-2" :value="customerPhoneInput" @input="customerPhoneInput = maskPhone($event.target.value)" @blur="customerPhoneTouched = true" maxlength="16" placeholder="(67) 99999-9999" @keydown.enter="loginCustomer()">
-              <div class="small mb-2" style="color: var(--rust);" x-show="customerPhoneTouched && customerPhoneInput && !isPhoneValid(customerPhoneInput)">Número inválido. Informe o telefone com DDD, como (67) 99999-9999.</div>
-              <div class="small mb-2" style="color: var(--rust);" x-show="customerError" x-text="customerError"></div>
+              <div class="form-alert form-alert-danger form-alert-inline mb-2" x-show="customerPhoneTouched && customerPhoneInput && !isPhoneValid(customerPhoneInput)" x-cloak x-transition>
+                <i class="bi bi-exclamation-circle-fill"></i>
+                <span>Número inválido. Informe o telefone com DDD, como (67) 99999-9999.</span>
+              </div>
+              <div class="form-alert form-alert-danger mb-2" x-show="customerError" x-cloak x-transition>
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <span x-text="customerError"></span>
+              </div>
               <button type="button" class="btn btn-accent w-100" :disabled="customerLoading || !isPhoneValid(customerPhoneInput)" @click="loginCustomer()">
                 <span x-show="!customerLoading">Ver meus pedidos</span><span x-show="customerLoading">Buscando...</span>
               </button>
@@ -862,8 +929,14 @@
                   <input type="text" class="form-control mb-2" x-model="profileName" maxlength="150" placeholder="Seu nome">
                   <label class="form-label small mb-1">Telefone</label>
                   <input type="tel" class="form-control mb-2" :value="profilePhoneInput" @input="profilePhoneInput = maskPhone($event.target.value)" maxlength="16" placeholder="(67) 99999-9999">
-                  <div class="small mb-2" style="color: var(--rust);" x-show="profileError" x-text="profileError"></div>
-                  <div class="small mb-2" style="color: var(--herb);" x-show="profileSuccess">Dados atualizados com sucesso!</div>
+                  <div class="form-alert form-alert-danger mb-2" x-show="profileError" x-cloak x-transition>
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <span x-text="profileError"></span>
+                  </div>
+                  <div class="form-alert form-alert-success mb-2" x-show="profileSuccess" x-cloak x-transition>
+                    <i class="bi bi-check-circle-fill"></i>
+                    <span>Dados atualizados com sucesso!</span>
+                  </div>
                   <button type="button" class="btn btn-accent w-100 mb-3" :disabled="profileSaving || !profileName.trim() || !isPhoneValid(profilePhoneInput)" @click="saveProfile()">
                     <span x-show="!profileSaving">Salvar alterações</span><span x-show="profileSaving">Salvando...</span>
                   </button>
@@ -880,7 +953,10 @@
                       <p class="small mb-2" style="color: var(--rust);">
                         Tem certeza? Isso apaga seu cadastro nesta loja (seus pedidos já feitos continuam no histórico do lojista, sem vínculo com você). Essa ação não pode ser desfeita.
                       </p>
-                      <div class="small mb-2" style="color: var(--rust);" x-show="profileError" x-text="profileError"></div>
+                      <div class="form-alert form-alert-danger mb-2" x-show="profileError" x-cloak x-transition>
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        <span x-text="profileError"></span>
+                      </div>
                       <div class="d-flex gap-2">
                         <button type="button" class="btn btn-outline-secondary flex-grow-1" @click="deleteConfirming = false">Cancelar</button>
                         <button type="button" class="btn btn-outline-danger flex-grow-1" :disabled="profileDeleting" @click="deleteAccount()">
@@ -964,6 +1040,8 @@ function menuApp() {
     modalValidationError: null,
 
     checkoutPhoneTouched: false,
+    checkoutNameTouched: false,
+    checkoutAddressTouched: false,
     checkout: {
       customer_name: '', customer_phone: '', delivery_type: null,
       address_street: '', address_number: '', address_complement: '',

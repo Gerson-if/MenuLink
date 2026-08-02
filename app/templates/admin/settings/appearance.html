@@ -7,14 +7,14 @@
 {% block panel_content %}
 <p class="text-muted-custom small mb-4">Clique num card abaixo para editar.</p>
 
-{# Um único <form> por trás dos cards (mesmo padrão de
-   admin/settings/landing.html) — os cards só abrem a gaveta
-   correspondente; os campos de cada uma continuam dentro deste mesmo
-   <form>, então salvar em qualquer gaveta envia tudo junto. #}
-<form method="POST" enctype="multipart/form-data" novalidate class="landing-editor">
-  {{ form.hidden_tag() }}
-
-  <div class="settings-option-grid" style="max-width: 480px;">
+{# Cada gaveta abaixo tem o SEU PRÓPRIO <form>, enviando para uma rota
+   dedicada — diferente do padrão antigo (um único <form> por trás de
+   todos os cards), que causava um bug real: salvar QUALQUER gaveta
+   reenviava os campos de TODAS as outras, fazendo a cor de destaque
+   customizada "grudar" com um valor antigo sempre que o tema era
+   trocado (o tema parecia mudar só parcialmente). Ver docstring de
+   `update_admin_appearance` em platform_settings_service.py. #}
+<div class="settings-option-grid" style="max-width: 480px;">
     <button type="button" class="settings-option" data-bs-toggle="offcanvas" data-bs-target="#editSystemTheme" aria-controls="editSystemTheme">
       <div class="settings-option-head">
         <div class="settings-option-icon"><i class="bi bi-palette2"></i></div>
@@ -66,7 +66,8 @@
       <h5 class="offcanvas-title" id="editSystemThemeLabel"><i class="bi bi-palette2 me-2"></i>Tema do sistema</h5>
       <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
     </div>
-    <div class="offcanvas-body d-flex flex-column">
+    <form method="POST" action="{{ url_for('admin.settings_appearance_system_theme') }}" novalidate class="offcanvas-body d-flex flex-column">
+      {{ form.hidden_tag() }}
       <p class="text-muted-custom small mb-3">
         Escolha uma paleta completa para o sistema inteiro: a página inicial (landing page),
         o painel do lojista e este painel administrativo mudam juntos, de uma vez só, mantendo
@@ -86,7 +87,7 @@
       </div>
 
       <div class="drawer-actions mt-auto">{{ form.submit(class="btn btn-chili w-100") }}</div>
-    </div>
+    </form>
   </div>
 
   <div class="offcanvas offcanvas-end drawer-narrow" tabindex="-1" id="editAppearance" aria-labelledby="editAppearanceLabel">
@@ -94,7 +95,8 @@
       <h5 class="offcanvas-title" id="editAppearanceLabel"><i class="bi bi-palette me-2"></i>Cor de destaque (avançado)</h5>
       <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
     </div>
-    <div class="offcanvas-body d-flex flex-column">
+    <form method="POST" action="{{ url_for('admin.settings_appearance_accent') }}" novalidate class="offcanvas-body d-flex flex-column">
+      {{ form.hidden_tag() }}
       <p class="text-muted-custom small mb-3">
         Essa cor é usada nos botões, links e destaques deste painel administrativo
         e também no painel dos lojistas (os dois compartilham a mesma identidade
@@ -114,7 +116,7 @@
       </div>
 
       <div class="drawer-actions mt-auto">{{ form.submit(class="btn btn-chili w-100") }}</div>
-    </div>
+    </form>
   </div>
 
   <div class="offcanvas offcanvas-end drawer-narrow" tabindex="-1" id="editLogo" aria-labelledby="editLogoLabel">
@@ -122,7 +124,8 @@
       <h5 class="offcanvas-title" id="editLogoLabel"><i class="bi bi-image me-2"></i>Logo do sistema</h5>
       <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
     </div>
-    <div class="offcanvas-body d-flex flex-column">
+    <form method="POST" action="{{ url_for('admin.settings_appearance_logo') }}" enctype="multipart/form-data" novalidate class="offcanvas-body d-flex flex-column">
+      {{ form.hidden_tag() }}
       <p class="text-muted-custom small mb-3">
         Aparece na página inicial (landing page), no favicon (aba do navegador)
         e nas telas de login, cadastro de loja e recuperação de senha. Sem uma
@@ -134,7 +137,7 @@
       {{ media.image_dropzone(form.platform_logo, settings.platform_logo, url_for('admin.settings_appearance_remove_logo'), 'Clique para enviar a logo do sistema') }}
 
       <div class="drawer-actions mt-auto">{{ form.submit(class="btn btn-chili w-100") }}</div>
-    </div>
+    </form>
   </div>
 
   <div class="offcanvas offcanvas-end drawer-narrow" tabindex="-1" id="editAuthVideo" aria-labelledby="editAuthVideoLabel">
@@ -142,7 +145,8 @@
       <h5 class="offcanvas-title" id="editAuthVideoLabel"><i class="bi bi-camera-reels me-2"></i>Vídeo — login, cadastro e recuperação</h5>
       <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
     </div>
-    <div class="offcanvas-body d-flex flex-column">
+    <form method="POST" action="{{ url_for('admin.settings_appearance_video') }}" enctype="multipart/form-data" novalidate class="offcanvas-body d-flex flex-column">
+      {{ form.hidden_tag() }}
       <p class="text-muted-custom small mb-3">
         Opcional — toca em loop automático atrás do formulário nas telas de login, cadastro de loja
         e recuperação de senha (as 4 telas de autenticação, ver <code>layouts/auth.html</code>).
@@ -151,7 +155,7 @@
       </p>
       {{ media.video_dropzone(form.auth_background_video, settings.auth_background_video, url_for('admin.settings_appearance_remove_auth_video')) }}
       <div class="drawer-actions mt-auto">{{ form.submit(class="btn btn-chili w-100") }}</div>
-    </div>
+    </form>
   </div>
 
   <div class="offcanvas offcanvas-end drawer-narrow" tabindex="-1" id="editSuporte" aria-labelledby="editSuporteLabel">
@@ -159,7 +163,8 @@
       <h5 class="offcanvas-title" id="editSuporteLabel"><i class="bi bi-whatsapp me-2"></i>WhatsApp de suporte</h5>
       <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
     </div>
-    <div class="offcanvas-body d-flex flex-column">
+    <form method="POST" action="{{ url_for('admin.settings_appearance_support') }}" novalidate class="offcanvas-body d-flex flex-column">
+      {{ form.hidden_tag() }}
       <p class="text-muted-custom small mb-3">
         Número que aparece pro lojista pedir ajuda — principalmente na
         página de regularização de pendências (conta bloqueada por
@@ -171,7 +176,6 @@
         {% for error in form.support_whatsapp.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
       </div>
       <div class="drawer-actions mt-auto">{{ form.submit(class="btn btn-chili w-100") }}</div>
-    </div>
+    </form>
   </div>
-</form>
 {% endblock %}

@@ -141,11 +141,36 @@ class PlatformSettingsService:
         db.session.commit()
         return self.settings
 
+    # Sentinel para distinguir "este parâmetro não foi enviado nesta
+    # chamada" de "foi enviado como vazio/None de propósito" — necessário
+    # porque `update_admin_appearance` agora é chamado por 5 rotas
+    # distintas (uma por gaveta da tela de Aparência, ver
+    # app/controllers/admin/settings.py), cada uma só preenchendo o(s)
+    # parâmetro(s) da SUA própria gaveta. Sem isso, `support_whatsapp`
+    # (por exemplo) seria apagado sempre que o Super Admin salvasse
+    # QUALQUER outra gaveta (tema, cor, logo...), já que um `None` "não
+    # enviado" seria indistinguível de "enviado vazio para limpar".
+    _UNSET = object()
+
     def update_admin_appearance(
         self, *, system_theme=None, accent_color=None, reset_to_default=False,
-        platform_logo_file=None, support_whatsapp=None, auth_background_video_file=None,
+        platform_logo_file=None, support_whatsapp=_UNSET, auth_background_video_file=None,
     ):
-        from app.models.platform_settings import SYSTEM_THEME_CHOICES
+        """
+        Cada parâmetro corresponde a UMA gaveta independente da tela de
+        Aparência (tema do sistema | cor de destaque avançada | logo |
+        vídeo de fundo | WhatsApp de suporte) — o controller só passa o(s)
+        parâmetro(s) da gaveta que o Super Admin de fato salvou, deixando
+        os demais no padrão (o que significa "não mexer nisso agora").
+        Isso corrige um bug onde salvar QUALQUER gaveta reenviava os
+        campos das OUTRAS (todas viviam dentro de um único <form>),
+        fazendo a cor de destaque customizada (`admin_theme_accent`)
+        "grudar" com um valor antigo mesmo depois de trocar de tema —
+        o sintoma reportado era o tema mudar só parcialmente (fundo e
+        estrutura mudavam, mas os botões/links continuavam com a cor do
+        tema anterior).
+        """
+        from app.models.platform_settings import SYSTEM_THEME_ACCENTS, SYSTEM_THEME_CHOICES
         from app.utils.colors import normalize_hex
         from app.utils.uploads import (
             PLATFORM_LOGO_DIMENSION,
@@ -165,9 +190,22 @@ class PlatformSettingsService:
         elif accent_color:
             normalized = normalize_hex(accent_color)
             if normalized:
-                self.settings.admin_theme_accent = normalized
+                # Se a cor enviada é exatamente a cor padrão do tema
+                # ATUAL (já considerando um `system_theme` trocado nesta
+                # mesma leva de mudanças, quando as duas gavetas forem
+                # salvas juntas), não vale a pena guardar como
+                # "customização" — isso evita criar uma sobreposição
+                # que fica obsoleta na próxima vez que o tema mudar de
+                # novo, mesmo problema de fundo do bug descrito acima.
+                effective_theme = self.settings.system_theme_or_default
+                theme_default_accent = (SYSTEM_THEME_ACCENTS.get(effective_theme) or "").upper()
+                if normalized.upper() == theme_default_accent:
+                    self.settings.admin_theme_accent = None
+                else:
+                    self.settings.admin_theme_accent = normalized
 
-        self.settings.support_whatsapp = (support_whatsapp or "").strip() or None
+        if support_whatsapp is not self._UNSET:
+            self.settings.support_whatsapp = (support_whatsapp or "").strip() or None
 
         if platform_logo_file and platform_logo_file.filename:
             try:
