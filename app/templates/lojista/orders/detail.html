@@ -4,7 +4,7 @@
 
 {% block panel_content %}
 {% set is_history_order = order.status.value in ('completed', 'canceled') %}
-<a href="{{ url_for('lojista.orders_history') if is_history_order else url_for('lojista.orders_list') }}" class="link-chili small d-inline-block mb-3">
+<a href="{{ url_for('lojista.orders_history') if is_history_order else url_for('lojista.orders_list') }}" class="link-chili small d-inline-block mb-3" hx-boost="true" hx-swap="innerHTML show:window:top">
   &larr; Voltar para {{ "histórico" if is_history_order else "pedidos" }}
 </a>
 

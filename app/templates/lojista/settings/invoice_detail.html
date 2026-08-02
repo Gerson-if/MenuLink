@@ -3,7 +3,7 @@
 {% block page_title %}Assinatura{% endblock %}
 
 {% block panel_content %}
-<a href="{{ url_for('lojista.settings_subscription') }}" class="text-muted-custom small d-inline-flex align-items-center gap-1 mb-3">
+<a href="{{ url_for('lojista.settings_subscription') }}" class="text-muted-custom small d-inline-flex align-items-center gap-1 mb-3" hx-boost="true" hx-swap="innerHTML show:window:top">
   <i class="bi bi-arrow-left"></i> Voltar para assinatura
 </a>
 

@@ -3,7 +3,7 @@
 {% block page_title %}Cardápio{% endblock %}
 
 {% block panel_content %}
-<ul class="nav nav-pills mb-4 gap-2">
+<ul class="nav nav-pills mb-4 gap-2" hx-boost="true" hx-swap="innerHTML show:window:top">
   <li class="nav-item"><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('lojista.categories_list') }}">Categorias</a></li>
   <li class="nav-item"><a class="btn btn-sm btn-chili" href="{{ url_for('lojista.products_list') }}">Produtos</a></li>
 </ul>
@@ -18,7 +18,7 @@
 <div id="products-grid-wrap" hx-trigger="productSaved from:body" hx-get="{{ request.full_path }}" hx-select="#products-grid-wrap" hx-swap="outerHTML" hx-disinherit="hx-select hx-trigger hx-get hx-swap">
 
 {% if categories %}
-<div class="mb-4 d-flex gap-2 chip-scroll">
+<div class="mb-4 d-flex gap-2 chip-scroll" hx-boost="true" hx-swap="innerHTML show:window:top">
   <a href="{{ url_for('lojista.products_list') }}"
      class="btn btn-sm {{ 'btn-chili' if not selected_category_id else 'btn-outline-secondary' }}">Todas</a>
   {% for category in categories %}

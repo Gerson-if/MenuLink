@@ -52,7 +52,7 @@
           {% else %}<span class="status-badge status-trial">Pendente</span>{% endif %}
         </td>
         <td class="text-end">
-          <a href="{{ url_for('lojista.settings_subscription_invoice_detail', invoice_id=invoice.id) }}" class="btn btn-sm btn-outline-secondary">
+          <a href="{{ url_for('lojista.settings_subscription_invoice_detail', invoice_id=invoice.id) }}" class="btn btn-sm btn-outline-secondary" hx-boost="true" hx-swap="innerHTML show:window:top">
             <i class="bi bi-eye"></i> Detalhes
           </a>
           {% if invoice.payment_link_url and invoice.status.value in ('pending', 'overdue') %}

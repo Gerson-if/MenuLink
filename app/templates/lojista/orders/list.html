@@ -5,9 +5,9 @@
 {% block panel_content %}
 <p class="text-muted-custom small mb-3">
   Pedidos em andamento. Assim que um pedido é concluído ou cancelado, ele sai
-  daqui e vai para o <a href="{{ url_for('lojista.orders_history') }}" class="link-chili">Histórico</a>.
+  daqui e vai para o <a href="{{ url_for('lojista.orders_history') }}" class="link-chili" hx-boost="true" hx-swap="innerHTML show:window:top">Histórico</a>.
 </p>
-<div class="mb-4 d-flex gap-2 chip-scroll">
+<div class="mb-4 d-flex gap-2 chip-scroll" hx-boost="true" hx-swap="innerHTML show:window:top">
   <a href="{{ url_for('lojista.orders_list') }}"
      class="btn btn-sm {{ 'btn-chili' if not selected_status else 'btn-outline-secondary' }}">Todos</a>
   {% for s in all_statuses %}

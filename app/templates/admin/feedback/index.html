@@ -20,7 +20,7 @@
     <option value="suggestion" {{ "selected" if kind == "suggestion" }}>Sugestão</option>
     <option value="bug_report" {{ "selected" if kind == "bug_report" }}>Reporte de erro</option>
   </select>
-  {% if status or kind %}<a href="{{ url_for('admin.feedback_list') }}" class="btn btn-sm btn-outline-secondary">Limpar</a>{% endif %}
+  {% if status or kind %}<a href="{{ url_for('admin.feedback_list') }}" class="btn btn-sm btn-outline-secondary" hx-boost="true" hx-swap="innerHTML show:window:top">Limpar</a>{% endif %}
 </form>
 
 {% if items %}

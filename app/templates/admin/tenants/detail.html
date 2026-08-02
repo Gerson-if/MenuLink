@@ -3,7 +3,7 @@
 {% block page_title %}{{ tenant.name }}{% endblock %}
 
 {% block panel_content %}
-<a href="{{ url_for('admin.tenants_list') }}" class="link-chili small d-inline-block mb-3">&larr; Voltar para lojistas</a>
+<a href="{{ url_for('admin.tenants_list') }}" class="link-chili small d-inline-block mb-3" hx-boost="true" hx-swap="innerHTML show:window:top">&larr; Voltar para lojistas</a>
 
 <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
   <div>

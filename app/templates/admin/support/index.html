@@ -32,7 +32,7 @@
           "
         >
       </div>
-      <div class="support-conversation-list">
+      <div class="support-conversation-list" hx-boost="true" hx-swap="innerHTML show:window:top">
         {% if conversations %}
           {% for c in conversations %}
           <a href="{{ url_for('admin.support_inbox', tenant_id=c.tenant.id) }}"
@@ -72,7 +72,7 @@
   <div class="col-lg-8">
     <div class="panel chat-panel p-0">
       <div class="chat-header">
-        <a href="{{ url_for('admin.support_inbox') }}" class="link-chili d-lg-none flex-shrink-0" aria-label="Voltar pra lista de lojistas">
+        <a href="{{ url_for('admin.support_inbox') }}" class="link-chili d-lg-none flex-shrink-0" aria-label="Voltar pra lista de lojistas" hx-boost="true" hx-swap="innerHTML show:window:top">
           <i class="bi bi-arrow-left fs-5"></i>
         </a>
         <div class="chat-avatar">
@@ -86,7 +86,7 @@
           <div class="chat-header-name">{{ active_tenant.name }}</div>
           <div class="chat-header-status">{{ active_tenant.email }}</div>
         </div>
-        <a href="{{ url_for('admin.tenants_detail', tenant_id=active_tenant.id) }}" class="link-chili small flex-shrink-0 chat-header-tenant-link">Ver dados da loja &rarr;</a>
+        <a href="{{ url_for('admin.tenants_detail', tenant_id=active_tenant.id) }}" class="link-chili small flex-shrink-0 chat-header-tenant-link" hx-boost="true" hx-swap="innerHTML show:window:top">Ver dados da loja &rarr;</a>
       </div>
 
       {% set tenant = active_tenant %}

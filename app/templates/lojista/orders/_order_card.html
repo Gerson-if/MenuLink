@@ -2,7 +2,7 @@
    ativos) quanto em orders/history.html (concluídos/cancelados), pra não
    duplicar o markup do card entre as duas telas. #}
 <div class="col-md-6 col-lg-4">
-  <a href="{{ url_for('lojista.orders_detail', order_id=order.id) }}" class="text-decoration-none">
+  <a href="{{ url_for('lojista.orders_detail', order_id=order.id) }}" class="text-decoration-none" hx-boost="true" hx-swap="innerHTML show:window:top">
     <div class="ticket">
       <div class="ticket-head">
         <span class="ticket-num">#{{ order.order_number }}</span>

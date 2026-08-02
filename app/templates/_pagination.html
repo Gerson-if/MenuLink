@@ -6,7 +6,7 @@
   <div class="text-muted-custom">
     Página {{ pagination.page }} de {{ pagination.pages }} ({{ pagination.total }} no total)
   </div>
-  <div class="d-flex gap-2">
+  <div class="d-flex gap-2" hx-boost="true" hx-swap="innerHTML show:window:top">
     {% if pagination.has_prev %}
       <a href="{{ url_for(request.endpoint, **dict(request.view_args or {}, **dict(request.args, page=pagination.prev_num))) }}" class="btn btn-sm btn-outline-secondary">&larr; Anterior</a>
     {% endif %}
