@@ -513,6 +513,18 @@ body {
 .alert-info { background: rgba(67,97,238,.16); border: 1px solid rgba(67,97,238,.4); color: #9DB2FF; }
 .alert a, .alert strong { color: inherit; }
 
+/* ---------- Barra de progresso de navegação ---------- */
+/* Elemento único, criado via JS (comanda.js) e reaproveitado a cada
+   requisição HTMX (navegação boosted da sidebar/barra inferior E
+   salvamentos em drawer) — feedback visual imediato de que "algo está
+   acontecendo", em vez da tela parecer travada enquanto o servidor
+   responde. Cor de destaque (--accent) acompanha o tema em vigor. */
+.nav-progress-bar {
+  position: fixed; top: 0; left: 0; height: 3px; width: 0; opacity: 0;
+  background: var(--accent, #E54A36); z-index: 3000; pointer-events: none;
+  box-shadow: 0 0 8px var(--accent, #E54A36);
+}
+
 /* ---------- Toasts de flash ---------- */
 /* top:16px por padrão (páginas sem topbar: landing, login, cardápio
    público). Nos painéis (lojista/admin), há uma topbar "sticky" no mesmo

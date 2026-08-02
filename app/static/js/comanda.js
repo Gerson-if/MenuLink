@@ -46,49 +46,78 @@ function sidebarShell() {
  *   data-confirm-message="..." no <form>, interceptado aqui via o evento
  *   submit.
  *
- * `defer` garante que o DOM (incluindo #confirmModal) já existe quando
- * este script roda.
+ * Reinicializado a cada navegação "boosted" da sidebar (ver
+ * initPageChrome mais abaixo) — #confirmModal vive em base.html, FORA
+ * do conteúdo trocado a cada seção, mas com hx-boost o <body> inteiro é
+ * substituído a cada navegação, recriando o nó do zero; sem reamarrar a
+ * instância do bootstrap.Modal e o listener do botão "Confirmar", os
+ * diálogos de confirmação (ex: excluir produto) parariam de funcionar
+ * depois da primeira navegação pelo menu. Os listeners delegados em
+ * `document`/`document.body` (htmx:confirm, submit) ficam de fora desta
+ * função — são registrados uma única vez, mais abaixo, e sempre chamam
+ * a versão mais recente de `askConfirmation` guardada em `__confirmAsk`.
+ * `__confirmPendingAction` também vive fora da função (mesmo motivo):
+ * se ficasse como variável local, um `initConfirmModal()` chamado de
+ * novo sem recriar o botão (ver guarda `dataset.bound` abaixo) deixaria
+ * o listener de clique já amarrado apontando pra uma variável "morta"
+ * de uma chamada anterior, desconectada da que `askConfirmation`
+ * atualiza — o modal pararia de disparar a ação combinada.
  */
-(function () {
+let __confirmAsk = null;
+let __confirmPendingAction = null;
+
+function initConfirmModal() {
   const modalEl = document.getElementById('confirmModal');
-  if (!modalEl) return;
+  if (!modalEl) {
+    __confirmAsk = null;
+    return;
+  }
 
   const messageEl = document.getElementById('confirmModalMessage');
   const confirmBtn = document.getElementById('confirmModalConfirmBtn');
-  const modal = new bootstrap.Modal(modalEl);
-  let pendingAction = null;
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
 
-  function askConfirmation(message, onConfirm) {
+  __confirmAsk = function askConfirmation(message, onConfirm) {
     messageEl.textContent = message;
-    pendingAction = onConfirm;
+    __confirmPendingAction = onConfirm;
     modal.show();
-  }
+  };
 
-  confirmBtn.addEventListener('click', () => {
-    const action = pendingAction;
-    pendingAction = null;
-    modal.hide();
-    if (action) action();
-  });
-
-  document.body.addEventListener('htmx:confirm', (evt) => {
-    if (!evt.detail.question) return;
-    evt.preventDefault();
-    askConfirmation(evt.detail.question, () => evt.detail.issueRequest(true));
-  });
-
-  document.addEventListener('submit', (evt) => {
-    const form = evt.target;
-    if (!(form instanceof HTMLFormElement)) return;
-    const message = form.getAttribute('data-confirm-message');
-    if (!message || form.dataset.confirmBypass === '1') return;
-    evt.preventDefault();
-    askConfirmation(message, () => {
-      form.dataset.confirmBypass = '1';
-      form.requestSubmit();
+  // initPageChrome (onde initConfirmModal é chamada) roda a cada settle
+  // do HTMX na página inteira, não só depois de uma navegação boosted —
+  // sem esta guarda, cada pequena troca via HTMX em outro canto da
+  // página (ex: recarregar a grade de produtos) reamarraria outro
+  // listener de clique no MESMO botão "Confirmar" (o elemento não foi
+  // recriado, só o resto da página mudou), acumulando handlers.
+  if (!confirmBtn.dataset.bound) {
+    confirmBtn.dataset.bound = '1';
+    confirmBtn.addEventListener('click', () => {
+      const action = __confirmPendingAction;
+      __confirmPendingAction = null;
+      modal.hide();
+      if (action) action();
     });
+  }
+}
+initConfirmModal();
+
+document.body.addEventListener('htmx:confirm', (evt) => {
+  if (!evt.detail.question || !__confirmAsk) return;
+  evt.preventDefault();
+  __confirmAsk(evt.detail.question, () => evt.detail.issueRequest(true));
+});
+
+document.addEventListener('submit', (evt) => {
+  const form = evt.target;
+  if (!(form instanceof HTMLFormElement) || !__confirmAsk) return;
+  const message = form.getAttribute('data-confirm-message');
+  if (!message || form.dataset.confirmBypass === '1') return;
+  evt.preventDefault();
+  __confirmAsk(message, () => {
+    form.dataset.confirmBypass = '1';
+    form.requestSubmit();
   });
-})();
+});
 
 /*
  * Tooltip (Bootstrap) nos ícones do menu lateral — mostra o nome da
@@ -98,28 +127,35 @@ function sidebarShell() {
  * (collapsed) via Alpine (:title, atualiza a cada clique), e o
  * Bootstrap Tooltip cacheia o título só na inicialização — usar os
  * dois juntos deixaria a dica dessincronizada depois do primeiro clique.
+ *
+ * `getInstance`+`dispose` evita acumular instâncias órfãs quando esta
+ * função roda de novo após uma navegação boosted (ver initPageChrome).
  */
-(function () {
-  document.querySelectorAll('.sidebar [data-bs-toggle="tooltip"]').forEach((el) => new bootstrap.Tooltip(el));
-})();
+function initSidebarTooltips() {
+  document.querySelectorAll('.sidebar [data-bs-toggle="tooltip"]').forEach((el) => {
+    const existing = bootstrap.Tooltip.getInstance(el);
+    if (existing) existing.dispose();
+    new bootstrap.Tooltip(el);
+  });
+}
 
 /*
  * Mantém o item ativo visível no menu lateral (.nav-food é uma lista
- * rolável — `overflow-y: auto`, ver comanda.css). Esta app é
- * multi-página (sem hx-boost no menu): cada clique em uma opção mais
- * abaixo (Clientes, Cardápio, Vendas, Configurações...) causa um reload
- * completo, e o navegador sempre recria o scroll do `.nav-food` do zero
- * (topo), mesmo que o item ativo esteja mais para baixo na lista. Sem
- * isso, a sidebar "esquecia" a seleção visualmente — o item continuava
- * ativo (classe `.active` no link certo), só que fora da área visível,
- * dando a impressão de que a navegação tinha voltado pro topo e perdido
- * a seleção. `block: 'nearest'` garante que só o `.nav-food` (ancestral
- * rolável mais próximo) é ajustado, sem mexer no scroll da página.
+ * rolável — `overflow-y: auto`, ver comanda.css). A navegação principal
+ * (sidebar/barra inferior) usa hx-boost — troca só o conteúdo da
+ * página, sem recarregar CSS/JS/fontes do zero —, mas o `.nav-food`
+ * ainda assim nasce rolado pro topo a cada swap (é um elemento novo).
+ * Sem isso, a sidebar "esquecia" a seleção visualmente — o item
+ * continuava ativo (classe `.active` no link certo), só que fora da
+ * área visível, dando a impressão de que a navegação tinha voltado pro
+ * topo e perdido a seleção. `block: 'nearest'` garante que só o
+ * `.nav-food` (ancestral rolável mais próximo) é ajustado, sem mexer no
+ * scroll da página.
  */
-(function () {
+function initActiveNavScroll() {
   const activeLink = document.querySelector('.nav-food .nav-link.active');
   if (activeLink) activeLink.scrollIntoView({ block: 'nearest' });
-})();
+}
 
 /*
  * Botão de mostrar/ocultar senha (login e outros formulários com
@@ -127,10 +163,12 @@ function sidebarShell() {
  * ícone de olho. Progressive enhancement: sem JS o campo continua um
  * <input type="password"> normal, só sem o botão.
  */
-(function () {
+function initPasswordToggles() {
   document.querySelectorAll('.password-toggle-btn').forEach((btn) => {
+    if (btn.dataset.toggleBound) return;
     const input = document.getElementById(btn.dataset.target);
     if (!input) return;
+    btn.dataset.toggleBound = '1';
     btn.addEventListener('click', () => {
       const showingNow = input.type === 'text';
       input.type = showingNow ? 'password' : 'text';
@@ -138,7 +176,7 @@ function sidebarShell() {
       btn.setAttribute('aria-label', showingNow ? 'Mostrar senha' : 'Ocultar senha');
     });
   });
-})();
+}
 
 /*
  * Preview local (antes do envio) de imagens/vídeos escolhidos em
@@ -334,10 +372,15 @@ document.body.addEventListener('toastMessage', (evt) => {
  * apagar o rascunho — mas só apaga se ele ainda estiver intocado
  * (Product.is_untouched_draft); qualquer dado salvo, foto ou
  * complemento cancela a limpeza.
+ *
+ * Reamarrado a cada navegação boosted (initPageChrome) — o marcador
+ * `data-drawer-bound` evita duplicar o listener se a página de Produtos
+ * for revisitada sem um swap completo de #editDrawer no meio.
  */
-(function () {
+function initProductDraftDiscard() {
   const drawer = document.getElementById('editDrawer');
-  if (!drawer) return;
+  if (!drawer || drawer.dataset.drawerBound) return;
+  drawer.dataset.drawerBound = '1';
 
   drawer.addEventListener('hidden.bs.offcanvas', () => {
     const marker = document.getElementById('drawer-product-id');
@@ -346,7 +389,7 @@ document.body.addEventListener('toastMessage', (evt) => {
       document.body.dispatchEvent(new Event('productSaved'));
     });
   });
-})();
+}
 
 /*
  * "Revelar ao rolar" — utilitário genérico, sitewide: qualquer elemento
@@ -361,8 +404,8 @@ document.body.addEventListener('toastMessage', (evt) => {
  * enhancement: nada de seção sumida por causa de um erro de JS).
  * Respeita `prefers-reduced-motion` pelo mesmo motivo.
  */
-(function () {
-  const els = document.querySelectorAll('[data-reveal]');
+function initRevealOnScroll() {
+  const els = document.querySelectorAll('[data-reveal]:not(.reveal-pending):not(.is-visible)');
   if (!els.length) return;
   if (!('IntersectionObserver' in window) || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
@@ -378,23 +421,104 @@ document.body.addEventListener('toastMessage', (evt) => {
   }, { threshold: 0.15, rootMargin: '0px 0px -60px 0px' });
 
   els.forEach((el) => observer.observe(el));
-})();
+}
 
 /*
  * Chips em carrossel (.chip-scroll — status de Pedidos/Histórico,
  * período do Histórico, ordenação de Clientes, categorias de Produtos,
- * abas de Configurações) rolam na horizontal em uma linha só. Só que
- * cada clique num chip é uma navegação de página inteira (sem SPA), e a
- * página recém-carregada sempre nasce rolada pro início — então, se o
+ * abas de Configurações) rolam na horizontal em uma linha só. A página/
+ * conteúdo recém-trocado sempre nasce rolado pro início — então, se o
  * item selecionado (.btn-chili) for um dos últimos, ele ficava fora da
  * área visível, "escondido" à direita, dando a impressão de que a
- * seleção tinha se perdido. Aqui a gente centraliza o item ativo na
- * carga da página. `block: 'nearest'` garante que só a rolagem
- * horizontal do carrossel se move — não rola a página inteira.
+ * seleção tinha se perdido. Aqui a gente centraliza o item ativo. `block:
+ * 'nearest'` garante que só a rolagem horizontal do carrossel se move —
+ * não rola a página inteira.
  */
-(function () {
+function initChipScrollCentering() {
   document.querySelectorAll('.chip-scroll').forEach((container) => {
     const active = container.querySelector('.btn-chili');
     if (active) active.scrollIntoView({ block: 'nearest', inline: 'center' });
+  });
+}
+
+/*
+ * Reúne toda inicialização client-side que depende de elementos do
+ * <body> (sidebar, drawers, carrosséis...) — roda uma vez no carregamento
+ * normal da página E de novo depois de qualquer navegação "boosted" da
+ * sidebar/barra inferior (ver hx-boost em layouts/admin_panel.html e
+ * layouts/lojista_panel.html): como o <body> inteiro é substituído a
+ * cada troca de seção, sem isso essas funcionalidades só funcionariam
+ * na primeira página carregada de verdade, "quebrando" silenciosamente
+ * depois do primeiro clique no menu.
+ */
+function initPageChrome() {
+  initConfirmModal();
+  initSidebarTooltips();
+  initActiveNavScroll();
+  initPasswordToggles();
+  initProductDraftDiscard();
+  initRevealOnScroll();
+  initChipScrollCentering();
+}
+
+document.body.addEventListener('htmx:afterSettle', initPageChrome);
+
+/*
+ * Barra de progresso fina no topo da página — dá feedback visual
+ * IMEDIATO ao trocar de seção (sidebar/barra inferior, ver hx-boost),
+ * em vez do usuário só ver a tela "parada" enquanto o servidor responde
+ * (o que dava a impressão de o clique não ter funcionado, ou do sistema
+ * estar lento/travado). Cobre qualquer requisição HTMX da página, não
+ * só a navegação boosted — inclusive salvamentos em drawer.
+ *
+ * O atraso de 150ms antes de mostrar evita "piscar" a barra em
+ * respostas rápidas (a grande maioria); a barra sobe suavemente até
+ * ~90% enquanto espera (nunca completa sozinha, pra não sugerir que
+ * terminou antes da hora) e só vai a 100%+some quando a resposta chega.
+ *
+ * Anexada no <html> (documentElement), não no <body> — com hx-boost o
+ * <body> inteiro é substituído a cada navegação (innerHTML), o que
+ * apagaria a barra (um filho dele) já na primeira troca de seção.
+ * document.documentElement nunca é tocado pelo swap.
+ */
+(function () {
+  const bar = document.createElement('div');
+  bar.className = 'nav-progress-bar';
+  document.documentElement.appendChild(bar);
+
+  let showTimer = null;
+  let hideTimer = null;
+  let width = 0;
+
+  function show() {
+    width = 12;
+    bar.style.transition = 'none';
+    bar.style.width = width + '%';
+    bar.style.opacity = '1';
+    // força o reflow antes de trocar pra transição suave — sem isso o
+    // navegador podia agrupar as duas mudanças de estilo num único
+    // frame e a barra "pularia" direto pro valor final sem animar.
+    void bar.offsetWidth;
+    bar.style.transition = 'width 3s cubic-bezier(.1,.6,.2,1), opacity .2s ease';
+    width = 90;
+    bar.style.width = width + '%';
+  }
+
+  function finish() {
+    bar.style.transition = 'width .2s ease, opacity .3s ease .1s';
+    bar.style.width = '100%';
+    bar.style.opacity = '0';
+  }
+
+  document.body.addEventListener('htmx:beforeRequest', () => {
+    clearTimeout(hideTimer);
+    showTimer = setTimeout(show, 150);
+  });
+
+  document.body.addEventListener('htmx:afterRequest', () => {
+    clearTimeout(showTimer);
+    if (bar.style.opacity === '1') {
+      hideTimer = setTimeout(finish, 80);
+    }
   });
 })();

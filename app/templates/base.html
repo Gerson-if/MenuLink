@@ -87,12 +87,39 @@
 <link href="{{ static_versioned('vendor/bootstrap-icons/bootstrap-icons.min.css') }}" rel="stylesheet">
 <link rel="stylesheet" href="{{ static_versioned('css/comanda.css') }}">
 
+{# bootstrap.bundle.min.js precisa vir ANTES de comanda.js (que já chama
+   `bootstrap.Modal`/`bootstrap.Offcanvas` no carregamento) — scripts com
+   `defer` executam na ordem em que aparecem no documento, então a ordem
+   aqui importa. Historicamente esse <script> ficava no fim do <body>
+   (sem defer, carregando de forma síncrona bem depois do <head>) — mas
+   com hx-boost na navegação principal (ver layouts/admin_panel.html e
+   layouts/lojista_panel.html) o <body> inteiro é substituído a cada
+   troca de seção, e o HTMX reexecuta scripts encontrados no conteúdo
+   trocado; um <script src> DENTRO do body reexecutava o bundle inteiro
+   do Bootstrap a cada navegação, empilhando handlers globais duplicados
+   (dropdown/modal/offcanvas disparando cada vez mais vezes quanto mais
+   se navegasse pelo menu). Morando no <head> como os demais scripts
+   compartilhados, ele carrega e roda uma única vez por carregamento de
+   página de verdade — nunca de novo por causa de uma navegação boosted. #}
+<script defer src="{{ static_versioned('vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 <script defer src="{{ static_versioned('js/comanda.js') }}"></script>
 <script defer src="{{ static_versioned('vendor/alpinejs/alpine.min.js') }}"></script>
 <script src="{{ static_versioned('vendor/htmx/htmx.min.js') }}"></script>
 {% block extra_head %}{% endblock %}
 </head>
-<body class="{% block body_class %}{% endblock %}" hx-headers='{"X-CSRFToken": "{{ csrf_token() }}"}'>
+{# hx-history="false": desliga o cache de "fotografias" do HTMX pra
+   restaurar páginas no botão voltar/avançar do navegador — sem isso, ele
+   entra em conflito com o próprio truque de histórico que este app já
+   usa pra fechar gaveta/modal no botão voltar do celular (ver
+   comanda.js, "empilha uma entrada fantasma no histórico"): fechar uma
+   gaveta aberta durante uma navegação "boosted" (ver hx-boost na
+   sidebar) chegou a disparar o evento de fechamento da gaveta DUAS
+   vezes, fazendo uma ação (como descartar rascunho de produto) rodar
+   repetida. Com isso desligado, voltar/avançar pelas páginas
+   "boosted" faz uma busca de verdade no servidor (só nesse caso
+   específico) em vez de restaurar do cache do HTMX — troca uma
+   otimização rara (voltar/avançar) por evitar essa classe de bug. #}
+<body class="{% block body_class %}{% endblock %}" hx-headers='{"X-CSRFToken": "{{ csrf_token() }}"}' hx-history="false">
 
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
@@ -132,7 +159,6 @@
   </div>
 </div>
 
-<script src="{{ static_versioned('vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 {% block extra_scripts %}{% endblock %}
 </body>
 </html>

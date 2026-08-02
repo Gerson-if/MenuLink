@@ -36,7 +36,16 @@
       </div>
     </div>
 
-    <nav class="nav-food">
+    {# hx-boost: troca só o conteúdo da página ao navegar por aqui — sem
+       recarregar CSS/JS/fontes do zero nem dar aquele "flash" branco de
+       navegação cheia — deixando a troca de seção bem mais rápida e
+       fluida. O <body> inteiro (sidebar incluída) é substituído a cada
+       clique, então tudo que já é lido do servidor a cada resposta
+       (classe "active" do link certo, título da página, contadores de
+       não lidos) continua correto automaticamente; só a inicialização
+       de JS que roda "uma vez só" (tooltip, modal de confirmação etc.)
+       precisa ser reamarrada — ver initPageChrome em comanda.js. #}
+    <nav class="nav-food" hx-boost="true" hx-swap="innerHTML show:window:top">
       <button type="button" class="nav-link nav-collapse-toggle d-none d-lg-flex" @click="toggleCollapsed()" :title="collapsed ? 'Expandir menu' : 'Recolher menu'" :aria-label="collapsed ? 'Expandir menu' : 'Recolher menu'">
         <span class="hamburger-icon" :class="{ 'is-active': collapsed }"><span></span><span></span><span></span></span>
         <span class="nav-label" x-text="collapsed ? 'Expandir menu' : 'Recolher menu'"></span>
@@ -140,7 +149,7 @@
      cobre isso em telas grandes). Não duplica destino nenhum da
      sidebar; é só um atalho pros mais usados, com "Mais" abrindo a
      mesma gaveta lateral de sempre. #}
-  <nav class="bottom-tab-bar d-lg-none">
+  <nav class="bottom-tab-bar d-lg-none" hx-boost="true" hx-swap="innerHTML show:window:top">
     <a href="{{ url_for('admin.dashboard') }}" class="bottom-tab-bar-item {{ 'active' if request.endpoint == 'admin.dashboard' }}">
       <i class="bi bi-speedometer2"></i>Métricas
     </a>
