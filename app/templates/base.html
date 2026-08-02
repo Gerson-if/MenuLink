@@ -58,14 +58,27 @@
 </script>
 <title>{% block title %}Comanda{% endblock %}</title>
 
+{# Sem logo customizada do sistema, o favicon padrão (um "C" num
+   quadrado arredondado) é gerado na hora com a cor de destaque REAL em
+   vigor (PlatformSettings.effective_accent — customização avançada, ou
+   senão a cor do tema do sistema escolhido). Antes disso, os arquivos
+   estáticos em img/favicon.* tinham uma cor fixa (vermelho-tijolo), que
+   não acompanhava a troca de tema do Super Admin — landing page, telas
+   de login/cadastro e o painel admin (quando sem logo própria) ficavam
+   com o favicon "preso" na cor antiga. #}
 {% block favicon %}
 {% if platform_settings and platform_settings.platform_logo %}
 <link rel="icon" href="{{ url_for('static', filename=platform_settings.platform_logo) }}">
 {% else %}
-<link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
-<link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/favicon-32.png') }}">
+{% set favicon_accent = platform_settings.effective_accent if platform_settings else '#E54A36' %}
+{% set favicon_svg %}<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='#221C16'/><text x='32' y='45' font-family='Arial, sans-serif' font-size='34' font-weight='900' fill='{{ favicon_accent }}' text-anchor='middle'>C</text></svg>{% endset %}
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,{{ favicon_svg|trim|b64encode }}">
+{# apple-touch-icon (ícone ao "adicionar à tela de início" no iOS) fica
+   com o arquivo estático padrão — Safari historicamente não confia em
+   data: URI aqui, então preferimos o PNG fixo a um ícone que talvez nem
+   apareça. Detalhe secundário (raramente notado), diferente da aba do
+   navegador de fato. #}
 <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='img/favicon-180.png') }}">
-<link rel="shortcut icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
 {% endif %}
 {% endblock %}
 

@@ -36,9 +36,15 @@ class TestColorUtils:
 
 class TestFavicon:
     def test_admin_pages_use_platform_favicon(self, app, client, login_as):
+        # Sem logo customizada do sistema, o favicon do painel admin é um
+        # SVG gerado na hora (colorido com a cor de destaque em vigor —
+        # ver TestFaviconReflectsTheme), não mais os arquivos estáticos
+        # fixos em img/favicon.*.
         login_as(client, "admin@cardapio.saas", "admin123")
         resp = client.get("/admin/lojistas")
-        assert "favicon.svg" in resp.get_data(as_text=True)
+        html = resp.get_data(as_text=True)
+        assert "data:image/svg+xml;base64," in html
+        assert "img/favicon.svg" not in html
 
     def test_public_menu_generates_favicon_from_store_initial_without_logo(self, app, client):
         # Tenant de teste (braseiro-cia) não tem logo cadastrado — o
@@ -463,6 +469,63 @@ class TestUnifiedSystemTheme:
         with app.app_context():
             settings = PlatformSettings.get_or_create()
             assert settings.system_theme_or_default == "chili"
+
+
+class TestFaviconReflectsTheme:
+    """O favicon padrão (sem logo customizada do sistema) é gerado como
+    um SVG embutido colorido com `PlatformSettings.effective_accent` —
+    antes disso, ele usava os arquivos estáticos em img/favicon.* com
+    uma cor fixa (vermelho-tijolo), que não acompanhava a troca de tema
+    do Super Admin (bug relatado: "a alteração de tema não reflete no
+    favicon")."""
+
+    def test_default_favicon_uses_chili_accent(self, app, client):
+        resp = client.get("/")
+        html = resp.get_data(as_text=True)
+        assert "data:image/svg+xml;base64," in html
+        assert "img/favicon.svg" not in html
+
+    def test_favicon_updates_after_system_theme_change(self, app, client, login_as):
+        from app.models.platform_settings import SYSTEM_THEME_ACCENTS
+
+        login_as(client, "admin@cardapio.saas", "admin123")
+        client.post("/admin/configuracoes/aparencia/tema", data={"system_theme": "ocean"})
+        client.get("/logout")
+
+        resp = client.get("/")
+        html = resp.get_data(as_text=True)
+        # o SVG do favicon é embutido em base64 — decodifica pra conferir a cor
+        import base64
+        import re
+
+        b64 = re.search(r"data:image/svg\+xml;base64,([A-Za-z0-9+/=]+)", html).group(1)
+        svg = base64.b64decode(b64).decode("utf-8")
+        assert SYSTEM_THEME_ACCENTS["ocean"] in svg
+        assert SYSTEM_THEME_ACCENTS["chili"] not in svg
+
+    def test_favicon_uses_custom_accent_override_over_theme_default(self, app, client, login_as):
+        import base64
+        import re
+
+        login_as(client, "admin@cardapio.saas", "admin123")
+        client.post("/admin/configuracoes/aparencia/cor", data={"accent_color": "#123456"})
+        client.get("/logout")
+
+        resp = client.get("/")
+        html = resp.get_data(as_text=True)
+        b64 = re.search(r"data:image/svg\+xml;base64,([A-Za-z0-9+/=]+)", html).group(1)
+        svg = base64.b64decode(b64).decode("utf-8")
+        assert "#123456" in svg
+
+    def test_favicon_uses_platform_logo_when_set(self, app, client):
+        with app.app_context():
+            settings = PlatformSettings.get_or_create()
+            settings.platform_logo = "uploads/platform/logo.png"
+            db.session.commit()
+
+        resp = client.get("/")
+        html = resp.get_data(as_text=True)
+        assert "uploads/platform/logo.png" in html
 
 
 class TestAuthBackgroundVideo:

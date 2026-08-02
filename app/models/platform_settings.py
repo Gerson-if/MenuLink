@@ -391,6 +391,17 @@ class PlatformSettings(db.Model, TimestampMixin):
         return {"accent": self.admin_theme_accent, "accent_dark": darken_hex(self.admin_theme_accent)}
 
     @property
+    def effective_accent(self) -> str:
+        """Cor de destaque que está REALMENTE em vigor agora — a
+        customização avançada (`admin_theme_accent`), ou senão a cor
+        padrão do tema do sistema atual (nunca cai num vermelho-tijolo
+        fixo hardcoded). Usada em lugares que precisam de uma cor
+        garantida e sempre atualizada, como o favicon gerado
+        dinamicamente (ver `base.html`) — antes o favicon ficava com uma
+        cor fixa, sem refletir a troca de tema."""
+        return self.admin_theme_accent or SYSTEM_THEME_ACCENTS.get(self.system_theme_or_default, "#E54A36")
+
+    @property
     def trial_reminder_message_or_default(self) -> str:
         return self.trial_reminder_message or DEFAULT_TRIAL_REMINDER_MESSAGE
 
