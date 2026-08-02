@@ -34,6 +34,23 @@
     --line: rgba(36,28,20,0.10); --line-strong: rgba(36,28,20,0.18);
     --text: #241C14; --text-dim: #5C4E3D; --text-faint: #8A7B64;
   }
+  {# Quando a loja escolheu um dos 4 temas prontos (não uma cor livre),
+     `theme` já traz a paleta COMPLETA (fundo/superfície/texto) já
+     resolvida para o modo claro/escuro em vigor desta loja — ver
+     `Tenant.public_theme_css_vars`. Este bloco vem DEPOIS dos dois
+     acima (mesma especificidade de seletor: :root e [data-theme=light]
+     têm peso igual) então, quando presente, ele é quem vence — sem
+     isso, escolher "Oceano"/"Floresta"/"Meia-noite" só trocava o
+     --accent e o fundo/superfície/texto continuavam sempre na paleta
+     "Picante" fixa acima, dando a impressão de que o tema não tinha
+     mudado de verdade. #}
+  {% if theme.bg %}
+  :root {
+    --bg: {{ theme.bg }}; --bg-soft: {{ theme.bg_soft }}; --surface: {{ theme.surface }}; --surface-2: {{ theme.surface_2 }};
+    --line: {{ theme.line }}; --line-strong: {{ theme.line_strong }};
+    --text: {{ theme.text }}; --text-dim: {{ theme.text_dim }}; --text-faint: {{ theme.text_faint }};
+  }
+  {% endif %}
   body.menu-body { background: var(--bg); color: var(--text); font-family: var(--font-body); padding-bottom: 90px; margin: 0; overflow-x: hidden; }
 
   /* ===== GRAIN (textura sutil de fundo) ===== */

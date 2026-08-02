@@ -199,6 +199,15 @@ def store_home(slug):
         for banner in banners
     ]
 
+    # Só a cor de destaque tem um padrão fixo aqui — o restante da
+    # paleta (fundo/superfície/texto) permanece com os valores padrão
+    # já hardcoded no <style> do template (ver store_menu.html) sempre
+    # que a loja não tiver escolhido um dos 4 temas prontos
+    # (Tenant.public_theme). Quando um tema pronto FOI escolhido,
+    # `public_theme_css_vars` já traz a paleta completa (resolvida no
+    # modo claro/escuro certo) e ela é usada por cima desse padrão —
+    # ver `Tenant.public_theme_css_vars` para o porquê disso ser
+    # necessário (antes, trocar de tema só recolorava o destaque).
     default_theme = {"accent": "#E8A33D", "accent_dark": "#C97F1F", "accent_soft": "rgba(232,163,61,0.14)"}
     theme = tenant.public_theme_css_vars or default_theme
     theme["mode"] = (tenant.theme_settings or {}).get("mode", "dark")

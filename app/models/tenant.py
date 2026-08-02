@@ -357,19 +357,42 @@ class Tenant(db.Model, TimestampMixin):
         padrão do template. Duas fontes possíveis para a cor de
         destaque, nesta ordem de prioridade:
         1. Um tema PRONTO escolhido (`public_theme`, ver acima) — usa a
-           cor de destaque daquele tema (SYSTEM_THEME_ACCENTS).
+           cor de destaque daquele tema (SYSTEM_THEME_ACCENTS) E a
+           paleta COMPLETA de fundo/superfície/texto daquele tema
+           (PUBLIC_STORE_THEME_PALETTES, no modo claro/escuro já
+           resolvido — ver `theme_settings["mode"]`). Sem isso, trocar
+           de tema só recolorava o destaque e deixava fundo/superfície/
+           texto sempre na paleta "Picante" fixa, dando a impressão de
+           que o tema não tinha mudado de verdade.
         2. Uma cor LIVRE escolhida à mão (`theme_settings["accent"]`),
-           quando não há tema pronto selecionado.
+           quando não há tema pronto selecionado — aqui não há paleta
+           completa: só a cor de destaque muda, o resto continua com o
+           padrão fixo do template (comportamento de sempre).
         Diferente do tema do painel administrativo
         (PlatformSettings.admin_theme_css_vars): esta cor é a
         identidade visual da LOJA para os clientes dela, não do painel
         interno de gestão.
         """
         preset = self.public_theme
+        palette_vars = {}
         if preset:
-            from app.models.platform_settings import SYSTEM_THEME_ACCENTS
+            from app.models.platform_settings import PUBLIC_STORE_THEME_PALETTES, SYSTEM_THEME_ACCENTS
 
             accent = SYSTEM_THEME_ACCENTS.get(preset)
+            mode = (self.theme_settings or {}).get("mode", "dark")
+            mode = mode if mode == "light" else "dark"
+            palette = PUBLIC_STORE_THEME_PALETTES.get(preset, {}).get(mode, {})
+            palette_vars = {
+                "bg": palette.get("bg"),
+                "bg_soft": palette.get("bg_soft"),
+                "surface": palette.get("surface"),
+                "surface_2": palette.get("surface_2"),
+                "line": palette.get("line"),
+                "line_strong": palette.get("line_strong"),
+                "text": palette.get("text"),
+                "text_dim": palette.get("text_dim"),
+                "text_faint": palette.get("text_faint"),
+            }
         else:
             accent = (self.theme_settings or {}).get("accent")
 
@@ -381,6 +404,7 @@ class Tenant(db.Model, TimestampMixin):
             "accent": accent,
             "accent_dark": darken_hex(accent),
             "accent_soft": hex_to_rgba_css(accent, 0.14),
+            **palette_vars,
         }
 
     @property

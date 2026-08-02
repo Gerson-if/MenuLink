@@ -81,6 +81,71 @@ SYSTEM_THEME_ACCENTS = {
     "midnight": "#8B5CF6",
 }
 
+# Paleta COMPLETA (não só a cor de destaque) de cada tema pronto, usada
+# pelo CARDÁPIO PÚBLICO de cada loja (app/templates/public/store_menu.html)
+# quando o lojista escolhe um dos 4 temas em vez de uma cor de destaque
+# livre (ver Tenant.public_theme / Tenant.public_theme_css_vars). Antes,
+# escolher um tema pronto só trocava --accent/--accent-dark/--accent-soft
+# — fundo, superfícies e texto ficavam sempre na paleta "Picante" fixa,
+# então o cardápio "parecia manter o tema atual" mesmo depois de trocar
+# (mesma classe de bug já corrigida para o favicon do Super Admin). Os
+# valores de "chili" abaixo são IDÊNTICOS ao que já estava fixo no
+# template, então lojas que já usam o preset padrão (ou nenhum preset)
+# não sofrem nenhuma mudança visual. --herb/--rust/--paper/--paper-line
+# ficam de fora de propósito — são cores semânticas fixas (selo
+# "vegetariano", acento de carnes, "papel" do ticket de confirmação) que
+# não fazem parte da identidade de cor do tema.
+PUBLIC_STORE_THEME_PALETTES = {
+    "chili": {
+        "dark": {
+            "bg": "#1B140F", "bg_soft": "#221A13", "surface": "#2B2016", "surface_2": "#35281B",
+            "line": "rgba(244,234,217,0.09)", "line_strong": "rgba(244,234,217,0.18)",
+            "text": "#F5EAD9", "text_dim": "#C9B7A0", "text_faint": "#8E7C68",
+        },
+        "light": {
+            "bg": "#FBF7EE", "bg_soft": "#F5EEDF", "surface": "#FFFFFF", "surface_2": "#F2E9D8",
+            "line": "rgba(36,28,20,0.10)", "line_strong": "rgba(36,28,20,0.18)",
+            "text": "#241C14", "text_dim": "#5C4E3D", "text_faint": "#8A7B64",
+        },
+    },
+    "ocean": {
+        "dark": {
+            "bg": "#0B1420", "bg_soft": "#101B29", "surface": "#162535", "surface_2": "#1C2F42",
+            "line": "rgba(222,238,244,0.09)", "line_strong": "rgba(222,238,244,0.18)",
+            "text": "#EAF4F7", "text_dim": "#AFC6CF", "text_faint": "#748E98",
+        },
+        "light": {
+            "bg": "#F2F8FA", "bg_soft": "#E9F2F5", "surface": "#FFFFFF", "surface_2": "#DEEBEF",
+            "line": "rgba(15,35,45,0.10)", "line_strong": "rgba(15,35,45,0.18)",
+            "text": "#14232B", "text_dim": "#3E5964", "text_faint": "#6C868F",
+        },
+    },
+    "forest": {
+        "dark": {
+            "bg": "#10190F", "bg_soft": "#152012", "surface": "#1D2B19", "surface_2": "#25381F",
+            "line": "rgba(232,242,220,0.09)", "line_strong": "rgba(232,242,220,0.18)",
+            "text": "#EDF4E4", "text_dim": "#B9C7AC", "text_faint": "#7E8E73",
+        },
+        "light": {
+            "bg": "#F5F8EF", "bg_soft": "#EDF3E4", "surface": "#FFFFFF", "surface_2": "#E3ECD6",
+            "line": "rgba(24,32,18,0.10)", "line_strong": "rgba(24,32,18,0.18)",
+            "text": "#1B2417", "text_dim": "#48533F", "text_faint": "#78826C",
+        },
+    },
+    "midnight": {
+        "dark": {
+            "bg": "#0F0C1B", "bg_soft": "#151024", "surface": "#1E1832", "surface_2": "#271F3F",
+            "line": "rgba(230,225,244,0.09)", "line_strong": "rgba(230,225,244,0.18)",
+            "text": "#EDE9F7", "text_dim": "#BDB3D4", "text_faint": "#8479A0",
+        },
+        "light": {
+            "bg": "#F5F3FA", "bg_soft": "#EEEAF7", "surface": "#FFFFFF", "surface_2": "#E4DEF2",
+            "line": "rgba(24,18,38,0.10)", "line_strong": "rgba(24,18,38,0.18)",
+            "text": "#1D1730", "text_dim": "#4C4362", "text_faint": "#7C7391",
+        },
+    },
+}
+
 # Mantido só por compatibilidade com dados antigos já gravados em
 # landing_content["theme"] (loja que nunca abrir a tela de Aparência de
 # novo) — não é mais editável por nenhuma tela; o tema agora é sempre

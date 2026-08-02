@@ -314,6 +314,61 @@ class TestTenantPublicThemePreset:
         resp = client.get(f"/loja/{slug}")
         assert "#8B5CF6" in resp.get_data(as_text=True)  # accent do tema "midnight"
 
+    def test_public_theme_preset_overrides_full_palette_not_just_accent(self, app, client, login_as):
+        # Reprodução do bug relatado: antes desta correção, escolher um
+        # tema pronto só trocava --accent — fundo/superfície/texto
+        # continuavam sempre na paleta "Picante" fixa, dando a
+        # impressão de que o tema não tinha mudado de verdade. Ver
+        # Tenant.public_theme_css_vars / PUBLIC_STORE_THEME_PALETTES.
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        client.post(
+            "/painel/configuracoes/aparencia",
+            data={"accent_color": "#E8A33D", "theme_mode": "dark", "panel_theme": "", "public_theme": "ocean"},
+        )
+        with app.app_context():
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            theme = tenant.public_theme_css_vars
+            assert theme["bg"] == "#0B1420"  # paleta "Oceano" escura, não a "Picante" (#1B140F)
+            assert theme["surface"] == "#162535"
+            assert theme["text"] == "#EAF4F7"
+
+            slug = tenant.slug
+            tenant.status = TenantStatus.ACTIVE
+            db.session.commit()
+
+        resp = client.get(f"/loja/{slug}")
+        html = resp.get_data(as_text=True)
+        # A paleta "Oceano" precisa aparecer DEPOIS da paleta "Picante"
+        # fixa (que continua ali como valor-padrão do template) — CSS
+        # aplica a última declaração de mesma especificidade dentro de
+        # :root, então é essa ordem que garante que "Oceano" vença.
+        assert html.index("--bg: #0B1420") > html.index("--bg: #1B140F")
+
+    def test_public_theme_preset_uses_light_palette_when_mode_is_light(self, app, client, login_as):
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        client.post(
+            "/painel/configuracoes/aparencia",
+            data={"accent_color": "#E8A33D", "theme_mode": "light", "panel_theme": "", "public_theme": "forest"},
+        )
+        with app.app_context():
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            theme = tenant.public_theme_css_vars
+            assert theme["bg"] == "#F5F8EF"  # paleta "Floresta" clara
+
+    def test_custom_accent_only_does_not_add_full_palette(self, app, client, login_as):
+        # Sem tema pronto escolhido (cor livre), o comportamento de
+        # sempre continua: só o accent muda, o resto fica com o padrão
+        # fixo do template (nenhuma chave de paleta é adicionada).
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        client.post(
+            "/painel/configuracoes/aparencia",
+            data={"accent_color": "#123456", "theme_mode": "dark", "panel_theme": "", "public_theme": ""},
+        )
+        with app.app_context():
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            theme = tenant.public_theme_css_vars
+            assert "bg" not in theme
+
 
 class TestAdminPanelTheme:
     def test_admin_panel_defaults_to_chili_not_blue(self, app, client, login_as):
