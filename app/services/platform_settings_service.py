@@ -114,7 +114,7 @@ class PlatformSettingsService:
         (AdminTenantService.create grava `trial_ends_at` já calculado no
         cadastro); para ajustar o prazo de uma loja específica já
         existente, use AdminTenantService.update_trial_deadline."""
-        self.settings.trial_days = max(1, int(trial_days or 20))
+        self.settings.trial_days = max(1, int(trial_days or 7))
         self.settings.trial_grace_days = max(0, int(trial_grace_days or 0))
         self.settings.trial_reminder_days_before = max(0, int(trial_reminder_days_before or 0))
         self.settings.trial_reminder_cycle_days = max(1, int(trial_reminder_cycle_days or 1))

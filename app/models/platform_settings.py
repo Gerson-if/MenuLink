@@ -388,7 +388,7 @@ class PlatformSettings(db.Model, TimestampMixin):
     # que grava Tenant.trial_ends_at = agora + trial_days no momento da
     # criação) e o job `flask process-trials` (ver app/services/trial_service.py),
     # que manda lembretes automáticos e suspende quem passar do prazo.
-    trial_days = Column(Integer, nullable=False, default=20, server_default="20")
+    trial_days = Column(Integer, nullable=False, default=7, server_default="7")
     # Tolerância extra, em dias, DEPOIS do fim do teste — a loja continua
     # acessando o painel normalmente nesse período, só para regularizar
     # (ver Tenant.trial_status). Só depois disso a conta é suspensa.
