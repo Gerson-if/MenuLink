@@ -13,6 +13,8 @@ loga o link — para não quebrar o fluxo de "esqueci minha senha" em quem
 ainda não configurou nada.
 """
 
+from html import escape
+
 from flask import current_app, url_for
 
 from app.services.email_service import EmailError, EmailService
@@ -20,6 +22,12 @@ from app.services.email_service import EmailError, EmailService
 
 def send_password_reset_email(user, token: str) -> str:
     reset_url = url_for("auth.reset_password", token=token, _external=True)
+    # user.name é escolhido pelo próprio usuário no cadastro — sem escapar,
+    # um nome como "<img src=x onerror=...>" iria parar cru dentro do HTML
+    # do e-mail (o corpo em texto puro não precisa disso). Não afeta ninguém
+    # além do próprio dono da conta (o e-mail vai só para user.email), mas
+    # ainda assim é entrada não confiável indo pra um documento HTML.
+    safe_name = escape(user.name)
 
     email_service = EmailService()
     if email_service.is_configured:
@@ -35,7 +43,7 @@ def send_password_reset_email(user, token: str) -> str:
                     "Se você não pediu isso, pode ignorar este e-mail — sua senha continua a mesma."
                 ),
                 body_html=(
-                    f"<p>Olá, {user.name}.</p>"
+                    f"<p>Olá, {safe_name}.</p>"
                     "<p>Recebemos um pedido para redefinir sua senha no Menu Link. "
                     "Clique no botão abaixo para escolher uma nova senha (válido por 1 hora):</p>"
                     f'<p><a href="{reset_url}" style="background:#E54A36;color:#fff;padding:10px 20px;'

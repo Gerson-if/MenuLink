@@ -17,7 +17,7 @@ via `PlatformSettings.get_or_create()`.
 from sqlalchemy import JSON, Column, Date, Integer, String, Text
 
 from app.extensions import db
-from app.models.base import TimestampMixin
+from app.models.base import EncryptedString, TimestampMixin
 
 ASAAS_ENVIRONMENT_CHOICES = [
     ("sandbox", "Sandbox (testes)"),
@@ -302,9 +302,13 @@ class PlatformSettings(db.Model, TimestampMixin):
 
     id = Column(Integer, primary_key=True)
 
-    asaas_api_key = Column(String(255), nullable=True)
+    # EncryptedString: valor gravado CRIPTOGRAFADO no banco (ver
+    # app/utils/crypto.py) — em texto puro, um dump/backup vazado do banco
+    # daria acesso total à cobrança via Asaas. Coluna maior que o texto
+    # puro caberia porque o ciphertext (base64) é maior que o original.
+    asaas_api_key = Column(EncryptedString(512), nullable=True)
     asaas_environment = Column(String(20), nullable=False, default="sandbox", server_default="sandbox")
-    asaas_webhook_token = Column(String(255), nullable=True)
+    asaas_webhook_token = Column(EncryptedString(512), nullable=True)
     # "PIX" por padrão — ver ASAAS_BILLING_TYPE_CHOICES acima.
     asaas_billing_type = Column(String(20), nullable=False, default="PIX", server_default="PIX")
 
@@ -358,7 +362,8 @@ class PlatformSettings(db.Model, TimestampMixin):
     smtp_host = Column(String(255), nullable=True)
     smtp_port = Column(Integer, nullable=False, default=587, server_default="587")
     smtp_username = Column(String(255), nullable=True)
-    smtp_password = Column(String(255), nullable=True)
+    # EncryptedString pelo mesmo motivo de asaas_api_key acima.
+    smtp_password = Column(EncryptedString(512), nullable=True)
     # "tls" (STARTTLS, porta 587 normalmente) ou "ssl" (SMTPS implícito,
     # porta 465 normalmente) — a maioria dos provedores (Gmail, SendGrid,
     # Amazon SES, Mailgun) aceita STARTTLS na 587.

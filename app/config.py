@@ -35,9 +35,15 @@ class BaseConfig:
     PERMANENT_SESSION_LIFETIME = timedelta(days=7)
     REMEMBER_COOKIE_DURATION = timedelta(days=30)
 
-    # --- Upload de imagens ---
+    # --- Upload de imagens/vídeo ---
     UPLOAD_FOLDER = os.path.join(BASE_DIR, "app", "static", "uploads")
-    MAX_CONTENT_LENGTH = 8 * 1024 * 1024  # 8 MB por request
+    # Precisa ser >= MAX_VIDEO_BYTES (app/utils/uploads.py) — esse é o teto
+    # de tamanho de REQUEST do Flask/Werkzeug, aplicado antes do nosso
+    # próprio código rodar. Se ficasse menor que MAX_VIDEO_BYTES (como
+    # estava: 8MB aqui vs 25MB lá), um vídeo entre 8 e 25MB nunca chegava a
+    # cair na validação com mensagem amigável — o Werkzeug já cortava a
+    # conexão antes com um 413 genérico.
+    MAX_CONTENT_LENGTH = 26 * 1024 * 1024  # 26 MB por request
     ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
 
     # --- Multi-tenant ---

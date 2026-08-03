@@ -44,6 +44,25 @@ def create_app(config_name: str | None = None) -> Flask:
 
         app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
+        # RATELIMIT_STORAGE_URI cai em "memory://" por padrão (ver
+        # config.py) — cada processo do gunicorn conta as tentativas de
+        # login separadamente. Com `gunicorn -w N` (N processos, o normal
+        # em produção), o limite efetivo de tentativas de força bruta
+        # vira N vezes o configurado (ex.: "10 por minuto" com 4 workers
+        # deixa passar até 40/minuto por IP). Não é um erro fatal — o
+        # rate limit ainda existe, só fica mais fraco — então só avisamos
+        # no log em vez de bloquear a inicialização.
+        if app.config.get("RATELIMIT_STORAGE_URI", "memory://").startswith("memory://"):
+            import logging
+
+            logging.getLogger(__name__).warning(
+                "RATELIMIT_STORAGE_URI não configurado (usando memory://) em "
+                "produção — o limite de tentativas de login é por PROCESSO, "
+                "não compartilhado entre os workers do gunicorn. Configure "
+                "RATELIMIT_STORAGE_URI=redis://... para um limite de força "
+                "bruta efetivo com mais de 1 worker."
+            )
+
     # Garante que a pasta instance/ e a pasta de uploads existam
     os.makedirs(app.instance_path, exist_ok=True)
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
@@ -154,6 +173,44 @@ def _register_request_hooks(app: Flask) -> None:
     # nem faz sentido resolver o tenant dela em seguida.
     app.before_request(enforce_session_not_revoked)
     app.before_request(load_tenant_from_session)
+
+    # Cabeçalhos de segurança em toda resposta — mitigam clickjacking
+    # (X-Frame-Options/frame-ancestors), MIME-sniffing (nosniff), e
+    # vazamento de URL/query string via header Referer para sites de
+    # terceiro (Referrer-Policy). Não usamos uma CSP restritiva (sem
+    # 'unsafe-inline') porque o app depende hoje de <script> e atributos
+    # inline (onclick/oninput/onchange) espalhados pelos templates —
+    # travar isso sem uma migração para nonce/hash quebraria a maior
+    # parte da interface. Ainda assim, a CSP abaixo já fecha vetores
+    # reais: bloqueia <object>/<embed> de terceiros, restringe de onde
+    # scripts/estilos podem carregar (mesma origem) e impede que a
+    # própria aplicação seja embutida em <iframe> de outro site.
+    @app.after_request
+    def set_security_headers(response):
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: blob:; "
+            "font-src 'self' data:; "
+            "media-src 'self'; "
+            "object-src 'none'; "
+            "base-uri 'self'; "
+            "frame-ancestors 'self';",
+        )
+        # HSTS só faz sentido (e só é seguro anunciar) quando a conexão
+        # já está garantidamente em HTTPS — em dev/testing (HTTP puro)
+        # anunciar isso faria o navegador recusar tentativas futuras em
+        # HTTP simples, inclusive localhost.
+        if app.config.get("SESSION_COOKIE_SECURE"):
+            response.headers.setdefault(
+                "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
+            )
+        return response
 
 
 def _register_error_handlers(app: Flask) -> None:

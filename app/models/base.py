@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from sqlalchemy import Column, DateTime, ForeignKey, Integer
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import declared_attr
+from sqlalchemy.types import String, TypeDecorator
 
 from app.extensions import db
 
@@ -59,3 +60,30 @@ class TenantScopedMixin:
             nullable=False,
             index=True,
         )
+
+
+class EncryptedString(TypeDecorator):
+    """Tipo de coluna para segredos de terceiro que precisam ser
+    recuperáveis em texto puro para USO (chave de API, senha de SMTP —
+    diferente da senha do usuário, que é só hash/nunca lida de volta) mas
+    não devem ficar em texto puro NO BANCO. Ver app/utils/crypto.py para
+    o porquê e como a chave de criptografia é derivada.
+
+    Uso: `Column(EncryptedString(255))` no lugar de `Column(String(255))`
+    — para quem consome o model, o valor Python continua uma string
+    normal (des)criptografada automaticamente na escrita/leitura; nenhum
+    código que já lê/escreve esses campos precisa mudar.
+    """
+
+    impl = String
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        from app.utils.crypto import encrypt_secret
+
+        return encrypt_secret(value)
+
+    def process_result_value(self, value, dialect):
+        from app.utils.crypto import decrypt_secret
+
+        return decrypt_secret(value)

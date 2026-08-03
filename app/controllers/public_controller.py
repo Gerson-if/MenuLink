@@ -11,6 +11,15 @@ from flask_wtf.csrf import validate_csrf, CSRFError
 from marshmallow import ValidationError
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
+# `validate_csrf()` (função solta, usada abaixo pra checar o token vindo
+# do cabeçalho X-CSRFToken em vez de um campo de formulário) na verdade
+# levanta wtforms.validators.ValidationError — NÃO flask_wtf.csrf.CSRFError
+# (esse é levantado só pelo mecanismo automático do CSRFProtect). Um
+# `except CSRFError` sozinho não captura isso: um token ausente/inválido
+# vazava como erro 500 não tratado em vez de um 400 limpo. Import com
+# apelido pra não colidir com `ValidationError` do marshmallow (usado
+# logo abaixo pra validação de schema, com significado diferente).
+from wtforms.validators import ValidationError as CSRFValidationError
 
 from app.controllers.lojista.orders import STATUS_LABELS
 from app.extensions import csrf, db, limiter
@@ -225,7 +234,7 @@ def create_order(slug):
     if current_app.config.get("WTF_CSRF_ENABLED", True):
         try:
             validate_csrf(request.headers.get("X-CSRFToken", ""))
-        except CSRFError:
+        except (CSRFError, CSRFValidationError):
             return jsonify({"error": "Sessão expirada, atualize a página e tente novamente."}), 400
 
     tenant = resolve_tenant_by_slug(slug)
@@ -285,7 +294,7 @@ def customer_login(slug):
     if current_app.config.get("WTF_CSRF_ENABLED", True):
         try:
             validate_csrf(request.headers.get("X-CSRFToken", ""))
-        except CSRFError:
+        except (CSRFError, CSRFValidationError):
             return jsonify({"error": "Sessão expirada, atualize a página e tente novamente."}), 400
 
     json_data = request.get_json(silent=True) or {}
@@ -391,8 +400,15 @@ def customer_orders(slug):
 
 
 @public_bp.route("/<slug>/sair", methods=["POST"])
-@csrf.exempt
+@csrf.exempt  # validado manualmente abaixo, igual create_order/customer_login —
+              # sem isso, um site de terceiro poderia forjar este POST (CSRF) e
+              # encerrar a sessão do cliente no cardápio sem consentimento dele.
 def customer_logout(slug):
+    if current_app.config.get("WTF_CSRF_ENABLED", True):
+        try:
+            validate_csrf(request.headers.get("X-CSRFToken", ""))
+        except (CSRFError, CSRFValidationError):
+            abort(400)
     session.pop("customer_phone", None)
     session.pop("customer_tenant_id", None)
     return jsonify({"ok": True})
@@ -417,7 +433,7 @@ def customer_update_profile(slug):
     if current_app.config.get("WTF_CSRF_ENABLED", True):
         try:
             validate_csrf(request.headers.get("X-CSRFToken", ""))
-        except CSRFError:
+        except (CSRFError, CSRFValidationError):
             return jsonify({"error": "Sessão expirada, atualize a página e tente novamente."}), 400
 
     customer = _get_logged_in_customer(tenant)
@@ -468,7 +484,7 @@ def customer_delete_account(slug):
     if current_app.config.get("WTF_CSRF_ENABLED", True):
         try:
             validate_csrf(request.headers.get("X-CSRFToken", ""))
-        except CSRFError:
+        except (CSRFError, CSRFValidationError):
             return jsonify({"error": "Sessão expirada, atualize a página e tente novamente."}), 400
 
     customer = _get_logged_in_customer(tenant)
