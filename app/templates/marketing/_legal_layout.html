@@ -37,7 +37,11 @@
       <span class="font-display text-white" style="font-size:1.05rem; line-height:1;">{{ store_tenant.name }}</span>
       {% else %}
       <div class="brand-mark" style="width:32px;height:32px;font-size:1rem;"><i class="bi bi-egg-fried text-white"></i></div>
-      <span class="font-display text-white" style="font-size:1.05rem; line-height:1;">{{ store_tenant.name if store_tenant else "MENU LINK" }}</span>
+      {% if store_tenant %}
+      <span class="font-display text-white" style="font-size:1.05rem; line-height:1;">{{ store_tenant.name }}</span>
+      {% else %}
+      <span class="font-display text-white brand-wordmark" style="font-size:1.05rem; line-height:1;">Menu<span class="brand-wordmark-accent">Link</span></span>
+      {% endif %}
       {% endif %}
     </a>
   </div>

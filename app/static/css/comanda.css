@@ -188,6 +188,14 @@ body {
 .font-mono { font-family: 'JetBrains Mono', monospace; }
 .text-accent { color: var(--accent); }
 .text-muted-custom { color: var(--muted-text) !important; }
+
+/* Logotipo "MenuLink": as duas palavras coladas (sem espaço) e "Link"
+   na cor de destaque, pra ler como um nome único de marca em vez de
+   duas palavras soltas — em vez de tudo maiúsculo (MENU LINK), usa
+   capitalização de nome próprio (Menu + Link) com letter-spacing bem
+   apertado pra reforçar a junção visual. */
+.brand-wordmark { letter-spacing: -0.01em; white-space: nowrap; }
+.brand-wordmark .brand-wordmark-accent { color: var(--accent); }
 [x-cloak] { display: none !important; }
 
 /* ---------- Formulários ---------- */
