@@ -26,6 +26,13 @@
   .final-cta::before {
     content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--accent) 18%, transparent) 0%, transparent 60%);
   }
+  /* Padding lateral FIXO (não a largura máxima + centralização de um
+     .container comum) — é o que faz marca/botão ficarem colados na
+     borda da tela em qualquer largura, como no modelo de referência,
+     em vez de flutuando no meio de uma faixa centralizada. */
+  .landing-navbar-inner { padding-left: 24px; padding-right: 24px; }
+  @media (min-width: 768px) { .landing-navbar-inner { padding-left: 40px; padding-right: 40px; } }
+
   .landing-nav-toggle { background: transparent; border: 0; padding: 8px; display: inline-flex; align-items: center; justify-content: center; color: var(--card-text, #fff); cursor: pointer; }
   .landing-nav-toggle .hamburger-icon span { background: currentColor; }
 
@@ -121,7 +128,13 @@
 
 {% block content %}
 <nav class="navbar navbar-expand-lg fixed-top navbar-dark navbar-custom py-3">
-  <div class="container justify-content-between">
+  {# container-fluid (não "container") de propósito — um .container tem
+     largura máxima e fica centralizado, então em telas largas sobra um
+     respiro enorme entre a borda de verdade da tela e o conteúdo,
+     deixando a marca/botão "flutuando" longe da lateral em vez de
+     colados nela, como no modelo de referência (barra cheia, só com um
+     padding lateral fixo — não uma faixa centralizada). #}
+  <div class="container-fluid landing-navbar-inner justify-content-between">
     <a class="navbar-brand d-flex align-items-center gap-2 m-0" href="{{ url_for('index') }}">
       {% if platform_settings and platform_settings.platform_logo %}
       <div class="brand-mark overflow-hidden" style="width:36px;height:36px;">
