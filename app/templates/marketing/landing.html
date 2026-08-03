@@ -28,12 +28,46 @@
   }
   .landing-nav-toggle { background: transparent; border: 0; padding: 8px; display: inline-flex; align-items: center; justify-content: center; color: var(--card-text, #fff); cursor: pointer; }
   .landing-nav-toggle .hamburger-icon span { background: currentColor; }
-  .landing-drawer { --bs-offcanvas-width: min(320px, 86vw); background: var(--charcoal); color: var(--paper); }
+
+  /* Botão "vidro fosco" da navbar — pill translúcida com blur, mesmo
+     espírito do .hero-link-secondary logo abaixo, mas reservado pro
+     link de login (só aparece a partir de md; no celular ele já vive
+     dentro da gaveta, ver #landingDrawer). Usa as variáveis do tema
+     atual (--card-text/--card-border) em vez de cor fixa, então
+     continua correto nos 4 temas do sistema, não só no "Picante". */
+  .btn-navbar-glass {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: color-mix(in srgb, var(--card-text) 10%, transparent);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border: 1px solid color-mix(in srgb, var(--card-text) 18%, transparent);
+    color: var(--card-text); padding: 9px 22px; border-radius: 999px;
+    font-weight: 600; font-size: .92rem; text-decoration: none;
+    transition: background .2s ease, border-color .2s ease, transform .2s ease;
+  }
+  .btn-navbar-glass:hover { color: var(--card-text); background: color-mix(in srgb, var(--card-text) 18%, transparent); transform: translateY(-2px); }
+
+  /* Gaveta em "vidro fosco" (fundo translúcido + blur) em vez de sólida
+     — pedido de referência visual do Super Admin. Continua usando
+     --charcoal do tema em vez de preto fixo, então os 4 temas do
+     sistema continuam corretos aqui também. */
+  .landing-drawer {
+    --bs-offcanvas-width: min(340px, 86vw);
+    --bs-offcanvas-bg: transparent;
+    background: color-mix(in srgb, var(--charcoal) 78%, transparent);
+    backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px);
+    color: var(--paper);
+    border-left: 1px solid color-mix(in srgb, var(--card-text) 12%, transparent);
+    transition: transform .4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
   #landingDrawer .offcanvas-header { border-bottom: 1px solid var(--card-border); padding: 16px 18px; }
   #landingDrawer .offcanvas-body { padding: 18px; }
   #landingDrawer .btn-close { filter: invert(1) brightness(2); }
-  .landing-drawer-link { display: block; padding: 10px 4px; color: var(--card-text); text-decoration: none; font-weight: 500; border-radius: 8px; transition: background .15s ease; }
-  .landing-drawer-link:hover { background: color-mix(in srgb, var(--card-text) 8%, transparent); color: var(--card-text); }
+  .landing-drawer-link {
+    display: block; padding: 12px 6px; color: var(--card-text); text-decoration: none;
+    font-weight: 600; font-size: 1.1rem; border-radius: 8px; opacity: .88;
+    transition: opacity .15s ease, color .15s ease;
+  }
+  .landing-drawer-link:hover { opacity: 1; color: var(--accent); background: transparent; }
   .showcase-panel { transition: transform .25s ease, box-shadow .25s ease; }
   .showcase-panel:hover { transform: translateY(-4px); box-shadow: 0 12px 28px rgba(0,0,0,0.2); }
   .hero-cta-group { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 14px; }
@@ -98,9 +132,14 @@
       {% endif %}
       <span class="font-display" style="font-size:1.2rem; line-height:1;">MENU LINK</span>
     </a>
-    <button type="button" class="landing-nav-toggle" data-bs-toggle="offcanvas" data-bs-target="#landingDrawer" aria-controls="landingDrawer" aria-label="Abrir menu">
-      <span class="hamburger-icon"><span></span><span></span><span></span></span>
-    </button>
+    <div class="d-flex align-items-center gap-3">
+      <a href="{{ url_for('auth.login') }}" class="btn-navbar-glass d-none d-md-inline-flex">
+        <i class="bi bi-box-arrow-in-right"></i> Entrar no Painel
+      </a>
+      <button type="button" class="landing-nav-toggle" data-bs-toggle="offcanvas" data-bs-target="#landingDrawer" aria-controls="landingDrawer" aria-label="Abrir menu">
+        <span class="hamburger-icon"><span></span><span></span><span></span></span>
+      </button>
+    </div>
   </div>
 </nav>
 
