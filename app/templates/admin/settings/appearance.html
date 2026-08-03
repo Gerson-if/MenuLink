@@ -1,5 +1,5 @@
 {% extends "layouts/admin_panel.html" %}
-{% block title %}Aparência — Comanda Admin{% endblock %}
+{% block title %}Aparência — Menu Link Admin{% endblock %}
 {% block page_title %}Aparência do painel{% endblock %}
 
 {% import "admin/settings/_media_dropzone.html" as media %}
@@ -40,7 +40,7 @@
       {% if settings.platform_logo %}
       <img class="settings-option-thumb" src="{{ url_for('static', filename=settings.platform_logo) }}" alt="">
       {% else %}
-      <div class="settings-option-preview">Nenhuma logo enviada — usando o ícone padrão do Comanda.</div>
+      <div class="settings-option-preview">Nenhuma logo enviada — usando o ícone padrão do Menu Link.</div>
       {% endif %}
     </button>
 
@@ -129,7 +129,7 @@
       <p class="text-muted-custom small mb-3">
         Aparece na página inicial (landing page), no favicon (aba do navegador)
         e nas telas de login, cadastro de loja e recuperação de senha. Sem uma
-        logo enviada, essas telas usam o ícone padrão do Comanda. Não afeta a
+        logo enviada, essas telas usam o ícone padrão do Menu Link. Não afeta a
         logo de cada loja nem nenhuma tela de configuração do lojista — cada
         loja mantém a própria logo, configurada no painel dela.
       </p>

@@ -168,7 +168,7 @@ class EmailSettingsForm(FlaskForm):
     clear_password = BooleanField("Remover senha salva")
 
     from_email = StringField("E-mail remetente (de onde os e-mails são enviados)", validators=[DataRequired(), Email(), Length(max=255)])
-    from_name = StringField("Nome do remetente", validators=[Optional(), Length(max=150)], default="Comanda")
+    from_name = StringField("Nome do remetente", validators=[Optional(), Length(max=150)], default="Menu Link")
 
     submit = SubmitField("Salvar configurações")
 

@@ -45,7 +45,7 @@ class EmailService:
                 "Integrações > E-mail antes de tentar enviar."
             )
 
-        from_name = self.settings.smtp_from_name or "Comanda"
+        from_name = self.settings.smtp_from_name or "Menu Link"
         from_email = self.settings.smtp_from_email
 
         message = MIMEMultipart("alternative")

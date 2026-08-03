@@ -168,7 +168,7 @@ class TrialService:
     def _send_grace_notice(self, tenant: Tenant, grace_ends_at: datetime) -> None:
         grace_days = self.settings.trial_grace_days
         body = (
-            f"Olá! Seu período de teste grátis do Comanda chegou ao fim, mas fique "
+            f"Olá! Seu período de teste grátis do Menu Link chegou ao fim, mas fique "
             f"tranquilo(a): você ainda tem acesso total ao painel por mais "
             f"{grace_days} dia(s), até {grace_ends_at.strftime('%d/%m/%Y')}, para "
             f"regularizar sua situação e continuar usando o sistema sem "

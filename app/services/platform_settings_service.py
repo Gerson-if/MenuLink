@@ -90,14 +90,14 @@ class PlatformSettingsService:
 
         EmailService(self.settings).send(
             to=to,
-            subject="Teste de configuração de e-mail — Comanda",
+            subject="Teste de configuração de e-mail — Menu Link",
             body_text=(
-                "Se você recebeu este e-mail, a integração de e-mail do Comanda está "
+                "Se você recebeu este e-mail, a integração de e-mail do Menu Link está "
                 "configurada corretamente e pronta para enviar recuperação de senha, "
                 "avisos de cobrança e outras notificações."
             ),
             body_html=(
-                "<p>Se você recebeu este e-mail, a integração de e-mail do Comanda está "
+                "<p>Se você recebeu este e-mail, a integração de e-mail do Menu Link está "
                 "configurada corretamente e pronta para enviar recuperação de senha, "
                 "avisos de cobrança e outras notificações.</p>"
             ),

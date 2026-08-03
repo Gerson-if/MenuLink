@@ -109,7 +109,7 @@ def register():
             owner = UserRepository().get_by_email(form.email.data)
             login_user(owner)
             SessionService().start_session(owner)
-            flash(f"Loja '{tenant.name}' criada com sucesso! Bem-vindo(a) à Comanda.", "success")
+            flash(f"Loja '{tenant.name}' criada com sucesso! Bem-vindo(a) ao Menu Link.", "success")
             return redirect(url_for("lojista.dashboard"))
 
     return render_template("auth/register.html", form=form)

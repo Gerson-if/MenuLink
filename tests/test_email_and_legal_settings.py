@@ -118,7 +118,7 @@ class TestEmailSettingsRoutes:
 class TestLegalContentSettings:
     def test_default_terms_page_shows_hardcoded_text(self, client):
         resp = client.get("/termos-de-uso")
-        assert "regulam o acesso e uso da plataforma Comanda" in resp.get_data(as_text=True)
+        assert "regulam o acesso e uso da plataforma Menu Link" in resp.get_data(as_text=True)
 
     def test_custom_terms_content_overrides_default(self, app, client):
         with app.app_context():
@@ -133,7 +133,7 @@ class TestLegalContentSettings:
         html = resp.get_data(as_text=True)
         assert "Texto customizado de teste dos termos." in html
         assert "01/01/2026" in html
-        assert "regulam o acesso e uso da plataforma Comanda" not in html
+        assert "regulam o acesso e uso da plataforma Menu Link" not in html
 
     def test_settings_legal_requires_super_admin(self, client, login_as):
         login_as(client, "lojista@braseiroecia.com.br", "lojista123")

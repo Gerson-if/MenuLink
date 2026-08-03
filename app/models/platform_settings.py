@@ -162,7 +162,7 @@ LANDING_THEME_CHOICES = [
 # {data_fim} — documentados também na tela de configuração (Super Admin).
 DEFAULT_TRIAL_REMINDER_MESSAGE = (
     "Olá, {loja}! 👋 Passando para lembrar que seu período de teste grátis no "
-    "Comanda termina em {dias_restantes} dia(s), no dia {data_fim}. Se estiver "
+    "Menu Link termina em {dias_restantes} dia(s), no dia {data_fim}. Se estiver "
     "gostando do sistema, escolha um plano quando quiser para continuar "
     "aproveitando o cardápio digital sem interrupções — qualquer dúvida, é só "
     "chamar a gente por aqui! 🙂"
@@ -210,10 +210,10 @@ DEFAULT_LANDING_CONTENT = {
 # sem isso, a tela de edição aparecia em branco até a primeira gravação,
 # dando a impressão de só dar pra "inserir um texto novo" em vez de
 # editar o que já estava publicado.
-DEFAULT_TERMS_HTML = """<p>Estes Termos de Uso regulam o acesso e uso da plataforma Comanda ("Comanda", "plataforma", "nós"), um serviço de cardápio digital e gestão de pedidos via WhatsApp para estabelecimentos comerciais ("lojista", "loja"). Ao criar uma conta ou usar o cardápio público de uma loja hospedada na Comanda, você concorda com estes termos.</p>
+DEFAULT_TERMS_HTML = """<p>Estes Termos de Uso regulam o acesso e uso da plataforma Menu Link ("Menu Link", "plataforma", "nós"), um serviço de cardápio digital e gestão de pedidos via WhatsApp para estabelecimentos comerciais ("lojista", "loja"). Ao criar uma conta ou usar o cardápio público de uma loja hospedada no Menu Link, você concorda com estes termos.</p>
 
-<h2>1. O que é a Comanda</h2>
-<p>A Comanda é uma plataforma de software (SaaS) que permite a um lojista criar e gerenciar um cardápio digital, receber pedidos de clientes finais e organizá-los em um painel de controle. A Comanda não é parte na relação comercial entre o lojista e seus clientes finais — não vendemos produtos, não processamos o pagamento dos pedidos e não somos responsáveis pela qualidade, preço, prazo ou entrega do que é vendido por cada loja.</p>
+<h2>1. O que é o Menu Link</h2>
+<p>O Menu Link é uma plataforma de software (SaaS) que permite a um lojista criar e gerenciar um cardápio digital, receber pedidos de clientes finais e organizá-los em um painel de controle. O Menu Link não é parte na relação comercial entre o lojista e seus clientes finais — não vendemos produtos, não processamos o pagamento dos pedidos e não somos responsáveis pela qualidade, preço, prazo ou entrega do que é vendido por cada loja.</p>
 
 <h2>2. Cadastro do lojista</h2>
 <ul>
@@ -229,13 +229,13 @@ DEFAULT_TERMS_HTML = """<p>Estes Termos de Uso regulam o acesso e uso da platafo
 <p>O uso da plataforma pelo lojista pode estar sujeito a um plano de assinatura pago, cobrado recorrentemente através do nosso parceiro de pagamentos (Asaas). O não pagamento de uma cobrança vencida pode resultar na suspensão temporária do acesso ao painel e/ou do cardápio público até a regularização. Cancelamentos podem ser solicitados a qualquer momento; o acesso permanece disponível até o fim do período já pago.</p>
 
 <h2>5. Responsabilidades do lojista</h2>
-<p>O lojista é o único responsável por: preços e disponibilidade dos produtos anunciados, atendimento e comunicação com seus clientes finais, cumprimento das obrigações fiscais e de consumo aplicáveis ao seu negócio, e pela confirmação/entrega dos pedidos recebidos. A Comanda apenas disponibiliza a ferramenta que organiza esse fluxo.</p>
+<p>O lojista é o único responsável por: preços e disponibilidade dos produtos anunciados, atendimento e comunicação com seus clientes finais, cumprimento das obrigações fiscais e de consumo aplicáveis ao seu negócio, e pela confirmação/entrega dos pedidos recebidos. O Menu Link apenas disponibiliza a ferramenta que organiza esse fluxo.</p>
 
 <h2>6. Disponibilidade do serviço</h2>
 <p>Fazemos esforços razoáveis para manter a plataforma disponível e funcionando corretamente, mas não garantimos operação ininterrupta ou livre de falhas. Manutenções programadas ou emergenciais podem causar indisponibilidade temporária.</p>
 
 <h2>7. Propriedade intelectual</h2>
-<p>O software, marca e identidade visual da Comanda são de nossa propriedade. O conteúdo do cardápio (fotos, descrições, preços, banners) cadastrado por cada lojista permanece de propriedade do respectivo lojista, que é responsável por ter os direitos necessários sobre o que publica.</p>
+<p>O software, marca e identidade visual do Menu Link são de nossa propriedade. O conteúdo do cardápio (fotos, descrições, preços, banners) cadastrado por cada lojista permanece de propriedade do respectivo lojista, que é responsável por ter os direitos necessários sobre o que publica.</p>
 
 <h2>8. Suspensão e encerramento de conta</h2>
 <p>Podemos suspender ou encerrar contas que violem estes termos, pratiquem fraude, ou deixem de pagar a assinatura por período prolongado, mediante aviso quando possível. O lojista pode encerrar sua conta a qualquer momento entrando em contato conosco.</p>
@@ -249,10 +249,10 @@ DEFAULT_TERMS_HTML = """<p>Estes Termos de Uso regulam o acesso e uso da platafo
 <h2>11. Contato</h2>
 <p>Dúvidas sobre estes Termos de Uso podem ser enviadas para o e-mail de suporte informado no rodapé do site ou diretamente ao lojista responsável pela loja acessada, quando a dúvida for sobre um pedido específico.</p>"""
 
-DEFAULT_PRIVACY_HTML = """<p>Esta Política de Privacidade explica como a Comanda coleta, usa e protege dados pessoais de lojistas (usuários do painel) e de clientes finais (visitantes do cardápio público), em conformidade com a Lei Geral de Proteção de Dados (Lei nº 13.709/2018 — LGPD).</p>
+DEFAULT_PRIVACY_HTML = """<p>Esta Política de Privacidade explica como o Menu Link coleta, usa e protege dados pessoais de lojistas (usuários do painel) e de clientes finais (visitantes do cardápio público), em conformidade com a Lei Geral de Proteção de Dados (Lei nº 13.709/2018 — LGPD).</p>
 
 <h2>1. Quem somos e a quem esta política se aplica</h2>
-<p>A Comanda é a operadora da plataforma. Esta política se aplica a duas categorias de titulares de dados: (a) lojistas e demais usuários do painel administrativo, e (b) clientes finais que fazem pedidos pelo cardápio público de uma loja.</p>
+<p>O Menu Link é a operadora da plataforma. Esta política se aplica a duas categorias de titulares de dados: (a) lojistas e demais usuários do painel administrativo, e (b) clientes finais que fazem pedidos pelo cardápio público de uma loja.</p>
 
 <h2>2. Dados que coletamos</h2>
 <p><strong>Do lojista/usuário do painel:</strong> nome, e-mail, senha (armazenada apenas de forma criptografada, nunca em texto puro), dados da loja (nome, endereço, telefone/WhatsApp, horários, logotipo, cardápio) e dados necessários para cobrança da assinatura, processados pelo nosso parceiro de pagamentos (Asaas).</p>

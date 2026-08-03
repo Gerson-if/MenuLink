@@ -1,7 +1,7 @@
 {
-  "name": "Comanda",
-  "short_name": "Comanda",
-  "description": "Painel administrativo do Comanda — cardápio digital e gestão de pedidos.",
+  "name": "Menu Link",
+  "short_name": "Menu Link",
+  "description": "Painel administrativo do Menu Link — cardápio digital e gestão de pedidos.",
   "start_url": "/login",
   "scope": "/",
   "display": "standalone",

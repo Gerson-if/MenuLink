@@ -26,17 +26,17 @@ def send_password_reset_email(user, token: str) -> str:
         try:
             email_service.send(
                 to=user.email,
-                subject="Redefinição de senha — Comanda",
+                subject="Redefinição de senha — Menu Link",
                 body_text=(
                     f"Olá, {user.name}.\n\n"
-                    "Recebemos um pedido para redefinir sua senha no Comanda. "
+                    "Recebemos um pedido para redefinir sua senha no Menu Link. "
                     f"Clique no link abaixo para escolher uma nova senha (válido por 1 hora):\n\n"
                     f"{reset_url}\n\n"
                     "Se você não pediu isso, pode ignorar este e-mail — sua senha continua a mesma."
                 ),
                 body_html=(
                     f"<p>Olá, {user.name}.</p>"
-                    "<p>Recebemos um pedido para redefinir sua senha no Comanda. "
+                    "<p>Recebemos um pedido para redefinir sua senha no Menu Link. "
                     "Clique no botão abaixo para escolher uma nova senha (válido por 1 hora):</p>"
                     f'<p><a href="{reset_url}" style="background:#E54A36;color:#fff;padding:10px 20px;'
                     'border-radius:6px;text-decoration:none;display:inline-block;">Redefinir senha</a></p>'

@@ -84,7 +84,7 @@ class TestLojistaChatRoutes:
         login_as(client, "lojista@braseiroecia.com.br", "lojista123")
         resp = client.get("/painel/suporte")
         assert resp.status_code == 200
-        assert "Suporte Comanda" in resp.get_data(as_text=True)
+        assert "Suporte Menu Link" in resp.get_data(as_text=True)
 
     def test_lojista_can_send_message(self, app, client, login_as):
         login_as(client, "lojista@braseiroecia.com.br", "lojista123")
