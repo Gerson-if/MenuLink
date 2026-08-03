@@ -463,6 +463,19 @@ function initPageChrome() {
 
 document.body.addEventListener('htmx:afterSettle', initPageChrome);
 
+// Chamada direta pro carregamento normal (não boosted) da página — o
+// comentário acima já dizia "roda uma vez no carregamento normal E de
+// novo depois de navegação boosted", mas só o listener de
+// htmx:afterSettle existia; esse evento NUNCA dispara no primeiro
+// carregamento real (só depois de uma navegação boosted), então
+// toggle de senha, modal de confirmação, tooltips etc. simplesmente
+// não funcionavam em NENHUMA primeira visita a uma página (login,
+// primeira vez no painel após F5, etc.) — só passavam a funcionar
+// depois do primeiro clique num link boosted. Este <script> já é
+// `defer`, então o DOM já está pronto quando esta linha roda; não
+// precisa esperar DOMContentLoaded.
+initPageChrome();
+
 /*
  * Barra de progresso fina no topo da página — dá feedback visual
  * IMEDIATO ao trocar de seção (sidebar/barra inferior, ver hx-boost),

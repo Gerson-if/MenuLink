@@ -193,7 +193,18 @@ def _register_request_hooks(app: Flask) -> None:
         response.headers.setdefault(
             "Content-Security-Policy",
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline'; "
+            # 'unsafe-eval' é obrigatório aqui: o Alpine.js (usado em toda a
+            # interface — sidebar, gavetas, modal de confirmação, toasts de
+            # notificação, x-data="{...}" espalhado pelos templates) compila
+            # cada expressão (x-show, @click, x-init...) com `new Function()`
+            # por baixo dos panos; SEM 'unsafe-eval' o navegador bloqueia
+            # essa compilação e o Alpine para de funcionar por completo —
+            # foi exatamente isso que quebrou toast/gaveta/modal/toggle de
+            # senha na primeira versão desta CSP (faltava esta permissão).
+            # Existe uma build do Alpine sem eval (@alpinejs/csp), mas exige
+            # reescrever x-data pra métodos nomeados em vez de objetos
+            # inline em todos os templates — fora do escopo agora.
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
             "style-src 'self' 'unsafe-inline'; "
             "img-src 'self' data: blob:; "
             "font-src 'self' data:; "

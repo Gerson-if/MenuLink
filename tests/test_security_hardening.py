@@ -23,6 +23,18 @@ class TestSecurityHeaders:
         assert resp.headers.get("Referrer-Policy") == "strict-origin-when-cross-origin"
         assert "default-src 'self'" in resp.headers.get("Content-Security-Policy", "")
 
+    def test_csp_allows_unsafe_eval_for_alpine(self, client):
+        # Regressão: a primeira versão da CSP (script-src 'self'
+        # 'unsafe-inline', sem 'unsafe-eval') quebrava o Alpine.js por
+        # completo em toda a interface — toast de notificação não sumia
+        # mais, botão de fechar (x) parava de responder, gaveta lateral
+        # não abria — porque o Alpine compila cada expressão x-data/
+        # x-show/@click com `new Function()`, bloqueado sem essa
+        # permissão. Ver comentário em app/__init__.py:set_security_headers.
+        resp = client.get("/login")
+        csp = resp.headers.get("Content-Security-Policy", "")
+        assert "'unsafe-eval'" in csp
+
     def test_hsts_absent_without_https_cookie(self, client):
         # TestingConfig roda sem HTTPS (SESSION_COOKIE_SECURE=False) —
         # anunciar HSTS aqui faria o navegador recusar HTTP simples
