@@ -26,7 +26,7 @@ class RegistrationForm(FlaskForm):
         ],
     )
     email = StringField(
-        "E-mail corporativo",
+        "Seu melhor e-mail",
         validators=[
             DataRequired(message="Informe o e-mail."),
             bounded_length(180),
