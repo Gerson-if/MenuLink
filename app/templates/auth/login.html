@@ -3,6 +3,17 @@
 {% block auth_title %}Acesse sua Conta{% endblock %}
 {% block auth_subtitle %}Gerenciador administrativo da sua loja{% endblock %}
 
+{# As abas "Já tenho conta" / "Quero criar minha loja" ficavam lado a
+   lado, ACIMA do formulário, com o mesmo peso visual do login — dava a
+   entender que criar conta era uma opção tão relevante quanto entrar,
+   competindo com a ação principal de quem já é lojista. Removida a
+   navegação por abas aqui (mesmo padrão já usado em
+   forgot_password.html/reset_password.html): "Criar loja" virou um
+   link discreto perto de "Esqueci a senha", no rodapé — sinaliza que
+   é uma opção secundária ("ainda não tem conta?"), não uma escolha de
+   mesmo nível que logar. #}
+{% block auth_nav_tabs %}{% endblock %}
+
 {% block auth_content %}
 <form method="POST" novalidate>
   {{ form.hidden_tag() }}
@@ -46,4 +57,8 @@
     <a href="{{ url_for('auth.forgot_password') }}" class="link-chili">Esqueci a senha</a>
   </p>
 </form>
+
+<p class="text-center small mt-3 mb-0 text-muted-custom">
+  Ainda não tem uma conta? <a href="{{ url_for('auth.register') }}" class="link-chili">Criar minha loja</a>
+</p>
 {% endblock %}

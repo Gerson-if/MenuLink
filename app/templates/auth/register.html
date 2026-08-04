@@ -4,8 +4,13 @@
 {% block auth_subtitle %}Cadastre-se e monte seu cardápio digital em minutos{% endblock %}
 {% block auth_panel_width %}480px{% endblock %}
 
+{# Mesmo motivo do login.html: navegação por abas removida — "Já tem
+   conta?" vira um link discreto, agora no rodapé do formulário em vez
+   de uma aba concorrendo com o cadastro em si. #}
+{% block auth_nav_tabs %}{% endblock %}
+
 {% block auth_content %}
-<form method="POST" novalidate>
+<form method="POST" novalidate id="register-form">
   {{ form.hidden_tag() }}
 
   <div class="row g-2 mb-3">
@@ -80,4 +85,58 @@
 
   {{ form.submit(class="btn btn-chili w-100 mb-3") }}
 </form>
+
+<p class="text-center small mt-1 mb-0 text-muted-custom">
+  Já tem uma conta? <a href="{{ url_for('auth.login') }}" class="link-chili">Entrar</a>
+</p>
+
+{# Criar a loja de verdade demora um pouco mais que um login comum (dá
+   pra ver em admin_tenant_service.py: cria o tenant, o usuário dono, o
+   conteúdo de exemplo — categorias/produtos/banner/logo — e a
+   mensagem de boas-vindas no chat). Sem retorno visual nenhum durante
+   esse tempo, o botão "Criar Meu Painel Administrativo" parecia
+   travado. Esta camada cobre a tela assim que o formulário é
+   realmente enviado (o evento 'submit' só dispara depois que a
+   validação HTML5 nativa passa — campo obrigatório vazio, por
+   exemplo, nem chega a disparar isso, então não aparece à toa) e
+   troca a mensagem periodicamente pra passar sensação de progresso
+   real, não só um spinner parado. Se o servidor devolver algum erro de
+   validação (e-mail já cadastrado etc.), a página recarrega do zero
+   com o formulário e os erros — a camada some junto, é só a marcação
+   desta página mesmo. #}
+<div id="register-loading-overlay" class="register-loading-overlay" aria-hidden="true">
+  <div class="register-loading-box">
+    <span class="spinner-border" role="status" aria-hidden="true"></span>
+    <p class="register-loading-text mt-3 mb-0" id="register-loading-text">Estamos preparando tudo pra você...</p>
+  </div>
+</div>
+<script>
+  (function () {
+    var form = document.getElementById('register-form');
+    var overlay = document.getElementById('register-loading-overlay');
+    var textEl = document.getElementById('register-loading-text');
+    if (!form || !overlay || !textEl) return;
+
+    var messages = [
+      'Estamos preparando tudo pra você...',
+      'Montando seu cardápio digital 🍽️',
+      'Configurando seu painel administrativo...',
+      'Já vai ficar pronto, só mais um instante...',
+    ];
+
+    form.addEventListener('submit', function () {
+      overlay.classList.add('is-visible');
+      overlay.setAttribute('aria-hidden', 'false');
+
+      var submitBtn = form.querySelector('button[type=submit], input[type=submit]');
+      if (submitBtn) submitBtn.disabled = true;
+
+      var step = 0;
+      setInterval(function () {
+        step = (step + 1) % messages.length;
+        textEl.textContent = messages[step];
+      }, 1800);
+    });
+  })();
+</script>
 {% endblock %}

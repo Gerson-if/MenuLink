@@ -659,6 +659,22 @@ body:has(.app-shell) .toast-flash-stack { top: 84px; }
 .auth-tab { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; text-align: center; padding: 8px 12px; border-radius: 26px; font-size: .85rem; font-weight: 600; color: var(--muted-text); text-decoration: none; border: 1px solid transparent; transition: background .2s ease, color .2s ease, border-color .2s ease; }
 .auth-tab:hover { color: var(--card-text); }
 .auth-tab.is-active { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+
+/* Overlay de "preparando tudo" no envio do cadastro (auth/register.html)
+   — cobre a tela inteira assim que o formulário é enviado de verdade,
+   pra dar sensação de progresso durante o tempo real de criação da loja
+   (tenant + usuário + conteúdo de exemplo + mensagem de boas-vindas). */
+.register-loading-overlay {
+  position: fixed; inset: 0; z-index: 2000;
+  display: flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--ink) 88%, transparent);
+  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  opacity: 0; pointer-events: none; transition: opacity .2s ease;
+}
+.register-loading-overlay.is-visible { opacity: 1; pointer-events: all; }
+.register-loading-box { text-align: center; color: #fff; padding: 0 24px; }
+.register-loading-box .spinner-border { color: var(--accent); width: 3rem; height: 3rem; }
+.register-loading-text { font-weight: 600; font-size: 1.05rem; max-width: 300px; margin-left: auto; margin-right: auto; }
 @keyframes authPanelIn {
   from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: none; }
