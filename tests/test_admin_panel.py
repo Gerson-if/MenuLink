@@ -2,7 +2,7 @@ import re
 from datetime import date, timedelta
 
 from app.extensions import db
-from app.models import Invoice, InvoiceStatus, Plan, Tenant, TenantStatus, User, UserSession
+from app.models import ChatMessage, Invoice, InvoiceStatus, Plan, Tenant, TenantStatus, User, UserSession
 
 
 def _get_csrf(html: str) -> str | None:
@@ -43,6 +43,14 @@ class TestTenantManagement:
             owner = User.query.filter_by(email="marco@bella.com").first()
             assert owner is not None
             assert owner.tenant_id == tenant.id
+
+            # Mensagem automática de boas-vindas no chat de suporte,
+            # avisando sobre os dias de teste grátis (ver
+            # AdminTenantService.create).
+            welcome = ChatMessage.query.filter_by(tenant_id=tenant.id).first()
+            assert welcome is not None
+            assert "bem-vindo" in welcome.body.lower()
+            assert "dia" in welcome.body.lower()
             assert owner.check_password("senha123")
 
     def test_new_tenant_gets_starter_content(self, app, client, login_as):

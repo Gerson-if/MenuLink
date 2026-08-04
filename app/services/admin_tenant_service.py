@@ -105,6 +105,27 @@ class AdminTenantService:
 
         seed_starter_content(tenant)
 
+        # Mensagem automática de boas-vindas no chat de suporte — mesmo
+        # canal usado pelos avisos de trial (ver trial_service.py). Texto
+        # fixo (não passa pelo template configurável de lembrete), já que
+        # é sempre a mesma independente de quando/quem criou a loja.
+        # Chamada depois do commit acima, mesmo espírito do
+        # seed_starter_content: "cortesia" que nunca deve travar a criação
+        # da loja em si.
+        try:
+            from app.services.chat_service import ChatService
+
+            welcome_body = (
+                f"Oi, {owner_name.strip() or 'tudo bem'}! 👋 Seja muito bem-vindo(a) ao Menu Link! "
+                f"Sua loja '{tenant.name}' já está no ar. Você tem {trial_days} dia(s) grátis pra "
+                "explorar o sistema à vontade — monte seu cardápio, personalize as cores e o logo, "
+                "e mande o link pros seus clientes fazerem o primeiro pedido. Aproveite ao máximo "
+                "esses dias de teste e, qualquer dúvida, é só chamar a gente por aqui! ❤️😊"
+            )
+            ChatService.send_system_message(tenant.id, welcome_body)
+        except Exception:
+            db.session.rollback()
+
         return tenant
 
     def update(self, tenant: Tenant, *, name: str, email: str, phone: str,

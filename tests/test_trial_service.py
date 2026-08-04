@@ -58,13 +58,16 @@ class TestTrialServiceProcessing:
 
             summary = TrialService().process_all()
             assert summary["reminders_sent"] == 1
-            assert ChatMessage.query.filter_by(tenant_id=tenant.id).count() == 1
+            # +1 da mensagem de boas-vindas automática enviada na criação
+            # da loja (ver AdminTenantService.create) — o lembrete é a
+            # segunda mensagem do fio.
+            assert ChatMessage.query.filter_by(tenant_id=tenant.id).count() == 2
 
             # Rodar de novo imediatamente não deve mandar outro lembrete
             # (ainda dentro do ciclo configurado).
             summary_again = TrialService().process_all()
             assert summary_again["reminders_sent"] == 0
-            assert ChatMessage.query.filter_by(tenant_id=tenant.id).count() == 1
+            assert ChatMessage.query.filter_by(tenant_id=tenant.id).count() == 2
 
     def test_sends_fixed_d2_notice_once(self, app):
         with app.app_context():
