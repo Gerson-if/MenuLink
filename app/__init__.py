@@ -8,7 +8,7 @@ Uso:
 
 import os
 
-from flask import Flask, render_template, request
+from flask import Flask, jsonify, render_template, request
 
 from app.config import config_by_name
 from app.extensions import db, migrate, login_manager, bcrypt, csrf, ma, limiter
@@ -116,6 +116,34 @@ def _register_blueprints(app: Flask) -> None:
     @app.get("/healthz")
     def healthz():
         return {"status": "ok"}
+
+    @app.get("/.well-known/assetlinks.json")
+    def android_asset_links():
+        """Digital Asset Links — a Play Store exige isso pra confirmar
+        que o app Android (TWA, gerado com Bubblewrap/PWABuilder a
+        partir de app/static/manifest.json) e este domínio pertencem ao
+        mesmo dono, e assim abrir em tela cheia sem barra de endereço
+        (sem isso, o Android some com a barra de navegação nativa mas
+        deixa a barra de URL do Chrome visível por segurança).
+
+        Preencha ANDROID_TWA_PACKAGE_NAME e ANDROID_TWA_SHA256_FINGERPRINTS
+        (ver app/config.py) com os dados do Play Console DEPOIS de gerar
+        o pacote Android — até lá, responde uma lista vazia (formato
+        válido, só diz "nenhum app Android verificado ainda")."""
+        package_name = app.config.get("ANDROID_TWA_PACKAGE_NAME", "")
+        fingerprints = app.config.get("ANDROID_TWA_SHA256_FINGERPRINTS", [])
+        if not package_name or not fingerprints:
+            return jsonify([])
+        return jsonify([
+            {
+                "relation": ["delegate_permission/common.handle_all_urls"],
+                "target": {
+                    "namespace": "android_app",
+                    "package_name": package_name,
+                    "sha256_cert_fingerprints": fingerprints,
+                },
+            }
+        ])
 
     @app.get("/")
     def index():

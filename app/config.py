@@ -76,6 +76,19 @@ class BaseConfig:
     # "pagamento confirmado" e liberar uma loja bloqueada de graça.
     ASAAS_WEBHOOK_TOKEN = os.environ.get("ASAAS_WEBHOOK_TOKEN", "")
 
+    # --- App Android (TWA) publicada na Play Store ---
+    # Preencha depois de gerar o pacote Android (ex: com o Bubblewrap ou
+    # o PWABuilder) e obter o certificado de assinatura no Play Console
+    # — ver /.well-known/assetlinks.json em app/__init__.py. Enquanto
+    # ficarem vazias, o arquivo responde uma lista vazia (válido, só diz
+    # "nenhum app Android verificado ainda" — não quebra nada).
+    ANDROID_TWA_PACKAGE_NAME = os.environ.get("ANDROID_TWA_PACKAGE_NAME", "")
+    ANDROID_TWA_SHA256_FINGERPRINTS = [
+        fp.strip()
+        for fp in os.environ.get("ANDROID_TWA_SHA256_FINGERPRINTS", "").split(",")
+        if fp.strip()
+    ]
+
 
 class DevelopmentConfig(BaseConfig):
     """Ambiente local de desenvolvimento — SQLite, pronto pra uso imediato."""

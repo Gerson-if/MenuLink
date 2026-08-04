@@ -106,6 +106,23 @@
 <script defer src="{{ static_versioned('js/comanda.js') }}"></script>
 <script defer src="{{ static_versioned('vendor/alpinejs/alpine.min.js') }}"></script>
 <script src="{{ static_versioned('vendor/htmx/htmx.min.js') }}"></script>
+{# Service worker com escopo travado em /static/ (só CSS/JS/ícones —
+   ver app/static/sw.js) — deixa o app instalado abrir na hora em
+   navegações seguintes, sem tocar em HTML/API, que é dado dinâmico por
+   tenant e não pode ser cacheado. Registrado só depois do primeiro
+   carregamento (`window.load`) pra não competir com o carregamento da
+   página em si — e só se o navegador suportar (iOS Safari mais antigo,
+   por exemplo, não tem Service Worker; o site continua funcionando
+   normalmente sem ele). #}
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker
+        .register("{{ static_versioned('sw.js') }}", { scope: "/static/" })
+        .catch(function () {});
+    });
+  }
+</script>
 {% block extra_head %}{% endblock %}
 </head>
 {# hx-history="false": desliga o cache de "fotografias" do HTMX pra
