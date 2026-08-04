@@ -675,6 +675,38 @@ body:has(.app-shell) .toast-flash-stack { top: 84px; }
 .register-loading-box { text-align: center; color: #fff; padding: 0 24px; }
 .register-loading-box .spinner-border { color: var(--accent); width: 3rem; height: 3rem; }
 .register-loading-text { font-weight: 600; font-size: 1.05rem; max-width: 300px; margin-left: auto; margin-right: auto; }
+
+/* Assistente de cadastro em passos (auth/register.html) — um
+   campo/pergunta por tela, com transição animada entre elas. Só some
+   um passo por vez quando o JS roda (classe `.js-wizard` no <form>) —
+   sem JavaScript, `.reg-step` nunca fica escondido, e a pessoa vê o
+   formulário inteiro de uma vez (camada 100% progressiva). */
+.reg-progress { margin-bottom: 18px; }
+.reg-progress-track { height: 6px; border-radius: 4px; overflow: hidden; background: color-mix(in srgb, var(--card-text) 10%, transparent); }
+.reg-progress-fill { height: 100%; border-radius: 4px; background: var(--accent); transition: width .35s cubic-bezier(.22, 1, .36, 1); }
+.reg-progress-label { font-size: .75rem; color: var(--muted-text); margin: 6px 0 0; text-align: right; }
+
+#register-form.js-wizard .reg-step { display: none; }
+#register-form.js-wizard .reg-step.is-active { display: block; }
+
+.reg-step-question { font-family: 'Archivo Black', sans-serif; font-size: 1.15rem; line-height: 1.3; margin: 0 0 4px; }
+.reg-step-hint { font-size: .8rem; color: var(--muted-text); margin: 0 0 14px; }
+.reg-step-nav { display: flex; gap: 10px; margin-top: 18px; }
+.reg-step-nav .btn-outline-secondary { border-color: var(--card-border); color: var(--card-text); white-space: nowrap; }
+
+@keyframes regStepInNext {
+  from { opacity: 0; transform: translateX(28px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes regStepInBack {
+  from { opacity: 0; transform: translateX(-28px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.reg-step.reg-step-in-next { animation: regStepInNext .32s cubic-bezier(.22, 1, .36, 1); }
+.reg-step.reg-step-in-back { animation: regStepInBack .32s cubic-bezier(.22, 1, .36, 1); }
+@media (prefers-reduced-motion: reduce) {
+  .reg-step.reg-step-in-next, .reg-step.reg-step-in-back { animation: none; }
+}
 @keyframes authPanelIn {
   from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: none; }

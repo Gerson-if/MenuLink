@@ -102,6 +102,18 @@ def register():
                 slug=form.slug.data,
             )
         except TenantAdminError as exc:
+            # Erro de regra de negócio (e-mail já usado por outra loja
+            # ou por outro login) não é uma validação de campo do
+            # WTForms — mas do ponto de vista de quem preenche o
+            # formulário, é claramente um problema do campo "e-mail".
+            # Anexado aqui em form.email.errors (além do flash de
+            # sempre) pra aparecer no lugar certo: tanto no formulário
+            # tradicional (sem JS) quanto no assistente em passos
+            # (register.html), que decide em qual passo abrir
+            # justamente procurando erro de campo — sem isso, o
+            # assistente reabriria sempre no passo 1, escondendo o
+            # campo com o problema real atrás de mais 4 cliques.
+            form.email.errors.append(str(exc))
             flash(str(exc), "danger")
         else:
             # Login automático — o lojista cai direto no painel, sem

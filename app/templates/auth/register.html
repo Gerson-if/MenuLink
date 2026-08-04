@@ -10,80 +10,155 @@
 {% block auth_nav_tabs %}{% endblock %}
 
 {% block auth_content %}
+{# Assistente em passos (um campo/pergunta por tela, com transição
+   animada entre eles) em vez do formulário inteiro de uma vez só —
+   pedido explícito do usuário, no estilo "uma pergunta de cada vez"
+   (Typeform/Google Forms). TODOS os campos continuam dentro do MESMO
+   <form> e são enviados juntos no fim (não é um cadastro em várias
+   etapas no servidor) — o passo a passo é só uma camada visual em
+   cima do formulário de sempre, então a validação/segurança do lado
+   do servidor (WTForms, CSRF, e-mail duplicado etc.) continua
+   idêntica, sem risco de quebrar nada na criação da loja em si.
+
+   Sem JavaScript, `#register-form` nunca ganha a classe `js-wizard` —
+   nesse caso o CSS abaixo não esconde nenhum `.reg-step`, e a pessoa
+   vê o formulário completo de uma vez, como antes. É uma camada 100%
+   progressiva: falha "aberta", nunca trava o cadastro. #}
 <form method="POST" novalidate id="register-form">
   {{ form.hidden_tag() }}
 
-  <div class="row g-2 mb-3">
-    <div class="col-sm-6">
-      {{ form.owner_name.label(class="form-label small fw-semibold") }}
-      {{ form.owner_name(class="form-control", placeholder="Gestor lojista", maxlength=150) }}
+  <div class="reg-progress" id="reg-progress">
+    <div class="reg-progress-track">
+      <div class="reg-progress-fill" id="reg-progress-fill" style="width: 0%;"></div>
+    </div>
+    <p class="reg-progress-label" id="reg-progress-label">&nbsp;</p>
+  </div>
+
+  <div class="reg-steps">
+
+    {# Passo 1 — Nome do lojista #}
+    <div class="reg-step">
+      <h2 class="reg-step-question">Qual é o seu nome?</h2>
+      <p class="reg-step-hint">Você vai ser quem gerencia a loja por aqui.</p>
+      {{ form.owner_name.label(class="visually-hidden") }}
+      {{ form.owner_name(class="form-control", placeholder="Seu nome completo", maxlength=150, **{"data-required": "1"}) }}
+      <p class="upload-error reg-required-msg mt-1" data-error-for="owner_name" style="display:none;">Escreva seu nome pra continuar.</p>
       {% for error in form.owner_name.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+      <div class="reg-step-nav">
+        <button type="button" class="btn btn-chili flex-fill" data-wizard="next">Continuar <i class="bi bi-arrow-right"></i></button>
+      </div>
     </div>
-    <div class="col-sm-6">
-      {{ form.whatsapp_number.label(class="form-label small fw-semibold") }}
-      {{ form.whatsapp_number(class="form-control", placeholder="(11) 99999-0000", maxlength=20) }}
+
+    {# Passo 2 — WhatsApp #}
+    <div class="reg-step">
+      <h2 class="reg-step-question">Qual o seu WhatsApp?</h2>
+      <p class="reg-step-hint">Usamos pra falar com você sobre sua conta, se precisar.</p>
+      {{ form.whatsapp_number.label(class="visually-hidden") }}
+      {{ form.whatsapp_number(class="form-control", placeholder="(11) 99999-0000", maxlength=20, **{"data-required": "1"}) }}
+      <p class="upload-error reg-required-msg mt-1" data-error-for="whatsapp_number" style="display:none;">Informe seu WhatsApp pra continuar.</p>
       {% for error in form.whatsapp_number.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+      <div class="reg-step-nav">
+        <button type="button" class="btn btn-outline-secondary" data-wizard="back"><i class="bi bi-arrow-left"></i> Voltar</button>
+        <button type="button" class="btn btn-chili flex-fill" data-wizard="next">Continuar <i class="bi bi-arrow-right"></i></button>
+      </div>
     </div>
-  </div>
 
-  <div class="mb-3">
-    {{ form.store_name.label(class="form-label small fw-semibold") }}
-    {{ form.store_name(class="form-control", placeholder="Ex: Sabor da Vila", maxlength=150) }}
-    {% for error in form.store_name.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
-  </div>
-
-  <div class="mb-3">
-    {{ form.slug.label(class="form-label small fw-semibold") }}
-    <p class="upload-meta mt-0 mb-2">É o link que você vai mandar pro cliente pedir — no WhatsApp, no Instagram, onde for. Pode trocar depois se quiser.</p>
-    {# O domínio ({{ request.host }}/loja/) NÃO fica mais como prefixo
-       aqui dentro do input-group: em telas estreitas (celular) esse
-       prefixo comprimia demais o campo de digitação, deixando a pessoa
-       sem ver quase nada do que estava escrevendo. A caixa de
-       pré-visualização logo abaixo já mostra o link completo e
-       atualizado em tempo real — repetir o domínio nos dois lugares
-       era redundante e piorava a usabilidade sem ganhar nada em troca. #}
-    {{ form.slug(class="form-control font-mono", placeholder="minha-loja", maxlength=150,
-        **{"oninput": "this.value = this.value.toLowerCase().replace(/[^a-z0-9-]+/g,'-'); document.getElementById('slug-preview-value').textContent = this.value || 'minha-loja';",
-           "hx-get": url_for('auth.check_slug_availability'), "hx-trigger": "keyup changed delay:400ms",
-           "hx-target": "#slug-feedback", "hx-swap": "innerHTML"}) }}
-    <div id="slug-feedback"></div>
-    {% for error in form.slug.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
-    <div class="slug-preview-box mt-2">
-      <i class="bi bi-link-45deg"></i>
-      Seu cardápio vai ficar em:
-      <span class="font-mono">{{ request.host }}/loja/<span id="slug-preview-value">{{ form.slug.data or "minha-loja" }}</span></span>
+    {# Passo 3 — Nome da loja #}
+    <div class="reg-step">
+      <h2 class="reg-step-question">Como se chama sua loja?</h2>
+      <p class="reg-step-hint">É o nome que vai aparecer pros seus clientes.</p>
+      {{ form.store_name.label(class="visually-hidden") }}
+      {{ form.store_name(class="form-control", placeholder="Ex: Sabor da Vila", maxlength=150, **{"data-required": "1"}) }}
+      <p class="upload-error reg-required-msg mt-1" data-error-for="store_name" style="display:none;">Dê um nome pra sua loja pra continuar.</p>
+      {% for error in form.store_name.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+      <div class="reg-step-nav">
+        <button type="button" class="btn btn-outline-secondary" data-wizard="back"><i class="bi bi-arrow-left"></i> Voltar</button>
+        <button type="button" class="btn btn-chili flex-fill" data-wizard="next">Continuar <i class="bi bi-arrow-right"></i></button>
+      </div>
     </div>
-  </div>
 
-  <div class="mb-3">
-    {{ form.email.label(class="form-label small fw-semibold") }}
-    {{ form.email(class="form-control", placeholder="contato@sualoja.com", maxlength=180) }}
-    {% for error in form.email.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
-  </div>
-
-  <div class="mb-3">
-    {{ form.password.label(class="form-label small fw-semibold") }}
-    <div class="password-field-wrap">
-      {{ form.password(class="form-control" + (" border-danger" if form.password.errors else ""), placeholder="Mínimo de 6 caracteres", maxlength=128, id="register-password") }}
-      <button type="button" class="password-toggle-btn" data-target="register-password" aria-label="Mostrar senha" title="Mostrar/ocultar senha">
-        <i class="bi bi-eye"></i>
-      </button>
+    {# Passo 4 — Endereço do cardápio (slug) #}
+    <div class="reg-step">
+      <h2 class="reg-step-question">Qual vai ser o link do seu cardápio?</h2>
+      <p class="reg-step-hint">É o link que você vai mandar pro cliente pedir — no WhatsApp, no Instagram, onde for. Pode trocar depois se quiser.</p>
+      {{ form.slug.label(class="visually-hidden") }}
+      {# O domínio ({{ request.host }}/loja/) NÃO fica como prefixo aqui
+         dentro do campo: em telas estreitas (celular) esse prefixo
+         comprimia demais o espaço de digitação. A caixa de
+         pré-visualização logo abaixo já mostra o link completo e
+         atualizado em tempo real. #}
+      {{ form.slug(class="form-control font-mono", placeholder="minha-loja", maxlength=150,
+          **{"data-required": "1",
+             "oninput": "this.value = this.value.toLowerCase().replace(/[^a-z0-9-]+/g,'-'); document.getElementById('slug-preview-value').textContent = this.value || 'minha-loja';",
+             "hx-get": url_for('auth.check_slug_availability'), "hx-trigger": "keyup changed delay:400ms",
+             "hx-target": "#slug-feedback", "hx-swap": "innerHTML"}) }}
+      <p class="upload-error reg-required-msg mt-1" data-error-for="slug" style="display:none;">Escolha um endereço pra continuar.</p>
+      <div id="slug-feedback"></div>
+      {% for error in form.slug.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+      <div class="slug-preview-box mt-2">
+        <i class="bi bi-link-45deg"></i>
+        Seu cardápio vai ficar em:
+        <span class="font-mono">{{ request.host }}/loja/<span id="slug-preview-value">{{ form.slug.data or "minha-loja" }}</span></span>
+      </div>
+      <div class="reg-step-nav">
+        <button type="button" class="btn btn-outline-secondary" data-wizard="back"><i class="bi bi-arrow-left"></i> Voltar</button>
+        <button type="button" class="btn btn-chili flex-fill" data-wizard="next">Continuar <i class="bi bi-arrow-right"></i></button>
+      </div>
     </div>
-    {% for error in form.password.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
-  </div>
 
-  <div class="mb-4">
-    {{ form.password_confirm.label(class="form-label small fw-semibold") }}
-    <div class="password-field-wrap">
-      {{ form.password_confirm(class="form-control" + (" border-danger" if form.password_confirm.errors else ""), placeholder="Repita a senha", maxlength=128, id="register-password-confirm") }}
-      <button type="button" class="password-toggle-btn" data-target="register-password-confirm" aria-label="Mostrar senha" title="Mostrar/ocultar senha">
-        <i class="bi bi-eye"></i>
-      </button>
+    {# Passo 5 — E-mail #}
+    <div class="reg-step">
+      <h2 class="reg-step-question">Qual é o seu melhor e-mail?</h2>
+      <p class="reg-step-hint">Pra você entrar no painel e receber avisos importantes.</p>
+      {{ form.email.label(class="visually-hidden") }}
+      {{ form.email(class="form-control", placeholder="contato@sualoja.com", maxlength=180, **{"data-required": "1"}) }}
+      <p class="upload-error reg-required-msg mt-1" data-error-for="email" style="display:none;">Informe seu e-mail pra continuar.</p>
+      {% for error in form.email.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+      <div class="reg-step-nav">
+        <button type="button" class="btn btn-outline-secondary" data-wizard="back"><i class="bi bi-arrow-left"></i> Voltar</button>
+        <button type="button" class="btn btn-chili flex-fill" data-wizard="next">Continuar <i class="bi bi-arrow-right"></i></button>
+      </div>
     </div>
-    {% for error in form.password_confirm.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
-  </div>
 
-  {{ form.submit(class="btn btn-chili w-100 mb-3") }}
+    {# Passo 6 — Senha (o único que agrupa 2 campos: são intrinsecamente
+       ligados — separar "senha" e "confirme a senha" em duas telas
+       diferentes atrapalharia mais do que ajudaria, a pessoa precisa
+       ver os dois lado a lado pra conferir que digitou igual) #}
+    <div class="reg-step">
+      <h2 class="reg-step-question">Crie uma senha de acesso</h2>
+      <p class="reg-step-hint">Escolha uma senha segura pra proteger sua loja.</p>
+
+      <div class="mb-3">
+        {{ form.password.label(class="form-label small fw-semibold") }}
+        <div class="password-field-wrap">
+          {{ form.password(class="form-control" + (" border-danger" if form.password.errors else ""), placeholder="Mínimo de 6 caracteres", maxlength=128, id="register-password", **{"data-required": "1"}) }}
+          <button type="button" class="password-toggle-btn" data-target="register-password" aria-label="Mostrar senha" title="Mostrar/ocultar senha">
+            <i class="bi bi-eye"></i>
+          </button>
+        </div>
+        <p class="upload-error reg-required-msg mt-1" data-error-for="password" style="display:none;">Crie uma senha pra continuar.</p>
+        {% for error in form.password.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+      </div>
+
+      <div class="mb-4">
+        {{ form.password_confirm.label(class="form-label small fw-semibold") }}
+        <div class="password-field-wrap">
+          {{ form.password_confirm(class="form-control" + (" border-danger" if form.password_confirm.errors else ""), placeholder="Repita a senha", maxlength=128, id="register-password-confirm", **{"data-required": "1"}) }}
+          <button type="button" class="password-toggle-btn" data-target="register-password-confirm" aria-label="Mostrar senha" title="Mostrar/ocultar senha">
+            <i class="bi bi-eye"></i>
+          </button>
+        </div>
+        <p class="upload-error reg-required-msg mt-1" data-error-for="password_confirm" style="display:none;">Repita a senha pra continuar.</p>
+        {% for error in form.password_confirm.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+      </div>
+
+      <div class="reg-step-nav">
+        <button type="button" class="btn btn-outline-secondary" data-wizard="back"><i class="bi bi-arrow-left"></i> Voltar</button>
+        {{ form.submit(class="btn btn-chili flex-fill") }}
+      </div>
+    </div>
+
+  </div>
 </form>
 
 <p class="text-center small mt-1 mb-0 text-muted-custom">
@@ -94,16 +169,14 @@
    pra ver em admin_tenant_service.py: cria o tenant, o usuário dono, o
    conteúdo de exemplo — categorias/produtos/banner/logo — e a
    mensagem de boas-vindas no chat). Sem retorno visual nenhum durante
-   esse tempo, o botão "Criar Meu Painel Administrativo" parecia
-   travado. Esta camada cobre a tela assim que o formulário é
-   realmente enviado (o evento 'submit' só dispara depois que a
-   validação HTML5 nativa passa — campo obrigatório vazio, por
-   exemplo, nem chega a disparar isso, então não aparece à toa) e
-   troca a mensagem periodicamente pra passar sensação de progresso
-   real, não só um spinner parado. Se o servidor devolver algum erro de
-   validação (e-mail já cadastrado etc.), a página recarrega do zero
-   com o formulário e os erros — a camada some junto, é só a marcação
-   desta página mesmo. #}
+   esse tempo, o botão final parecia travado. Esta camada cobre a tela
+   assim que o formulário é realmente enviado e troca a mensagem
+   periodicamente pra passar sensação de progresso real, não só um
+   spinner parado. Se o servidor devolver algum erro de validação
+   (e-mail já cadastrado etc.), a página recarrega do zero com o
+   formulário e os erros — a camada some junto, é só a marcação desta
+   página mesmo (e o assistente de passos, mais abaixo, detecta em qual
+   passo está o erro e já abre direto nele). #}
 <div id="register-loading-overlay" class="register-loading-overlay" aria-hidden="true">
   <div class="register-loading-box">
     <span class="spinner-border" role="status" aria-hidden="true"></span>
@@ -113,9 +186,130 @@
 <script>
   (function () {
     var form = document.getElementById('register-form');
+    if (!form) return;
+
+    // ---- Assistente em passos ----------------------------------------
+    var steps = Array.prototype.slice.call(form.querySelectorAll('.reg-step'));
+    var total = steps.length;
+    var current = -1;
+
+    if (total > 0) {
+      form.classList.add('js-wizard');
+
+      // Se o servidor recarregou a página com erro de validação em algum
+      // campo (e-mail duplicado, senha não bate etc.), o assistente
+      // aterrissa direto no primeiro passo com erro em vez de sempre
+      // reiniciar do passo 1 — senão a pessoa via um passo "em branco"
+      // sem entender que tinha algo pra corrigir lá na frente.
+      var startIndex = 0;
+      for (var i = 0; i < steps.length; i++) {
+        if (steps[i].querySelector('.upload-error:not(.reg-required-msg)')) {
+          startIndex = i;
+          break;
+        }
+      }
+
+      var fillEl = document.getElementById('reg-progress-fill');
+      var labelEl = document.getElementById('reg-progress-label');
+
+      function updateProgress(index) {
+        if (fillEl) fillEl.style.width = (((index + 1) / total) * 100) + '%';
+        if (labelEl) labelEl.textContent = 'Passo ' + (index + 1) + ' de ' + total;
+      }
+
+      function focusFirstField(step) {
+        var field = step.querySelector('input');
+        if (!field) return;
+        try { field.focus({ preventScroll: true }); } catch (e) { field.focus(); }
+      }
+
+      function goTo(index, direction) {
+        if (index < 0 || index >= total || index === current) return;
+        if (current >= 0) steps[current].classList.remove('is-active');
+        var next = steps[index];
+        next.classList.add('is-active');
+
+        var animClass = direction === 'back' ? 'reg-step-in-back' : 'reg-step-in-next';
+        next.classList.remove('reg-step-in-next', 'reg-step-in-back');
+        void next.offsetWidth; // força reflow, pra permitir reiniciar a animação
+        next.classList.add(animClass);
+        next.addEventListener('animationend', function handler() {
+          next.classList.remove(animClass);
+          next.removeEventListener('animationend', handler);
+        });
+
+        current = index;
+        updateProgress(index);
+        focusFirstField(next);
+      }
+
+      // Validação leve, só de "preenchido ou não" (a validação de
+      // verdade — formato de e-mail, força de senha, slug já em uso
+      // etc. — continua sendo feita no servidor, esta é só pra evitar
+      // avançar de passo com o campo vazio). Reaproveita o mesmo
+      // padrão visual de erro (`.upload-error`) já usado no resto do
+      // formulário, em vez de depender de bolha de validação nativa do
+      // navegador (que o `novalidate` do form desativa de qualquer
+      // forma).
+      function stepIsValid(step) {
+        var ok = true;
+        var fields = step.querySelectorAll('[data-required="1"]');
+        for (var i = 0; i < fields.length; i++) {
+          var field = fields[i];
+          var value = (field.value || '').trim();
+          var errorEl = step.querySelector('[data-error-for="' + field.name + '"]');
+          if (!value) {
+            ok = false;
+            field.classList.add('border-danger');
+            if (errorEl) errorEl.style.display = 'block';
+          } else {
+            field.classList.remove('border-danger');
+            if (errorEl) errorEl.style.display = 'none';
+          }
+        }
+        if (!ok) {
+          var firstInvalid = step.querySelector('.border-danger');
+          if (firstInvalid) { try { firstInvalid.focus({ preventScroll: true }); } catch (e) { firstInvalid.focus(); } }
+        }
+        return ok;
+      }
+
+      form.querySelectorAll('[data-wizard="next"]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var step = btn.closest('.reg-step');
+          if (!stepIsValid(step)) return;
+          goTo(current + 1, 'next');
+        });
+      });
+
+      form.querySelectorAll('[data-wizard="back"]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          goTo(current - 1, 'back');
+        });
+      });
+
+      // Enter avança pro próximo passo em vez de tentar enviar o
+      // formulário inteiro cedo demais — exceto no último passo, onde
+      // Enter deve mandar o cadastro normalmente (comportamento padrão
+      // de qualquer formulário).
+      form.querySelectorAll('.reg-step input').forEach(function (input) {
+        input.addEventListener('keydown', function (e) {
+          if (e.key !== 'Enter') return;
+          var step = input.closest('.reg-step');
+          var index = steps.indexOf(step);
+          if (index < total - 1) {
+            e.preventDefault();
+            if (stepIsValid(step)) goTo(index + 1, 'next');
+          }
+        });
+      });
+
+      goTo(startIndex, 'next');
+    }
+
+    // ---- Overlay "preparando tudo" no envio final ---------------------
     var overlay = document.getElementById('register-loading-overlay');
     var textEl = document.getElementById('register-loading-text');
-    if (!form || !overlay || !textEl) return;
 
     var messages = [
       'Estamos preparando tudo pra você...',
@@ -124,7 +318,16 @@
       'Já vai ficar pronto, só mais um instante...',
     ];
 
-    form.addEventListener('submit', function () {
+    form.addEventListener('submit', function (e) {
+      // Se o assistente estiver ativo e o passo atual (o último, com o
+      // botão de enviar de verdade) tiver campo vazio, barra o envio
+      // aqui mesmo — mais rápido que ida e volta pro servidor pra
+      // descobrir a mesma coisa.
+      if (total > 0 && current >= 0 && !stepIsValid(steps[current])) {
+        e.preventDefault();
+        return;
+      }
+      if (!overlay || !textEl) return;
       overlay.classList.add('is-visible');
       overlay.setAttribute('aria-hidden', 'false');
 
