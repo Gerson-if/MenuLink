@@ -48,4 +48,9 @@ class RegistrationForm(FlaskForm):
             EqualTo("password", message="As senhas não coincidem."),
         ],
     )
-    submit = SubmitField("Criar Meu Painel Administrativo")
+    # Texto curto DE PROPÓSITO: no cadastro em passos (auth/register.html),
+    # este botão divide a mesma linha com o "Voltar" (`.reg-step-nav`,
+    # dois botões lado a lado) — o texto mais longo de antes ("Criar Meu
+    # Painel Administrativo") quebrava em várias linhas e chegava a
+    # estourar a largura do botão em telas de celular estreitas.
+    submit = SubmitField("Criar minha loja")

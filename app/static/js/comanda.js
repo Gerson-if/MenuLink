@@ -535,3 +535,47 @@ initPageChrome();
     }
   });
 })();
+
+/*
+ * Campo escondido atrás do teclado no celular (relatado primeiro no
+ * cadastro em passos, mas o mesmo problema existe em QUALQUER campo de
+ * texto/textarea do site em mobile): ao tocar num campo que fica na
+ * metade de baixo da tela — comum em telas centralizadas verticalmente,
+ * como o painel de login/cadastro —, o teclado abre por cima dele sem o
+ * navegador rolar a página sozinho, obrigando a pessoa a arrastar
+ * manualmente pra ver o que está digitando.
+ *
+ * Corrigido de forma global aqui (não campo a campo) usando a API
+ * VisualViewport: ela dispara um 'resize' quando o teclado abre/fecha
+ * (a altura VISÍVEL da página encolhe, mesmo a página em si não mudando
+ * de tamanho) — bem diferente de um resize de verdade (rotação de tela,
+ * redimensionar a janela no desktop), que também dispara 'resize' só
+ * que sem subtrair tanto da altura visível. Reagimos só quando a altura
+ * cai de forma expressiva (> 100px, chute seguro pro tamanho mínimo de
+ * qualquer teclado virtual real) E existe um campo de texto focado no
+ * momento — nesses casos, e só nesses, rolamos esse campo pro centro da
+ * área ainda visível. Sem VisualViewport (navegador muito antigo),
+ * simplesmente não faz nada — sem quebrar nada, só sem a correção
+ * extra.
+ */
+(function () {
+  if (!window.visualViewport) return;
+  var vv = window.visualViewport;
+  var lastHeight = vv.height;
+
+  vv.addEventListener('resize', function () {
+    var shrank = vv.height < lastHeight - 100;
+    lastHeight = vv.height;
+    if (!shrank) return;
+
+    var active = document.activeElement;
+    if (!active || (active.tagName !== 'INPUT' && active.tagName !== 'TEXTAREA')) return;
+
+    // Pequeno atraso: a altura do viewport já mudou, mas a animação do
+    // teclado subindo ainda pode estar em andamento em alguns
+    // navegadores — rolar cedo demais mede a posição errada.
+    setTimeout(function () {
+      active.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }, 60);
+  });
+})();
