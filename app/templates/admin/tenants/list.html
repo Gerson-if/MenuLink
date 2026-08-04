@@ -33,7 +33,7 @@
   <table class="table table-borderless align-middle m-0" style="color: var(--card-text);">
     <thead style="background: rgba(0,0,0,.15);">
       <tr class="text-muted-custom small text-uppercase">
-        <th class="px-3 py-3">Nome</th><th class="px-3 py-3">E-mail</th><th class="px-3 py-3">Plano</th><th class="px-3 py-3">Status</th><th class="px-3 py-3 text-end">Ações</th>
+        <th class="px-3 py-3">Nome</th><th class="px-3 py-3">E-mail</th><th class="px-3 py-3">Plano</th><th class="px-3 py-3">Status</th><th class="px-3 py-3">Cardápio</th><th class="px-3 py-3 text-end">Ações</th>
       </tr>
     </thead>
     <tbody>
@@ -48,6 +48,18 @@
         <td class="px-3 py-3 text-muted-custom">{{ tenant.email }}</td>
         <td class="px-3 py-3 text-muted-custom">{{ tenant.plan.name if tenant.plan else "—" }}</td>
         <td class="px-3 py-3">{% include "admin/tenants/_status_badge.html" %}</td>
+        <td class="px-3 py-3" x-data="{ copied: false }">
+          {% set tenant_cardapio_url = url_for('public.store_home', slug=tenant.slug, _external=True) %}
+          <div class="d-flex align-items-center gap-1">
+            <button type="button" class="btn btn-sm btn-outline-secondary" title="Copiar link do cardápio (auditoria)"
+                    @click="navigator.clipboard.writeText('{{ tenant_cardapio_url }}'); copied = true; setTimeout(() => copied = false, 2000)">
+              <i class="bi" :class="copied ? 'bi-check2' : 'bi-clipboard'"></i>
+            </button>
+            <a href="{{ tenant_cardapio_url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary" title="Abrir cardápio em nova aba">
+              <i class="bi bi-box-arrow-up-right"></i>
+            </a>
+          </div>
+        </td>
         <td class="px-3 py-3 text-end"><a href="{{ url_for('admin.tenants_detail', tenant_id=tenant.id) }}" class="btn btn-sm btn-outline-secondary">Ver / gerenciar</a></td>
       </tr>
       {% endfor %}

@@ -148,6 +148,11 @@ def tenants_detail(tenant_id):
         subscription=subscription,
         cycle_form=cycle_form,
         has_unread_chat=has_unread_chat,
+        # URL absoluta (com domínio) pro Super Admin copiar/abrir o
+        # cardápio público desta loja pra auditoria interna — a relativa
+        # "/loja/<slug>" que tinha antes exigia que quem fosse conferir
+        # já soubesse o domínio de cor pra montar o link completo.
+        cardapio_url_absolute=url_for("public.store_home", slug=tenant.slug, _external=True),
     )
 
 
