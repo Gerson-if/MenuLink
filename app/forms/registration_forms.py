@@ -18,7 +18,7 @@ class RegistrationForm(FlaskForm):
         validators=[DataRequired(message="Informe o nome da loja."), Length(max=150), not_blank],
     )
     slug = StringField(
-        "URL do cardápio",
+        "Endereço do seu cardápio",
         validators=[
             DataRequired(message="Escolha o endereço do seu cardápio."),
             Length(min=3, max=150),

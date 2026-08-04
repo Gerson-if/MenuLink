@@ -500,6 +500,20 @@ body {
 .upload-meta { font-size: .75rem; color: var(--muted-text); margin-top: 4px; }
 .upload-error { font-size: .8rem; color: #FF8A7A; background: rgba(229,74,54,0.1); border: 1px solid rgba(229,74,54,0.2); border-radius: 8px; padding: 8px 12px; margin-top: 8px; }
 
+/* Pré-visualização do link do cardápio no cadastro — mostra pra quem
+   está criando a loja, em texto simples (sem "URL"/"slug"), qual vai
+   ser o endereço final e completo que ele vai poder mandar pro
+   cliente. Usa a cor de destaque pra chamar atenção sem parecer erro. */
+.slug-preview-box {
+  font-size: .8rem; color: var(--card-text);
+  background: color-mix(in srgb, var(--accent) 10%, var(--card-bg));
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 6px;
+  flex-wrap: wrap;
+}
+.slug-preview-box i { color: var(--accent); }
+.slug-preview-box .font-mono { color: var(--accent); font-weight: 600; word-break: break-all; }
+
 /* ---------- Modais ---------- */
 .modal-content { background: var(--card-bg); color: var(--card-text); border: 1px solid var(--card-border); border-radius: 14px; }
 .modal-header, .modal-footer { border-color: var(--card-border); padding: 16px 24px; }
