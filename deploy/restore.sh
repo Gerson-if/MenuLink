@@ -2,7 +2,7 @@
 #
 # Restaura um backup gerado por deploy/backup.sh — banco de dados,
 # arquivos enviados pelos lojistas e (por padrão) o .env. Uso típico:
-# migrar o Comanda para uma VPS nova sem perder dados.
+# migrar o Menu Link para uma VPS nova sem perder dados.
 #
 # Passo a passo de uma migração completa:
 #   1. Na VPS ANTIGA:  sudo bash deploy/backup.sh

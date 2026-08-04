@@ -26,7 +26,7 @@ ASAAS_ENVIRONMENT_CHOICES = [
 
 # Forma de cobrança usada ao gerar uma cobrança Asaas (ver
 # AsaasGateway.create_charge). PIX é o padrão e a recomendação da
-# Comanda: o Asaas confirma o pagamento via webhook quase em tempo real
+# Menu Link: o Asaas confirma o pagamento via webhook quase em tempo real
 # (evento PAYMENT_RECEIVED, ver webhooks_controller.py), liberando o
 # lojista na hora — diferente de boleto (compensação bancária, dias de
 # atraso) ou cartão (temos evitado, por trazer taxa maior e disputa de
@@ -336,7 +336,7 @@ class PlatformSettings(db.Model, TimestampMixin):
     # Logo da própria plataforma (não confundir com Tenant.logo_path, a
     # logo de cada loja) — usada na landing page, no favicon padrão do
     # site e nas telas de autenticação (login, cadastro, recuperação de
-    # senha). Se vazio, usa o ícone/marca padrão do Comanda. Não aparece
+    # senha). Se vazio, usa o ícone/marca padrão do Menu Link. Não aparece
     # em nenhuma tela de configuração do lojista nem no cardápio público
     # de cada loja — essas continuam só com a própria logo do tenant.
     platform_logo = Column(String(255), nullable=True)

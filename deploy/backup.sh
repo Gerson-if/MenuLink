@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Backup completo do Comanda para migração entre servidores: empacota o
+# Backup completo do Menu Link para migração entre servidores: empacota o
 # banco de dados, os arquivos enviados pelos lojistas (logos, fotos de
 # produtos, banners, vídeo/imagem da landing) e o .env de configuração
 # num único arquivo — o suficiente para restaurar tudo numa VPS nova sem
@@ -90,7 +90,7 @@ done
 
 [ "$(id -u)" -eq 0 ] || die "Rode este script como root (ex: sudo bash deploy/backup.sh)."
 require_cmd tar gzip sha256sum date du df find id sudo mktemp hostname
-[ -f "$CONF_FILE" ] || die "Não encontrei ${CONF_FILE}. Rode deploy/install.sh primeiro (esta máquina precisa já ter o Comanda instalado)."
+[ -f "$CONF_FILE" ] || die "Não encontrei ${CONF_FILE}. Rode deploy/install.sh primeiro (esta máquina precisa já ter o Menu Link instalado)."
 
 # shellcheck disable=SC1090
 source "$CONF_FILE"
@@ -132,7 +132,7 @@ check_disk_space() {
 
 # ---------------------------------------------------------------------------
 
-log "Preparando backup de migração do Comanda..."
+log "Preparando backup de migração do Menu Link..."
 check_disk_space
 
 TMP_DIR="$(mktemp -d "${BACKUP_DIR}/.tmp_backup_XXXXXX")"
@@ -188,7 +188,7 @@ chmod 600 "${TMP_DIR}/env.backup"
 
 GIT_COMMIT="$(run_as_app_user "cd '${APP_DIR}' && git rev-parse HEAD" 2>/dev/null || echo "desconhecido")"
 cat > "${TMP_DIR}/MANIFESTO.txt" <<EOF
-Backup de migração do Comanda
+Backup de migração do Menu Link
 Gerado em : $(date -Iseconds)
 Servidor  : $(hostname)
 Commit    : ${GIT_COMMIT}

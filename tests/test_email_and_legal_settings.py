@@ -92,7 +92,7 @@ class TestEmailSettingsRoutes:
             {
                 "host": "smtp.example.com", "port": "587", "encryption": "tls",
                 "username": "no-reply@example.com", "password": "segredo123",
-                "from_email": "no-reply@example.com", "from_name": "Comanda",
+                "from_email": "no-reply@example.com", "from_name": "Menu Link",
             },
             "/admin/configuracoes/email",
         )

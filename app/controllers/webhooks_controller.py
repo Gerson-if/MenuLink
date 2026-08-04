@@ -30,7 +30,7 @@ webhooks_bp = Blueprint("webhooks", __name__, url_prefix="/webhooks")
 # reconhecidos (200 OK) mas não disparam nenhuma ação.
 #
 # PAYMENT_RECEIVED é o que importa para Pix (forma de cobrança padrão
-# da Comanda, ver PlatformSettings.asaas_billing_type/AsaasGateway) — o
+# do Menu Link, ver PlatformSettings.asaas_billing_type/AsaasGateway) — o
 # Asaas dispara esse evento assim que o Pix cai na conta, em tempo
 # real, sem esperar nenhuma compensação. PAYMENT_CONFIRMED é o
 # equivalente para boleto/cartão (quando/se habilitados no futuro).

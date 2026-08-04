@@ -1,4 +1,4 @@
-# Comanda — Plataforma Multi-Tenant de Cardápio Digital
+# Menu Link — Plataforma Multi-Tenant de Cardápio Digital
 
 ![Python](https://img.shields.io/badge/Python-3.13-blue?logo=python&logoColor=white)
 ![Flask](https://img.shields.io/badge/Flask-3.x-black?logo=flask&logoColor=white)
@@ -7,7 +7,7 @@
 ![Testes](https://img.shields.io/badge/testes-pytest-0A9EDC?logo=pytest&logoColor=white)
 ![Licença](https://img.shields.io/badge/licença-proprietária-lightgrey)
 
-Comanda é uma plataforma multi-tenant de cardápio digital: um Super
+Menu Link é uma plataforma multi-tenant de cardápio digital: um Super
 Administrador gerencia a plataforma e os planos, e cada Lojista tem seu
 próprio cardápio, produtos, pedidos e clientes, totalmente isolados dos
 demais.
@@ -46,7 +46,7 @@ demais.
   (validação), Flask-Login, Flask-WTF (CSRF), Flask-Limiter (rate
   limiting).
 - **Frontend**: Bootstrap 5 + Bootstrap Icons (identidade visual
-  "Comanda"), Alpine.js (estado reativo: carrinho, checkout, sidebar) e
+  "Menu Link"), Alpine.js (estado reativo: carrinho, checkout, sidebar) e
   HTMX (atualizações parciais de página sem recarregar). Todos os
   assets críticos (Bootstrap, Alpine.js, HTMX, Chart.js) são servidos
   localmente pelo próprio Flask, sem dependência de CDN externo para a
@@ -361,7 +361,7 @@ Como funciona:
   tenant e gera uma cobrança com Pix/boleto/cartão.
 - **Pix é a forma de cobrança padrão** (`PlatformSettings.asaas_billing_type`,
   configurável em **Super Admin → Cobrança (Asaas)**) — por decisão de
-  produto, a Comanda prioriza Pix: o Asaas confirma o pagamento quase
+  produto, o Menu Link prioriza Pix: o Asaas confirma o pagamento quase
   em tempo real (webhook `PAYMENT_RECEIVED`), liberando a loja na hora,
   sem depender de compensação bancária (boleto) nem de disputa de
   chargeback (cartão). As outras opções (cliente escolhe entre
@@ -429,7 +429,7 @@ Duas identidades visuais, cada uma customizável em tempo de execução
   administrativo.
 
 Tipografia: Archivo Black, Inter e JetBrains Mono para o tema
-"Comanda"; Fraunces + Plus Jakarta Sans para o cardápio público. Todas
+"Menu Link"; Fraunces + Plus Jakarta Sans para o cardápio público. Todas
 auto-hospedadas (`app/static/vendor/fonts/`), sem depender do Google
 Fonts em tempo de execução.
 
@@ -614,11 +614,23 @@ local.
 
 ## Deploy em produção
 
-O jeito recomendado de colocar o Comanda no ar é um VPS Ubuntu comum
+O jeito recomendado de colocar o Menu Link no ar é um VPS Ubuntu comum
 (sem Docker), usando o instalador guiado em `deploy/install.sh`. Ele
 cuida de tudo: dependências de sistema, banco de dados, ambiente
 virtual, migrations, serviço systemd, Nginx e, se você tiver um
 domínio, certificado SSL gratuito com renovação automática.
+
+> **Nota sobre nomes**: o produto se chama "Menu Link" (marca exibida
+> pro usuário final — navbar, e-mails, PWA etc.), mas os identificadores
+> técnicos internos (nome do repositório, diretório `/opt/comanda`,
+> serviço systemd `comanda`, banco de dados `comanda`, arquivo
+> `comanda.css`) continuam com o nome de código original "Comanda" DE
+> PROPÓSITO: são só rótulos internos de infraestrutura, invisíveis pra
+> quem usa o sistema, e renomeá-los quebraria qualquer instalação já
+> em produção (o serviço/diretório/banco reais no servidor continuariam
+> se chamando "comanda" até uma migração manual coordenada — não é algo
+> que um `git pull` resolve sozinho). Os comandos abaixo refletem os
+> nomes técnicos reais usados pelos scripts, não a marca.
 
 ### Requisitos
 
@@ -789,7 +801,7 @@ recomendado fora de um teste local).
 1. Na VPS antiga: `sudo bash deploy/backup.sh` (ou pelo menu).
 2. Copie o arquivo gerado (`.tar.gz` ou `.tar.gz.gpg` + `.sha256`) para
    a VPS nova — por exemplo com `scp`.
-3. Na VPS nova, com o Comanda já instalado (`deploy/install.sh` rodado
+3. Na VPS nova, com o Menu Link já instalado (`deploy/install.sh` rodado
    uma vez): `sudo bash deploy/restore.sh <arquivo>` (ou pelo menu).
 
 **Segurança da restauração** — como é uma operação destrutiva

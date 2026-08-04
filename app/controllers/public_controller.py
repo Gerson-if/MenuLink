@@ -187,7 +187,7 @@ def store_home(slug):
         # página genérica de 404 (que fala em "link" e confundiria quem
         # chegou aqui pelo link certo do cardápio) e, de propósito, sem
         # dizer POR QUE está indisponível (pendência de pagamento,
-        # suspensão, etc.) — isso é assunto entre a loja e o Comanda, não
+        # suspensão, etc.) — isso é assunto entre a loja e o Menu Link, não
         # algo que o cliente final precise ou deva saber.
         return render_template("public/store_unavailable.html", tenant_name=tenant.name), 404
     g.tenant = tenant

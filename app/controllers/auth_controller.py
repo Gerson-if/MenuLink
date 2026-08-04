@@ -27,7 +27,7 @@ def _is_safe_redirect_target(target: str | None) -> bool:
     """`?next=` só é seguro se apontar pra um caminho relativo dentro do
     próprio site — sem isso, um link tipo /login?next=https://golpe.com
     (ou o equivalente "//golpe.com", que os navegadores tratam como
-    absoluto também) usaria o domínio real do Comanda pra redirecionar,
+    absoluto também) usaria o domínio real do Menu Link pra redirecionar,
     depois do login de verdade, pra um site de phishing."""
     if not target:
         return False

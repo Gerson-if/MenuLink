@@ -38,7 +38,7 @@ class AsaasGateway(PaymentGateway):
             if environment == "production"
             else "https://sandbox.asaas.com/api/v3"
         )
-        # "PIX" é o padrão e a recomendação da Comanda (liberação via
+        # "PIX" é o padrão e a recomendação do Menu Link (liberação via
         # webhook quase em tempo real, ver create_charge/módulo
         # webhooks_controller.py) — configurável pelo Super Admin em
         # /admin/configuracoes/asaas (PlatformSettings.asaas_billing_type),
@@ -52,7 +52,7 @@ class AsaasGateway(PaymentGateway):
         return {
             "access_token": self.api_key,
             "Content-Type": "application/json",
-            "User-Agent": "ComandaSaaS/1.0",
+            "User-Agent": "MenuLinkSaaS/1.0",
         }
 
     def _request(self, method: str, path: str, **kwargs) -> dict:

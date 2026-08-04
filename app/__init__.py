@@ -286,7 +286,7 @@ def _register_blueprints(app: Flask) -> None:
         """Se o link veio do cardápio público de uma loja (ver
         public/store_menu.html, que manda ?loja=<slug>), devolve o
         tenant pra a página legal linkar de volta pro cardápio da loja
-        em vez da landing page da Comanda — quem está lendo aqui é o
+        em vez da landing page do Menu Link — quem está lendo aqui é o
         cliente final daquela loja, não um lojista em potencial olhando
         o site institucional."""
         from app.models import Tenant

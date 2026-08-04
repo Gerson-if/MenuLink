@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Atualização segura do Comanda: busca a versão mais nova do repositório,
+# Atualização segura do Menu Link: busca a versão mais nova do repositório,
 # aplica migrations e reinicia a aplicação — com backup do banco e
 # rollback automático se algo der errado no caminho.
 #

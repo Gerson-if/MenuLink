@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 #
-# Instalador guiado do Comanda para um servidor Ubuntu (VPS).
+# Instalador guiado do Menu Link para um servidor Ubuntu (VPS).
+#
+# Nota: os identificadores técnicos internos usados por este script
+# (nome do serviço systemd, banco de dados, usuário de sistema,
+# diretório padrão) continuam "comanda" por convenção de nome de
+# código — só o texto exibido pra quem está instalando foi atualizado
+# pra marca atual "Menu Link". Não renomeamos esses identificadores
+# porque isso quebraria qualquer instalação já em produção (o
+# serviço/banco/diretório reais no servidor continuariam se chamando
+# "comanda" até uma migração manual — não é algo que um `git pull`
+# resolve sozinho).
 #
 # O que este script faz:
 #   - instala as dependências de sistema (Python, Nginx, PostgreSQL, ffmpeg
@@ -524,7 +534,7 @@ system_commands_menu() {
 
 main_menu() {
     while true; do
-        banner "COMANDA · Painel de instalação e manutenção"
+        banner "MENU LINK · Painel de instalação e manutenção"
         echo "  Diretório : ${APP_DIR}"
         if [ -f "$CONF_FILE" ]; then
             [ -n "${DOMAIN:-}" ] && echo "  Endereço  : ${SERVER_NAME:-$DOMAIN} $([ "${SSL_ENABLED:-n}" = "s" ] && echo "(HTTPS)" || echo "(HTTP)")"
@@ -549,7 +559,7 @@ main_menu() {
             esac
         else
             echo
-            item 1 "Instalar o Comanda agora" "fluxo guiado completo"
+            item 1 "Instalar o Menu Link agora" "fluxo guiado completo"
             item 2 "Sair"
             ask "Escolha uma opção [1-2]" "1"
             case "$REPLY_VALUE" in
@@ -577,7 +587,7 @@ else
 fi
 
 echo
-echo -e "${C_BOLD}Instalador guiado do Comanda${C_RESET}"
+echo -e "${C_BOLD}Instalador guiado do Menu Link${C_RESET}"
 echo "Diretório do projeto: ${APP_DIR}"
 echo
 
@@ -1192,7 +1202,7 @@ echo
 if [ "$DB_ENGINE" = "postgres_local" ]; then
     CRED_FILE="/root/comanda-db-credentials-$(date +%Y%m%d%H%M%S).txt"
     cat > "$CRED_FILE" <<CREDEOF
-Credenciais do banco de dados PostgreSQL do Comanda
+Credenciais do banco de dados PostgreSQL do Menu Link
 Geradas em $(date -Iseconds) por deploy/install.sh — únicas desta instalação
 (uma reinstalação gera uma senha nova, para que o vazamento de uma não
 comprometa outro servidor).

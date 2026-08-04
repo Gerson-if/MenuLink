@@ -3,7 +3,7 @@ Ciclo de vida do período de teste grátis (trial) de cada loja.
 
 Chamado periodicamente pelo comando `flask process-trials` (ver
 app/cli.py) — não há um agendador embutido na aplicação (sem
-APScheduler/Celery), então quem instala o Comanda precisa programar
+APScheduler/Celery), então quem instala o Menu Link precisa programar
 esse comando num cron/systemd timer do servidor (ver README, seção de
 deploy) rodando pelo menos uma vez por dia.
 
