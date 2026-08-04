@@ -8,7 +8,7 @@ Uso:
 
 import os
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, url_for
 
 from app.config import config_by_name
 from app.extensions import db, migrate, login_manager, bcrypt, csrf, ma, limiter
@@ -144,6 +144,107 @@ def _register_blueprints(app: Flask) -> None:
                 },
             }
         ])
+
+    @app.get("/manifest.json")
+    def pwa_manifest():
+        """Manifest do PWA gerado na hora — ANTES era um arquivo estático
+        fixo (app/static/manifest.json), que nunca refletia a logo
+        customizada que o Super Admin sobe em Aparência: o ícone mostrado
+        no prompt "Instalar aplicativo" do Chrome/Android continuava
+        sendo sempre o ícone-padrão do sistema, mesmo com uma logo
+        própria configurada. Agora usa PlatformSettings.platform_logo
+        (via /manifest-icon/<size>.png, ver rota abaixo) quando existe,
+        com fallback pros ícones-padrão (ovo frito) quando não há logo
+        customizada.
+
+        `?v=<timestamp>` na URL dos ícones (não no manifest em si, que o
+        navegador já busca de novo periodicamente) garante que trocar a
+        logo troque a URL do ícone — sem isso, o navegador podia
+        continuar servindo o ícone antigo do cache por dias mesmo depois
+        da logo nova salva (foi exatamente o sintoma relatado: "mesmo
+        com uma logo não muda")."""
+        from app.models.platform_settings import PlatformSettings
+
+        settings = PlatformSettings.get_or_create()
+        version = int(settings.updated_at.timestamp()) if settings.updated_at else 0
+        accent = settings.effective_accent
+
+        if settings.platform_logo:
+            icons = [
+                {
+                    "src": url_for("manifest_icon", size=192, v=version),
+                    "sizes": "192x192", "type": "image/png", "purpose": "any",
+                },
+                {
+                    "src": url_for("manifest_icon", size=512, v=version),
+                    "sizes": "512x512", "type": "image/png", "purpose": "any",
+                },
+                {
+                    "src": url_for("manifest_icon", size=192, v=version),
+                    "sizes": "192x192", "type": "image/png", "purpose": "maskable",
+                },
+                {
+                    "src": url_for("manifest_icon", size=512, v=version),
+                    "sizes": "512x512", "type": "image/png", "purpose": "maskable",
+                },
+            ]
+        else:
+            icons = [
+                {"src": "/static/img/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+                {"src": "/static/img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+                {"src": "/static/img/icon-192-maskable.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable"},
+                {"src": "/static/img/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
+            ]
+
+        manifest = {
+            "id": "/",
+            "name": "Menu Link",
+            "short_name": "Menu Link",
+            "description": "Painel administrativo do Menu Link — cardápio digital e gestão de pedidos.",
+            "start_url": "/login",
+            "scope": "/",
+            "display": "standalone",
+            "display_override": ["standalone", "minimal-ui"],
+            "orientation": "portrait-primary",
+            "background_color": "#221C16",
+            "theme_color": accent,
+            "lang": "pt-BR",
+            "dir": "ltr",
+            "categories": ["business", "food", "productivity"],
+            "icons": icons,
+        }
+        response = jsonify(manifest)
+        response.headers["Content-Type"] = "application/manifest+json"
+        # Curto de propósito: o Super Admin pode trocar a logo/cor a
+        # qualquer momento e queremos que o próximo "instalar app" já
+        # reflita — os ÍCONES em si (bem mais pesados) é que têm cache
+        # longo, protegidos pelo `?v=` acima em vez de por tempo.
+        response.headers["Cache-Control"] = "public, max-age=300"
+        return response
+
+    @app.get("/manifest-icon/<int:size>.png")
+    def manifest_icon(size):
+        """Ícone quadrado gerado a partir da logo customizada (ver
+        render_manifest_icon em app/utils/uploads.py) — cacheado por
+        muito tempo pelo navegador porque a URL leva `?v=<timestamp>`
+        (ver pwa_manifest acima), que muda sozinha sempre que a logo é
+        trocada, então o cache antigo nunca fica "preso"."""
+        from flask import Response, abort
+
+        from app.models.platform_settings import PlatformSettings
+        from app.utils.uploads import render_manifest_icon
+
+        if size not in (180, 192, 512):
+            abort(404)
+
+        settings = PlatformSettings.get_or_create()
+        if not settings.platform_logo:
+            abort(404)
+
+        png_bytes = render_manifest_icon(settings.platform_logo, size, settings.effective_accent)
+        response = Response(png_bytes, mimetype="image/png")
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return response
 
     @app.get("/")
     def index():

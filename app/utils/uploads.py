@@ -287,7 +287,23 @@ def _save_validated_image(relative_subdir: str, file_storage, max_dimension: int
         # verify() invalida o objeto para uso posterior — reabrir
         file_storage.stream.seek(0)
         image = Image.open(file_storage.stream)
-        image = image.convert("RGB")
+        # WEBP de saída não tem canal alpha (ver Image.save abaixo), então
+        # um PNG/WEBP de entrada com transparência (comum em logo — ver
+        # save_tenant_logo/save_platform_image, ambos passam por aqui)
+        # precisa de um fundo antes de achatar pra RGB. `.convert("RGB")`
+        # direto numa imagem RGBA faz o Pillow compor sobre PRETO por
+        # padrão — o fundo transparente da logo virava uma caixa preta
+        # sólida em vez de ficar transparente, quebrando qualquer logo
+        # colocada sobre um fundo escuro/colorido (navbar, favicon,
+        # ícone do PWA — ver render_manifest_icon). Compor sobre BRANCO
+        # explicitamente é o padrão seguro pra imagem "achatada" em geral.
+        if image.mode in ("RGBA", "LA") or (image.mode == "P" and "transparency" in image.info):
+            rgba = image.convert("RGBA")
+            flattened = Image.new("RGB", rgba.size, "#FFFFFF")
+            flattened.paste(rgba, mask=rgba.split()[3])
+            image = flattened
+        else:
+            image = image.convert("RGB")
     except (UnidentifiedImageError, OSError):
         raise InvalidImageError("Arquivo enviado não é uma imagem válida.")
 
@@ -310,3 +326,39 @@ def delete_product_image_file(relative_path: str) -> None:
     absolute_path = os.path.join(current_app.static_folder, relative_path)
     if os.path.isfile(absolute_path):
         os.remove(absolute_path)
+
+
+def render_manifest_icon(relative_logo_path: str, size: int, background_hex: str) -> bytes:
+    """Gera, na hora, um ícone quadrado PNG (do tamanho pedido) a partir
+    da logo customizada do Super Admin (`PlatformSettings.platform_logo`)
+    — usado pelo manifest.json/PWA (ver app/__init__.py:manifest_json e
+    app/static/sw.js) e pelo apple-touch-icon.
+
+    Por que gerar em vez de usar o arquivo salvo direto: a logo salva por
+    `save_platform_image` (PLATFORM_LOGO_DIMENSION) é WEBP, sem
+    transparência e SEM garantia de ser quadrada — usar ela direto como
+    ícone de instalação faria o Android/iOS espremer/cortar uma logo
+    retangular numa moldura quadrada, ficando distorcida. Aqui a logo é
+    colocada centralizada, mantendo a proporção original, sobre um fundo
+    quadrado sólido (a cor de destaque em vigor) com uma margem de
+    segurança — o mesmo padrão visual do ícone-padrão (ovo frito num
+    quadrado colorido) e dentro da "zona segura" que ícones "maskable"
+    do Android exigem (conteúdo real ocupando no máximo ~80% do quadrado).
+    """
+    absolute_path = os.path.join(current_app.static_folder, relative_logo_path)
+    with Image.open(absolute_path) as source:
+        logo = source.convert("RGBA")
+
+    canvas = Image.new("RGBA", (size, size), background_hex)
+    margin = int(size * 0.16)  # ~80% de "zona segura" pro conteúdo real
+    max_content = size - 2 * margin
+    fitted = logo.copy()
+    fitted.thumbnail((max_content, max_content), Image.LANCZOS)
+    offset = ((size - fitted.width) // 2, (size - fitted.height) // 2)
+    canvas.paste(fitted, offset, fitted)
+
+    from io import BytesIO
+
+    buffer = BytesIO()
+    canvas.convert("RGB").save(buffer, format="PNG", optimize=True)
+    return buffer.getvalue()
