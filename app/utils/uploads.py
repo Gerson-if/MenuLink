@@ -328,7 +328,46 @@ def delete_product_image_file(relative_path: str) -> None:
         os.remove(absolute_path)
 
 
-def render_manifest_icon(relative_logo_path: str, size: int, background_hex: str) -> bytes:
+def _rounded_corner_mask(size: int, radius_ratio: float) -> "Image.Image":
+    """Máscara alpha (branco = visível) com cantos arredondados — usada
+    só no ícone `purpose=any` (ver `_build_icon_canvas` abaixo)."""
+    from PIL import ImageDraw
+
+    mask = Image.new("L", (size, size), 0)
+    draw = ImageDraw.Draw(mask)
+    draw.rounded_rectangle((0, 0, size - 1, size - 1), radius=int(size * radius_ratio), fill=255)
+    return mask
+
+
+def _build_icon_canvas(size: int, background_hex: str, rounded: bool) -> "tuple[Image.Image, int]":
+    """Canvas quadrado de fundo (cor de destaque em vigor) + margem de
+    segurança em pixels pro conteúdo (logo/ícone-padrão) ser colado
+    depois.
+
+    `rounded`: controla o formato do PRÓPRIO quadrado de fundo — NÃO o
+    conteúdo:
+    - `purpose=maskable` (rounded=False): fundo vai até a borda, sem
+      arredondar nada aqui — é o Android/iOS/launcher quem aplica a
+      própria máscara (círculo, "squircle", gota d'água — cada
+      fabricante tem a sua) por cima. Arredondar o quadrado aqui
+      resultaria num ícone "arredondado dentro do arredondado do
+      sistema", cortando pedaço da logo de um jeito imprevisível.
+    - `purpose=any` (rounded=True): cantos arredondados desenhados por
+      nós mesmos, pro ícone ainda ficar com uma cara de app "de
+      verdade" nos poucos lugares que não aplicam máscara adaptativa
+      nenhuma (ex: atalho de área de trabalho em desktop)."""
+    canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    fill = Image.new("RGBA", (size, size), background_hex)
+    if rounded:
+        mask = _rounded_corner_mask(size, radius_ratio=0.22)
+        canvas.paste(fill, (0, 0), mask)
+    else:
+        canvas.paste(fill, (0, 0))
+    margin = int(size * 0.18)  # ~80% de "zona segura" pro conteúdo real (exigência do Android p/ maskable)
+    return canvas, margin
+
+
+def render_manifest_icon(relative_logo_path: str, size: int, background_hex: str, rounded: bool = False) -> bytes:
     """Gera, na hora, um ícone quadrado PNG (do tamanho pedido) a partir
     da logo customizada do Super Admin (`PlatformSettings.platform_logo`)
     — usado pelo manifest.json/PWA (ver app/__init__.py:manifest_json e
@@ -341,16 +380,15 @@ def render_manifest_icon(relative_logo_path: str, size: int, background_hex: str
     retangular numa moldura quadrada, ficando distorcida. Aqui a logo é
     colocada centralizada, mantendo a proporção original, sobre um fundo
     quadrado sólido (a cor de destaque em vigor) com uma margem de
-    segurança — o mesmo padrão visual do ícone-padrão (ovo frito num
-    quadrado colorido) e dentro da "zona segura" que ícones "maskable"
-    do Android exigem (conteúdo real ocupando no máximo ~80% do quadrado).
-    """
+    segurança — dentro da "zona segura" que ícones "maskable" do Android
+    exigem (conteúdo real ocupando no máximo ~80% do quadrado), pra
+    NENHUM launcher cortar pedaço da logo ao aplicar sua própria máscara
+    (círculo, "squircle" etc — ver `rounded` em `_build_icon_canvas`)."""
     absolute_path = os.path.join(current_app.static_folder, relative_logo_path)
     with Image.open(absolute_path) as source:
         logo = source.convert("RGBA")
 
-    canvas = Image.new("RGBA", (size, size), background_hex)
-    margin = int(size * 0.16)  # ~80% de "zona segura" pro conteúdo real
+    canvas, margin = _build_icon_canvas(size, background_hex, rounded)
     max_content = size - 2 * margin
     fitted = logo.copy()
     fitted.thumbnail((max_content, max_content), Image.LANCZOS)
@@ -360,5 +398,46 @@ def render_manifest_icon(relative_logo_path: str, size: int, background_hex: str
     from io import BytesIO
 
     buffer = BytesIO()
-    canvas.convert("RGB").save(buffer, format="PNG", optimize=True)
+    canvas.save(buffer, format="PNG", optimize=True)
+    return buffer.getvalue()
+
+
+_EGG_MASK_PATH = os.path.join("img", "egg-mask.png")
+
+
+def render_default_manifest_icon(size: int, background_hex: str, rounded: bool = False) -> bytes:
+    """Mesma ideia de `render_manifest_icon`, mas pro ícone-PADRÃO (sem
+    logo customizada do Super Admin) — o ovo frito branco (silhueta
+    pré-renderizada em img/egg-mask.png) colado sobre um fundo quadrado
+    na cor de destaque REAL em vigor.
+
+    Por que gerar na hora em vez de usar os PNGs estáticos antigos
+    (img/icon-192.png etc.): aqueles tinham a cor de destaque GRAVADA no
+    arquivo (sempre laranja, #E54A36) — se o Super Admin trocasse o tema
+    do painel pra outra cor, a tela de splash do app instalado (que usa
+    `background_color` do manifest, gerado dinamicamente com a cor
+    atual — ver pwa_manifest em app/__init__.py) deixava de bater com a
+    cor do ícone, e o ícone quadrado "flutuava" feio no meio de um fundo
+    de cor diferente. Gerando os dois (ícone e fundo da splash) com a
+    MESMA cor sempre, o quadrado do ícone fica invisível — parece um
+    logotipo desenhado direto na tela cheia, sem caixa nem borda.
+
+    `rounded=False` (usado no ícone `purpose=maskable`) é o que faz o
+    ícone se ADAPTAR ao formato de cada aparelho/launcher (círculo,
+    "squircle", gota — cada fabricante Android tem o seu) em vez de
+    ficar sempre quadrado com cantos retos, que é o que dava a aparência
+    "feia e sem profissionalismo" reportada."""
+    mask_path = os.path.join(current_app.static_folder, _EGG_MASK_PATH)
+    with Image.open(mask_path) as mask_source:
+        mask = mask_source.convert("RGBA")
+
+    canvas, margin = _build_icon_canvas(size, background_hex, rounded)
+    content_size = size - 2 * margin
+    fitted_mask = mask.resize((content_size, content_size), Image.LANCZOS)
+    canvas.paste(fitted_mask, (margin, margin), fitted_mask)
+
+    from io import BytesIO
+
+    buffer = BytesIO()
+    canvas.save(buffer, format="PNG", optimize=True)
     return buffer.getvalue()

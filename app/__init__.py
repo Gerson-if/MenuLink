@@ -162,39 +162,49 @@ def _register_blueprints(app: Flask) -> None:
         logo troque a URL do ícone — sem isso, o navegador podia
         continuar servindo o ícone antigo do cache por dias mesmo depois
         da logo nova salva (foi exatamente o sintoma relatado: "mesmo
-        com uma logo não muda")."""
+        com uma logo não muda").
+
+        `background_color` (a cor de fundo da tela de splash nativa que
+        o Android mostra ao ABRIR o app já instalado, ANTES da página
+        carregar) agora usa a MESMA cor de destaque com que o ícone é
+        desenhado (ver render_manifest_icon/render_default_manifest_icon
+        em app/utils/uploads.py) — antes ficava fixo num marrom bem
+        escuro (#221C16) que não tinha relação nenhuma com a cor real do
+        ícone, então a splash aparecia como uma logo pequena "flutuando"
+        estranha no meio de um retângulo escuro sem nada a ver com o
+        resto do sistema. Com as duas cores iguais, a borda do ícone
+        desaparece — parece a logo desenhada direto na tela cheia."""
         from app.models.platform_settings import PlatformSettings
 
         settings = PlatformSettings.get_or_create()
         version = int(settings.updated_at.timestamp()) if settings.updated_at else 0
         accent = settings.effective_accent
 
-        if settings.platform_logo:
-            icons = [
-                {
-                    "src": url_for("manifest_icon", size=192, v=version),
-                    "sizes": "192x192", "type": "image/png", "purpose": "any",
-                },
-                {
-                    "src": url_for("manifest_icon", size=512, v=version),
-                    "sizes": "512x512", "type": "image/png", "purpose": "any",
-                },
-                {
-                    "src": url_for("manifest_icon", size=192, v=version),
-                    "sizes": "192x192", "type": "image/png", "purpose": "maskable",
-                },
-                {
-                    "src": url_for("manifest_icon", size=512, v=version),
-                    "sizes": "512x512", "type": "image/png", "purpose": "maskable",
-                },
-            ]
-        else:
-            icons = [
-                {"src": "/static/img/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
-                {"src": "/static/img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
-                {"src": "/static/img/icon-192-maskable.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable"},
-                {"src": "/static/img/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
-            ]
+        # `any` (cantos arredondados por nós) e `maskable` (fundo até a
+        # borda, sem arredondar — o formato final quem decide é o
+        # launcher do aparelho: círculo, "squircle", gota d'água...) são
+        # DUAS imagens diferentes agora (ver `rounded` em
+        # app/utils/uploads.py) — é o que faz o ícone instalado se
+        # adaptar ao formato de cada aparelho em vez de ficar sempre
+        # quadrado com canto reto.
+        icons = [
+            {
+                "src": url_for("manifest_icon", size=192, purpose="any", v=version),
+                "sizes": "192x192", "type": "image/png", "purpose": "any",
+            },
+            {
+                "src": url_for("manifest_icon", size=512, purpose="any", v=version),
+                "sizes": "512x512", "type": "image/png", "purpose": "any",
+            },
+            {
+                "src": url_for("manifest_icon", size=192, purpose="maskable", v=version),
+                "sizes": "192x192", "type": "image/png", "purpose": "maskable",
+            },
+            {
+                "src": url_for("manifest_icon", size=512, purpose="maskable", v=version),
+                "sizes": "512x512", "type": "image/png", "purpose": "maskable",
+            },
+        ]
 
         manifest = {
             "id": "/",
@@ -206,7 +216,7 @@ def _register_blueprints(app: Flask) -> None:
             "display": "standalone",
             "display_override": ["standalone", "minimal-ui"],
             "orientation": "portrait-primary",
-            "background_color": "#221C16",
+            "background_color": accent,
             "theme_color": accent,
             "lang": "pt-BR",
             "dir": "ltr",
@@ -227,21 +237,34 @@ def _register_blueprints(app: Flask) -> None:
         """Ícone quadrado gerado a partir da logo customizada (ver
         render_manifest_icon em app/utils/uploads.py) — cacheado por
         muito tempo pelo navegador porque a URL leva `?v=<timestamp>`
-        (ver pwa_manifest acima), que muda sozinha sempre que a logo é
-        trocada, então o cache antigo nunca fica "preso"."""
+        (ver pwa_manifest acima), que muda sozinha sempre que a logo (ou
+        a cor de destaque) é trocada, então o cache antigo nunca fica
+        "preso". Sem logo customizada, cai no ícone-padrão (ovo frito)
+        desenhado na cor de destaque ATUAL — não nos PNGs estáticos
+        antigos, que tinham a cor antiga gravada no arquivo (ver
+        render_default_manifest_icon).
+
+        `?purpose=maskable` (usado nas entradas `purpose: "maskable"` do
+        manifest) pede a versão SEM cantos arredondados por nós — é o
+        que deixa o Android/iOS/launcher aplicar a própria máscara
+        (círculo, "squircle", gota d'água — cada fabricante tem a sua)
+        sem conflitar com um arredondamento nosso por baixo, fazendo o
+        ícone se ADAPTAR ao formato de cada aparelho em vez de aparecer
+        sempre quadrado e com canto reto."""
         from flask import Response, abort
 
         from app.models.platform_settings import PlatformSettings
-        from app.utils.uploads import render_manifest_icon
+        from app.utils.uploads import render_default_manifest_icon, render_manifest_icon
 
         if size not in (180, 192, 512):
             abort(404)
+        rounded = request.args.get("purpose") != "maskable"
 
         settings = PlatformSettings.get_or_create()
-        if not settings.platform_logo:
-            abort(404)
-
-        png_bytes = render_manifest_icon(settings.platform_logo, size, settings.effective_accent)
+        if settings.platform_logo:
+            png_bytes = render_manifest_icon(settings.platform_logo, size, settings.effective_accent, rounded=rounded)
+        else:
+            png_bytes = render_default_manifest_icon(size, settings.effective_accent, rounded=rounded)
         response = Response(png_bytes, mimetype="image/png")
         response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
         return response
