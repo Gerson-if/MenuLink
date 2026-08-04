@@ -16,10 +16,7 @@
   </div>
 
   <div class="mb-4">
-    <div class="d-flex justify-content-between mb-1">
-      {{ form.password.label(class="form-label small fw-semibold", **{"style": "margin:0;"}) }}
-      <a href="{{ url_for('auth.forgot_password') }}" class="link-chili small">Esqueci a senha</a>
-    </div>
+    {{ form.password.label(class="form-label small fw-semibold mb-1") }}
     <div class="password-field-wrap">
       {{ form.password(class="form-control" + (" border-danger" if form.password.errors else ""), placeholder="••••••••", maxlength=128, id="login-password") }}
       <button type="button" class="password-toggle-btn" data-target="login-password" aria-label="Mostrar senha" title="Mostrar/ocultar senha">
@@ -37,5 +34,16 @@
   </div>
 
   {{ form.submit(class="btn btn-chili w-100") }}
+
+  {# "Esqueci a senha" ficava colado bem em cima do campo de senha (na
+     mesma linha do label) — no mobile, o dedo às vezes acertava esse
+     link por engano ao tentar tocar no campo/no botão de mostrar senha
+     logo abaixo, tirando a pessoa da tela de login no meio da digitação.
+     Reposicionado pra depois do botão "Entrar", como um link isolado e
+     discreto — longe da área onde o polegar realmente toca durante o
+     login, sem brigar de espaço com mais nada por perto. #}
+  <p class="text-center small mt-3 mb-0">
+    <a href="{{ url_for('auth.forgot_password') }}" class="link-chili">Esqueci a senha</a>
+  </p>
 </form>
 {% endblock %}
