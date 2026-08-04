@@ -251,6 +251,39 @@ class TestTenantManagement:
             assert User.query.filter_by(email="dono@descartavel.com").first() is None
 
 
+class TestDashboardKpiMatchesFilteredList:
+    def test_active_tenants_count_matches_status_active_filter(self, app, client, login_as):
+        """Regressão: o card "Contas ativas" do dashboard (que leva pra
+        /admin/lojistas?status=active) chegou a contar TRIAL + ACTIVE
+        juntos, mas o link só filtra ACTIVE — uma loja em teste entrava
+        no número do card e "sumia" da lista ao clicar, como se o
+        filtro estivesse quebrado. O número mostrado tem que bater
+        exatamente com quantas linhas a lista filtrada devolve."""
+        with app.app_context():
+            plan = Plan.query.first()
+            trial_tenant = Tenant(
+                name="Loja em Teste", slug="loja-em-teste", email="teste@lojaemteste.com",
+                plan_id=plan.id, status=TenantStatus.TRIAL,
+            )
+            db.session.add(trial_tenant)
+            db.session.commit()
+
+        login_as(client, "admin@cardapio.saas", "admin123")
+
+        dashboard_html = client.get("/admin/dashboard").get_data(as_text=True)
+        match = re.search(r'Contas ativas</div><div class="kpi-value">(\d+)</div>', dashboard_html)
+        assert match, "KPI 'Contas ativas' não encontrado no dashboard"
+        kpi_count = int(match.group(1))
+
+        list_html = client.get("/admin/lojistas?status=active").get_data(as_text=True)
+        # "Ver / gerenciar" aparece uma vez por linha da tabela — jeito
+        # simples de contar quantas lojas a lista filtrada retornou.
+        rows_shown = list_html.count("Ver / gerenciar")
+
+        assert kpi_count == rows_shown
+        assert "Loja em Teste" not in list_html  # a loja em trial não deveria aparecer no filtro "Ativa"
+
+
 class TestTenantStatusTransitions:
     def test_block_tenant_prevents_login_and_activate_restores_it(self, app, client, login_as):
         login_as(client, "admin@cardapio.saas", "admin123")
