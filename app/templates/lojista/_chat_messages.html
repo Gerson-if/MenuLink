@@ -1,4 +1,7 @@
 <div id="chat-messages" class="chat-messages" hx-get="{{ url_for('lojista.chat_messages_fragment') }}" hx-trigger="every 5s" hx-swap="outerHTML" hx-select="#chat-messages">
+  {% if send_error %}
+  <div class="chat-send-error alert alert-danger py-2 px-3 mb-2 small" role="alert">{{ send_error }}</div>
+  {% endif %}
   {% if messages %}
   {% set ns = namespace(last_day=None) %}
   {% for message in messages %}
@@ -7,10 +10,43 @@
     <div class="chat-day-divider"><span>{{ chat_day_label(message.created_at) }}</span></div>
     {% set ns.last_day = day %}
     {% endif %}
-    <div class="chat-bubble-row {{ 'chat-bubble-row-own' if message.sender_role.value == 'lojista' else '' }}">
-      <div class="chat-bubble {{ 'chat-bubble-own' if message.sender_role.value == 'lojista' else 'chat-bubble-other' }}">
+    {% set is_own = message.sender_role.value == 'lojista' %}
+    <div class="chat-bubble-row {{ 'chat-bubble-row-own' if is_own else '' }}">
+      <div class="chat-bubble {{ 'chat-bubble-own' if is_own else 'chat-bubble-other' }}">
+        {% if message.has_attachment %}
+        <div class="chat-bubble-attachment">
+          {% if message.attachment_is_image %}
+          <a href="{{ url_for('static', filename=message.attachment_path) }}" target="_blank" rel="noopener">
+            <img src="{{ url_for('static', filename=message.attachment_path) }}" alt="{{ message.attachment_original_name }}" class="chat-attachment-thumb">
+          </a>
+          {% else %}
+          <a href="{{ url_for('static', filename=message.attachment_path) }}" target="_blank" rel="noopener" download="{{ message.attachment_original_name }}" class="chat-attachment-file">
+            <i class="bi bi-file-earmark-pdf"></i>
+            <span class="chat-attachment-file-name">{{ message.attachment_original_name }}</span>
+            <i class="bi bi-box-arrow-up-right chat-attachment-file-open"></i>
+          </a>
+          {% endif %}
+        </div>
+        {% endif %}
+        {% if message.body %}
         <div class="chat-bubble-body">{{ message.body }}</div>
-        <div class="chat-bubble-time">{{ message.created_at.strftime("%H:%M") }}</div>
+        {% endif %}
+        <div class="chat-bubble-time">
+          {{ message.created_at.strftime("%H:%M") }}
+          {% if is_own %}
+          {# Ticks estilo "enviado/visualizado" — só faz sentido nas PRÓPRIAS
+             mensagens (é assim que recibo de leitura funciona em qualquer
+             chat: você vê se O SEU lado foi lido, não o do outro). Um check
+             (bi-check) enquanto `read_at` é nulo (mandada, ainda não vista
+             pelo outro lado), dois checks coloridos (bi-check-all, cor de
+             destaque) quando já foi. #}
+          {% if message.read_at %}
+          <i class="bi bi-check-all chat-bubble-tick chat-bubble-tick-read" aria-label="Visualizada"></i>
+          {% else %}
+          <i class="bi bi-check chat-bubble-tick" aria-label="Enviada"></i>
+          {% endif %}
+          {% endif %}
+        </div>
       </div>
     </div>
   {% endfor %}
@@ -60,5 +96,44 @@
     el.addEventListener('scroll', function () {
       window.__chatShouldAutoScroll = (el.scrollHeight - el.scrollTop - el.clientHeight) < 80;
     });
+
+    // BUG CORRIGIDO (mobile "fica voltando pra cima"/não parece um chat
+    // ao vivo): o listener de 'scroll' acima é a fonte de verdade
+    // ENQUANTO o usuário está com a lista aberta e rolando — mas no
+    // celular, abrir o teclado (ex: tocar na caixa de digitar) redimensiona
+    // a viewport/clientHeight e pode disparar eventos de scroll/resize
+    // espúrios, corrompendo esse cálculo e deixando
+    // `__chatShouldAutoScroll` travado em `false` mesmo com o usuário
+    // realmente no fim da conversa. Na PRÓXIMA troca (poll de 5s cria um
+    // elemento novo, sempre com scrollTop=0), isso deixava o usuário
+    // "preso" no topo — lendo exatamente como "não atualiza"/"fica
+    // voltando pra cima". Por isso capturamos o estado "perto do fim?" de
+    // novo, de forma síncrona, no exato momento da troca
+    // (htmx:beforeSwap, delegado em document.body porque #chat-messages
+    // em si é substituído a cada troca) — isso lê o DOM real na hora H,
+    // em vez de confiar num valor que pode ter ficado desatualizado por
+    // um resize sem relação nenhuma com leitura/rolagem de verdade.
+    //
+    // window.__chatBeforeSwapBound: este <script> roda de novo a cada
+    // troca (é reinjetado junto com o fragmento) — sem essa trava,
+    // cada troca acumularia mais um listener idêntico em document.body.
+    if (!window.__chatBeforeSwapBound) {
+      window.__chatBeforeSwapBound = true;
+      document.body.addEventListener('htmx:beforeSwap', function (evt) {
+        var target = evt.detail && evt.detail.target;
+        if (!target || target.id !== 'chat-messages') return;
+        var current = document.getElementById('chat-messages');
+        if (!current) return;
+        var nearBottom = (current.scrollHeight - current.scrollTop - current.clientHeight) < 80;
+        // Se esta troca veio do PRÓPRIO envio de mensagem (rota termina
+        // em ".../enviar"), sempre rola pro fim depois — mandar uma
+        // mensagem sempre deve mostrar o que você acabou de escrever,
+        // igual WhatsApp/iMessage, independente de onde você estava
+        // rolado antes.
+        var path = (evt.detail.pathInfo && evt.detail.pathInfo.requestPath) || '';
+        var isOwnSend = path.indexOf('enviar') !== -1;
+        window.__chatShouldAutoScroll = isOwnSend || nearBottom;
+      });
+    }
   })();
 </script>

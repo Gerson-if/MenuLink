@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from app.extensions import db
 from app.models import ChatMessage, ChatSenderRole
 from app.repositories.chat_repository import ChatRepository
+from app.utils.uploads import InvalidAttachmentError, save_chat_attachment
 
 MAX_MESSAGE_LENGTH = 2000
 
@@ -24,15 +25,43 @@ class ChatService:
     def list_messages(self) -> list[ChatMessage]:
         return self.repo.list_ordered()
 
-    def send_message(self, *, sender_user, sender_role: ChatSenderRole, body: str) -> ChatMessage:
+    def send_message(
+        self, *, sender_user, sender_role: ChatSenderRole, body: str, attachment=None,
+    ) -> ChatMessage:
+        """`attachment`: um `werkzeug.datastructures.FileStorage` (vindo
+        de `request.files.get('attachment')`) ou None. Uma mensagem
+        agora pode ser SÓ texto, SÓ anexo, ou os dois — mas nunca
+        nenhum dos dois (ver checagem abaixo). A validação de
+        formato/tamanho do arquivo fica em `save_chat_attachment` (ver
+        app/utils/uploads.py); qualquer `InvalidAttachmentError` de lá
+        vira um `ChatError` em português, igual às outras validações
+        deste método — quem chama só precisa tratar um tipo de erro."""
         body = (body or "").strip()
-        if not body:
-            raise ChatError("Escreva uma mensagem antes de enviar.")
         if len(body) > MAX_MESSAGE_LENGTH:
             raise ChatError(f"Mensagem muito longa (máximo {MAX_MESSAGE_LENGTH} caracteres).")
 
+        attachment_path = attachment_original_name = attachment_mimetype = None
+        attachment_size_bytes = None
+        # `getattr(attachment, "filename", "")`: um FileField sem arquivo
+        # selecionado ainda chega aqui como um FileStorage "vazio" (nome
+        # em branco), não como None — testar só `attachment is not None`
+        # trataria TODO envio de texto puro como se tivesse anexo.
+        if attachment is not None and getattr(attachment, "filename", ""):
+            try:
+                (
+                    attachment_path, attachment_original_name,
+                    attachment_mimetype, attachment_size_bytes,
+                ) = save_chat_attachment(self.tenant_id, attachment)
+            except InvalidAttachmentError as exc:
+                raise ChatError(str(exc))
+
+        if not body and not attachment_path:
+            raise ChatError("Escreva uma mensagem ou anexe um arquivo antes de enviar.")
+
         message = ChatMessage(
             tenant_id=self.tenant_id, sender_user_id=sender_user.id, sender_role=sender_role, body=body,
+            attachment_path=attachment_path, attachment_original_name=attachment_original_name,
+            attachment_mimetype=attachment_mimetype, attachment_size_bytes=attachment_size_bytes,
         )
         db.session.add(message)
         db.session.commit()

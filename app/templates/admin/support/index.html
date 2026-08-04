@@ -92,13 +92,33 @@
       {% set tenant = active_tenant %}
       {% include "admin/tenants/_chat_messages.html" %}
 
-      <form method="POST" action="{{ url_for('admin.chat_send', tenant_id=active_tenant.id) }}" class="chat-input-bar">
+      {# Ver app/templates/lojista/chat.html para a explicação completa dos
+         atributos hx-*/enctype — mesmo padrão dos dois lados do chat,
+         só trocando a URL de envio. #}
+      <form
+        method="POST" action="{{ url_for('admin.chat_send', tenant_id=active_tenant.id) }}" enctype="multipart/form-data"
+        class="chat-input-bar"
+        hx-post="{{ url_for('admin.chat_send', tenant_id=active_tenant.id) }}" hx-target="#chat-messages" hx-swap="outerHTML"
+        hx-select="#chat-messages" hx-encoding="multipart/form-data"
+        hx-on::after-request="if(event.detail.successful){ this.reset(); var nm=document.getElementById('admin-chat-attachment-name'); if(nm) nm.textContent=''; }"
+      >
         {{ chat_form.hidden_tag() }}
-        {{ chat_form.body(
-          class="chat-input", rows=1, placeholder="Escreva uma mensagem...", style="resize: none;",
-          oninput="this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,120)+'px';",
-          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault(); this.form.requestSubmit();}",
-        ) }}
+        <button type="button" class="chat-attach-btn" aria-label="Anexar arquivo" onclick="document.getElementById('admin-chat-attachment').click();">
+          <i class="bi bi-paperclip"></i>
+        </button>
+        <input
+          type="file" id="admin-chat-attachment" name="attachment" class="d-none"
+          accept="image/jpeg,image/png,image/webp,application/pdf"
+          onchange="document.getElementById('admin-chat-attachment-name').textContent = this.files[0] ? this.files[0].name : '';"
+        >
+        <div class="chat-input-wrap">
+          {{ chat_form.body(
+            class="chat-input", rows=1, placeholder="Escreva uma mensagem...", style="resize: none;",
+            oninput="this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,120)+'px';",
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault(); this.form.requestSubmit();}",
+          ) }}
+          <div id="admin-chat-attachment-name" class="chat-attachment-selected"></div>
+        </div>
         <button type="submit" class="chat-send-btn" aria-label="Enviar"><i class="bi bi-send-fill"></i></button>
       </form>
     </div>

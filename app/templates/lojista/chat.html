@@ -14,13 +14,43 @@
 
   {% include "lojista/_chat_messages.html" %}
 
-  <form method="POST" action="{{ url_for('lojista.chat_send') }}" class="chat-input-bar">
+  {#
+    hx-post/hx-target/hx-swap/hx-select espelham EXATAMENTE o polling de
+    5s do próprio #chat-messages (ver _chat_messages.html) — é o que faz
+    o envio se comportar como uma atualização de chat normal em vez de
+    uma navegação de página inteira (o "fica voltando pra cima"
+    reportado no celular). hx-encoding="multipart/form-data" é
+    OBRIGATÓRIO pro htmx enviar o campo de arquivo — ele NÃO faz isso
+    por padrão, mesmo com um <input type="file"> dentro do form.
+    method="POST"/action/enctype "normais" continuam aqui de propósito:
+    são o fallback que funciona sem JS/htmx (progressive enhancement) —
+    nesse caso o servidor detecta a ausência do header HX-Request e cai
+    no redirect de sempre (ver chat_send).
+  #}
+  <form
+    method="POST" action="{{ url_for('lojista.chat_send') }}" enctype="multipart/form-data"
+    class="chat-input-bar"
+    hx-post="{{ url_for('lojista.chat_send') }}" hx-target="#chat-messages" hx-swap="outerHTML"
+    hx-select="#chat-messages" hx-encoding="multipart/form-data"
+    hx-on::after-request="if(event.detail.successful){ this.reset(); var nm=document.getElementById('lojista-chat-attachment-name'); if(nm) nm.textContent=''; }"
+  >
     {{ form.hidden_tag() }}
-    {{ form.body(
-      class="chat-input", rows=1, placeholder="Escreva uma mensagem...", style="resize: none;",
-      oninput="this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,120)+'px';",
-      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault(); this.form.requestSubmit();}",
-    ) }}
+    <button type="button" class="chat-attach-btn" aria-label="Anexar arquivo" onclick="document.getElementById('lojista-chat-attachment').click();">
+      <i class="bi bi-paperclip"></i>
+    </button>
+    <input
+      type="file" id="lojista-chat-attachment" name="attachment" class="d-none"
+      accept="image/jpeg,image/png,image/webp,application/pdf"
+      onchange="document.getElementById('lojista-chat-attachment-name').textContent = this.files[0] ? this.files[0].name : '';"
+    >
+    <div class="chat-input-wrap">
+      {{ form.body(
+        class="chat-input", rows=1, placeholder="Escreva uma mensagem...", style="resize: none;",
+        oninput="this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,120)+'px';",
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault(); this.form.requestSubmit();}",
+      ) }}
+      <div id="lojista-chat-attachment-name" class="chat-attachment-selected"></div>
+    </div>
     <button type="submit" class="chat-send-btn" aria-label="Enviar"><i class="bi bi-send-fill"></i></button>
   </form>
 </div>

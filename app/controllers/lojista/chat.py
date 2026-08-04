@@ -1,4 +1,4 @@
-from flask import flash, redirect, render_template, url_for
+from flask import flash, redirect, render_template, request, url_for
 from flask_login import current_user
 
 from app.forms.chat_forms import ChatMessageForm
@@ -46,17 +46,47 @@ def chat_messages_fragment():
 @lojista_bp.route("/suporte/enviar", methods=["POST"])
 @lojista_login_required
 def chat_send():
+    """Progressive enhancement: com JS/htmx (`HX-Request` presente no
+    header — htmx manda esse header em TODA requisição que ele faz),
+    devolve o MESMO fragmento de `chat_messages_fragment` em vez de um
+    redirect, pra troca acontecer sem navegação de página nenhuma (era
+    o "fica voltando pra cima" reportado no celular: um POST + redirect
+    + GET tradicional recarrega a página inteira, resetando o scroll do
+    topo antes do JS do chat conseguir rolar de volta pro fim). Sem
+    JS/htmx, o form ainda funciona (`method="POST"`/`action` normais no
+    template) e cai neste mesmo `redirect` de sempre."""
     tenant = get_current_tenant()
     form = ChatMessageForm()
+    is_htmx = bool(request.headers.get("HX-Request"))
+    send_error = None
     if form.validate_on_submit():
         try:
             ChatService(tenant.id).send_message(
-                sender_user=current_user, sender_role=ChatSenderRole.LOJISTA, body=form.body.data,
+                sender_user=current_user, sender_role=ChatSenderRole.LOJISTA,
+                body=form.body.data, attachment=request.files.get("attachment"),
             )
         except ChatError as exc:
-            flash(str(exc), "danger")
+            send_error = str(exc)
+            if not is_htmx:
+                flash(send_error, "danger")
     else:
-        for field_errors in form.errors.values():
-            for error in field_errors:
+        errors = [error for field_errors in form.errors.values() for error in field_errors]
+        send_error = " ".join(errors) or None
+        if not is_htmx:
+            for error in errors:
                 flash(error, "danger")
+
+    if is_htmx:
+        # Mesma troca do polling de 5s (ver chat_messages_fragment):
+        # marca como lida qualquer mensagem nova do outro lado e devolve
+        # o fragmento atualizado — inclusive quando deu erro (`send_error`
+        # aparece como um aviso inline dentro do próprio fragmento, ver
+        # _chat_messages.html, já que uma troca via hx-swap não mostra
+        # flash message nenhuma da forma tradicional).
+        service = ChatService(tenant.id)
+        service.mark_read(reader_role=ChatSenderRole.LOJISTA)
+        return render_template(
+            "lojista/_chat_messages.html", messages=service.list_messages(),
+            current_user_id=current_user.id, send_error=send_error,
+        )
     return redirect(url_for("lojista.chat"))

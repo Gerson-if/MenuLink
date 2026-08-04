@@ -71,6 +71,22 @@ class InvalidVideoError(Exception):
     pass
 
 
+class InvalidAttachmentError(Exception):
+    pass
+
+
+# Anexo de chat (comprovante de pagamento etc — ver
+# app/services/chat_service.py). 8MB cobre folgadamente tanto uma foto
+# de comprovante tirada direto do celular (mesmo sem compressão nenhuma,
+# fotos de celular raramente passam de 5-6MB) quanto um PDF de nota
+# fiscal/comprovante bancário escaneado — sem deixar o chat de suporte
+# virar um jeito barato de hospedar arquivo grande qualquer (o envio é
+# síncrono, dentro do próprio request HTTP, sem fila de processamento).
+MAX_CHAT_ATTACHMENT_BYTES = 8 * 1024 * 1024  # 8MB
+ALLOWED_CHAT_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
+ALLOWED_CHAT_ATTACHMENT_EXTENSIONS = ALLOWED_CHAT_IMAGE_EXTENSIONS | {"pdf"}
+
+
 def _allowed_extension(filename: str) -> bool:
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
     return ext in current_app.config["ALLOWED_IMAGE_EXTENSIONS"]
@@ -135,6 +151,90 @@ def save_category_icon(tenant_id: int, category_id: int, file_storage) -> str:
     image.save(os.path.join(absolute_dir, new_filename), format="PNG", optimize=True)
 
     return os.path.join(relative_dir, new_filename).replace(os.sep, "/")
+
+
+def save_chat_attachment(tenant_id: int, file_storage) -> tuple[str, str, str, int]:
+    """
+    Anexo de uma mensagem de chat (comprovante de pagamento etc) —
+    diferente das demais imagens do app, aqui aceitamos IMAGEM (jpg,
+    jpeg, png, webp) *ou* PDF (comprovante costuma vir tanto em foto
+    quanto em PDF exportado do banco).
+
+    Retorna (caminho_relativo, nome_original_sanitizado, mimetype,
+    tamanho_em_bytes) — os quatro valores vão direto pras colunas
+    attachment_* de ChatMessage (ver app/models/chat_message.py).
+
+    Imagem: reaproveita `_save_validated_image` (mesma validação real
+    via Pillow, mesmo teto de dimensão, mesma recompressão pra WEBP) só
+    que salvando em `tenant_<id>/chat/` — o mimetype final é sempre
+    "image/webp" porque TODA imagem aceita é recomprimida pra esse
+    formato antes de ir pro disco (nunca guardamos o arquivo original).
+
+    PDF: NÃO confiamos na extensão do nome do arquivo nem no
+    Content-Type que o navegador manda (`file_storage.mimetype` — é só
+    um header enviado pelo cliente, trivial de falsificar) — só
+    aceitamos o arquivo se os primeiros bytes baterem com a assinatura
+    mágica real de um PDF (`%PDF`), o mesmo princípio de "abrir de
+    verdade pra validar" que `_save_validated_image` já usa com Pillow
+    pra imagem (`Image.open` + `.verify()`). Diferente da imagem, o PDF
+    é salvo como está (sem recomprimir/reprocessar) — só com um nome
+    aleatório novo (uuid4), nunca o nome original do arquivo.
+    """
+    original_filename = secure_filename(file_storage.filename or "")
+    if not original_filename or "." not in original_filename:
+        raise InvalidAttachmentError(
+            "Formato não suportado. Envie uma imagem (JPG, PNG, WEBP) ou um PDF."
+        )
+    ext = original_filename.rsplit(".", 1)[-1].lower()
+    if ext not in ALLOWED_CHAT_ATTACHMENT_EXTENSIONS:
+        raise InvalidAttachmentError(
+            "Formato não suportado. Envie uma imagem (JPG, PNG, WEBP) ou um PDF."
+        )
+
+    file_storage.stream.seek(0, os.SEEK_END)
+    size = file_storage.stream.tell()
+    file_storage.stream.seek(0)
+    if size == 0:
+        raise InvalidAttachmentError("Arquivo vazio.")
+    if size > MAX_CHAT_ATTACHMENT_BYTES:
+        raise InvalidAttachmentError(
+            f"Arquivo muito grande (máximo {MAX_CHAT_ATTACHMENT_BYTES // (1024 * 1024)}MB)."
+        )
+
+    relative_subdir = os.path.join(f"tenant_{tenant_id}", "chat")
+
+    if ext in ALLOWED_CHAT_IMAGE_EXTENSIONS:
+        relative_path, _dominant_color = _save_validated_image(relative_subdir, file_storage)
+        # Não usamos `current_app.static_folder` aqui de propósito: em
+        # produção UPLOAD_FOLDER fica DENTRO de static/ (ver config.py),
+        # mas em teste ele aponta pra um diretório temporário separado
+        # (ver TestingConfig) — reconstruir o caminho a partir de
+        # UPLOAD_FOLDER + subpasta + nome do arquivo (em vez de
+        # static_folder + caminho relativo completo) funciona nos dois
+        # ambientes, igual ao que `_save_validated_image` já faz.
+        stored_filename = os.path.basename(relative_path)
+        absolute_path = os.path.join(current_app.config["UPLOAD_FOLDER"], relative_subdir, stored_filename)
+        stored_size = os.path.getsize(absolute_path)
+        return relative_path, original_filename, "image/webp", stored_size
+
+    # ext == "pdf" daqui pra baixo (é a única outra opção em
+    # ALLOWED_CHAT_ATTACHMENT_EXTENSIONS)
+    header = file_storage.stream.read(5)
+    file_storage.stream.seek(0)
+    if not header.startswith(b"%PDF"):
+        raise InvalidAttachmentError(
+            "Arquivo enviado não é um PDF válido (extensão .pdf, mas conteúdo não bate)."
+        )
+
+    relative_dir = os.path.join("uploads", relative_subdir)
+    absolute_dir = os.path.join(current_app.config["UPLOAD_FOLDER"], relative_subdir)
+    os.makedirs(absolute_dir, exist_ok=True)
+
+    new_filename = f"{uuid.uuid4().hex}.pdf"
+    file_storage.save(os.path.join(absolute_dir, new_filename))
+
+    relative_path = os.path.join(relative_dir, new_filename).replace(os.sep, "/")
+    return relative_path, original_filename, "application/pdf", size
 
 
 def save_platform_image(subdir: str, file_storage, max_dimension: int = MAX_DIMENSION) -> str:

@@ -430,20 +430,65 @@ body {
 }
 .chat-bubble-own { border-radius: 14px 14px 3px 14px; background: var(--accent); color: #1B140F; }
 .chat-bubble-body { font-size: .9rem; white-space: pre-wrap; word-break: break-word; line-height: 1.4; }
-.chat-bubble-time { font-size: .65rem; opacity: .65; margin-top: 3px; text-align: right; }
+.chat-bubble-time { font-size: .65rem; opacity: .65; margin-top: 3px; text-align: right; display: flex; align-items: center; justify-content: flex-end; gap: 3px; }
+
+/* Ticks de "enviada/visualizada" (estilo WhatsApp) — só aparecem nas
+   PRÓPRIAS mensagens (ver _chat_messages.html). Um risco (bi-check) sem
+   cor de destaque = mandada mas ainda não vista pelo outro lado; dois
+   riscos coloridos (bi-check-all) = já visualizada (ChatMessage.read_at
+   preenchido, ver ChatService.mark_read). */
+.chat-bubble-tick { font-size: .8rem; opacity: .7; }
+.chat-bubble-tick-read { color: var(--accent-dark); opacity: 1; }
+.chat-bubble-own .chat-bubble-tick-read { color: #1B140F; opacity: .85; }
 
 .chat-empty-state { margin: auto; text-align: center; color: var(--muted-text); padding: 30px; }
 .chat-empty-state i { font-size: 1.8rem; opacity: .5; display: block; margin-bottom: 8px; }
+
+.chat-send-error { border-radius: 10px; }
+
+/* ---------- Anexo de chat (comprovante/imagem/PDF) ---------- */
+.chat-bubble-attachment { margin-bottom: 6px; }
+.chat-attachment-thumb {
+  display: block; max-width: 220px; width: 100%; height: auto; border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--card-text) 15%, transparent);
+}
+.chat-attachment-file {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px;
+  background: color-mix(in srgb, var(--card-text) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--card-text) 15%, transparent);
+  color: inherit; text-decoration: none; max-width: 220px;
+}
+.chat-attachment-file:hover { background: color-mix(in srgb, var(--card-text) 10%, transparent); color: inherit; }
+.chat-attachment-file i.bi-file-earmark-pdf { font-size: 1.3rem; color: var(--accent); flex-shrink: 0; }
+.chat-attachment-file-name { font-size: .78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+.chat-attachment-file-open { font-size: .8rem; opacity: .6; flex-shrink: 0; }
 
 .chat-input-bar {
   display: flex; align-items: flex-end; gap: 10px; padding: 12px 14px;
   border-top: 1px solid var(--card-border); background: rgba(0,0,0,.1); flex-shrink: 0;
 }
+/* Envolve a textarea + o nome do arquivo selecionado (ver
+   .chat-attachment-selected) num mesmo bloco flex/coluna, pro indicador
+   de anexo aparecer logo abaixo da caixa de texto sem bagunçar o
+   alinhamento dos botões (anexo/enviar), que continuam alinhados pela
+   base (`align-items: flex-end` no .chat-input-bar). */
+.chat-input-wrap { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .chat-input {
   flex: 1; border-radius: 22px; border: 1px solid var(--card-border); background: var(--card-bg);
   color: var(--card-text); padding: 10px 16px; resize: none; max-height: 120px;
 }
 .chat-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent); }
+.chat-attachment-selected {
+  font-size: .72rem; color: var(--accent); padding: 3px 16px 0; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+.chat-attachment-selected:empty { display: none; }
+.chat-attach-btn {
+  width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--card-border); background: transparent;
+  color: var(--muted-text); display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  font-size: 1.05rem; transition: filter .15s, color .15s, border-color .15s;
+}
+.chat-attach-btn:hover { color: var(--accent); border-color: var(--accent); }
 .chat-send-btn {
   width: 42px; height: 42px; border-radius: 50%; border: none; background: var(--accent); color: #1B140F;
   display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.1rem;

@@ -1,4 +1,4 @@
-from flask import flash, redirect, render_template, url_for
+from flask import flash, redirect, render_template, request, url_for
 from flask_login import current_user
 
 from app.forms.chat_forms import ChatMessageForm
@@ -78,17 +78,37 @@ def chat_messages_fragment(tenant_id):
 @admin_bp.route("/lojistas/<int:tenant_id>/mensagens/enviar", methods=["POST"])
 @super_admin_required
 def chat_send(tenant_id):
+    """Mesma lógica de progressive enhancement do lado lojista (ver
+    app/controllers/lojista/chat.py:chat_send) — com htmx (`HX-Request`
+    no header), devolve o fragmento atualizado em vez de redirecionar,
+    pra evitar a navegação de página inteira que "arrancava" o Super
+    Admin do lugar onde estava."""
     tenant = AdminTenantService().get_or_404(tenant_id)
     form = ChatMessageForm()
+    is_htmx = bool(request.headers.get("HX-Request"))
+    send_error = None
     if form.validate_on_submit():
         try:
             ChatService(tenant.id).send_message(
-                sender_user=current_user, sender_role=ChatSenderRole.SUPER_ADMIN, body=form.body.data,
+                sender_user=current_user, sender_role=ChatSenderRole.SUPER_ADMIN,
+                body=form.body.data, attachment=request.files.get("attachment"),
             )
         except ChatError as exc:
-            flash(str(exc), "danger")
+            send_error = str(exc)
+            if not is_htmx:
+                flash(send_error, "danger")
     else:
-        for field_errors in form.errors.values():
-            for error in field_errors:
+        errors = [error for field_errors in form.errors.values() for error in field_errors]
+        send_error = " ".join(errors) or None
+        if not is_htmx:
+            for error in errors:
                 flash(error, "danger")
+
+    if is_htmx:
+        service = ChatService(tenant.id)
+        service.mark_read(reader_role=ChatSenderRole.SUPER_ADMIN)
+        return render_template(
+            "admin/tenants/_chat_messages.html", messages=service.list_messages(),
+            current_user_id=current_user.id, tenant=tenant, send_error=send_error,
+        )
     return redirect(url_for("admin.support_inbox", tenant_id=tenant.id))
