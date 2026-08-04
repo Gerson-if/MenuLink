@@ -367,6 +367,22 @@ def _build_icon_canvas(size: int, background_hex: str, rounded: bool) -> "tuple[
     return canvas, margin
 
 
+def _finalize_icon_png(canvas: "Image.Image", rounded: bool) -> bytes:
+    """`rounded=True`: mantém RGBA (cantos transparentes de propósito).
+    `rounded=False`: força RGB (100% opaco, sem nenhum canal alpha) —
+    além de ser o que a spec de ícone "maskable" pede, é OBRIGATÓRIO
+    pro apple-touch-icon do iOS (ver base.html): Safari não compõe
+    transparência nesse ícone específico direito, mostrando preto atrás
+    de qualquer pixel não-100%-opaco — inclusive pixels quase-opacos de
+    anti-serrilhado nas bordas do desenho, não só transparência total."""
+    from io import BytesIO
+
+    buffer = BytesIO()
+    output = canvas if rounded else canvas.convert("RGB")
+    output.save(buffer, format="PNG", optimize=True)
+    return buffer.getvalue()
+
+
 def render_manifest_icon(relative_logo_path: str, size: int, background_hex: str, rounded: bool = False) -> bytes:
     """Gera, na hora, um ícone quadrado PNG (do tamanho pedido) a partir
     da logo customizada do Super Admin (`PlatformSettings.platform_logo`)
@@ -394,12 +410,7 @@ def render_manifest_icon(relative_logo_path: str, size: int, background_hex: str
     fitted.thumbnail((max_content, max_content), Image.LANCZOS)
     offset = ((size - fitted.width) // 2, (size - fitted.height) // 2)
     canvas.paste(fitted, offset, fitted)
-
-    from io import BytesIO
-
-    buffer = BytesIO()
-    canvas.save(buffer, format="PNG", optimize=True)
-    return buffer.getvalue()
+    return _finalize_icon_png(canvas, rounded)
 
 
 _EGG_MASK_PATH = os.path.join("img", "egg-mask.png")
@@ -435,9 +446,4 @@ def render_default_manifest_icon(size: int, background_hex: str, rounded: bool =
     content_size = size - 2 * margin
     fitted_mask = mask.resize((content_size, content_size), Image.LANCZOS)
     canvas.paste(fitted_mask, (margin, margin), fitted_mask)
-
-    from io import BytesIO
-
-    buffer = BytesIO()
-    canvas.save(buffer, format="PNG", optimize=True)
-    return buffer.getvalue()
+    return _finalize_icon_png(canvas, rounded)
