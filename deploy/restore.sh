@@ -6,15 +6,15 @@
 #
 # Passo a passo de uma migração completa:
 #   1. Na VPS ANTIGA:  sudo bash deploy/backup.sh
-#   2. Copie o arquivo gerado (deploy/backups/comanda_backup_*.tar.gz.gpg)
+#   2. Copie o arquivo gerado (deploy/backups/menulink_backup_*.tar.gz.gpg)
 #      para fora do servidor (seu computador, outro storage etc.):
-#        scp root@VPS_ANTIGA:/opt/comanda/deploy/backups/comanda_backup_*.gpg .
+#        scp root@VPS_ANTIGA:/opt/menulink/deploy/backups/menulink_backup_*.gpg .
 #   3. Na VPS NOVA: rode deploy/install.sh normalmente (clona o repo,
 #      cria usuário de serviço, systemd, Nginx/SSL — mas com um banco
 #      novo e vazio).
 #   4. Envie o arquivo de backup para a VPS nova:
-#        scp comanda_backup_*.gpg root@VPS_NOVA:/opt/comanda/deploy/backups/
-#   5. Na VPS NOVA: sudo bash deploy/restore.sh deploy/backups/comanda_backup_*.gpg
+#        scp menulink_backup_*.gpg root@VPS_NOVA:/opt/menulink/deploy/backups/
+#   5. Na VPS NOVA: sudo bash deploy/restore.sh deploy/backups/menulink_backup_*.gpg
 #
 # O que este script garante antes de mexer em qualquer coisa:
 #   - o arquivo de backup existe e o checksum SHA256 bate (se o
@@ -134,7 +134,7 @@ BACKUP_FILE="$(cd "$(dirname "$BACKUP_FILE")" && pwd)/$(basename "$BACKUP_FILE")
 source "$CONF_FILE"
 APP_DIR="${APP_DIR:?"APP_DIR não definido em ${CONF_FILE}."}"
 SERVICE_USER="${SERVICE_USER:?"SERVICE_USER não definido em ${CONF_FILE}."}"
-SERVICE_NAME="${SERVICE_NAME:-comanda}"
+SERVICE_NAME="${SERVICE_NAME:-menulink}"
 APP_PORT="${APP_PORT:-8000}"
 SERVICE_GROUP="$(id -gn "$SERVICE_USER")"
 

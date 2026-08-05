@@ -3,14 +3,14 @@
 # Instalador guiado do Menu Link para um servidor Ubuntu (VPS).
 #
 # Nota: os identificadores técnicos internos usados por este script
-# (nome do serviço systemd, banco de dados, usuário de sistema,
-# diretório padrão) continuam "comanda" por convenção de nome de
-# código — só o texto exibido pra quem está instalando foi atualizado
-# pra marca atual "Menu Link". Não renomeamos esses identificadores
-# porque isso quebraria qualquer instalação já em produção (o
-# serviço/banco/diretório reais no servidor continuariam se chamando
-# "comanda" até uma migração manual — não é algo que um `git pull`
-# resolve sozinho).
+# (nome do serviço systemd, banco de dados, usuário de sistema padrão,
+# diretório sugerido) usam "menulink", já alinhados com a marca atual.
+# Se você tem uma instalação MAIS ANTIGA rodando com os identificadores
+# do nome anterior do projeto ("comanda"), rodar este script de novo
+# NÃO renomeia nada sozinho — um `git pull` não migra serviço systemd,
+# banco de dados nem diretório já em produção. Nesse caso, ou continue
+# usando "comanda" nessa instalação (passe SERVICE_NAME=comanda para
+# deploy/update.sh, por exemplo) ou faça a migração manualmente.
 #
 # O que este script faz:
 #   - instala as dependências de sistema (Python, Nginx, PostgreSQL, ffmpeg
@@ -43,7 +43,7 @@
 #
 # O script é interativo (faz perguntas) e explica cada decisão antes de
 # perguntar. Rode-o a partir de uma cópia do repositório já clonada no
-# servidor (ex: /opt/comanda). Ele detecta automaticamente o diretório do
+# servidor (ex: /opt/menulink). Ele detecta automaticamente o diretório do
 # projeto a partir da própria localização deste arquivo.
 #
 # É seguro rodar de novo (ex: para reconfigurar): o script avisa antes de
@@ -113,6 +113,18 @@ ask_secret() {
 valid_identifier() {
     # nomes de banco/usuário do Postgres: letras, números e underscore, começando por letra
     [[ "$1" =~ ^[a-zA-Z][a-zA-Z0-9_]{0,62}$ ]]
+}
+
+valid_username() {
+    # Nome de usuário LINUX (useradd) — bem mais restrito que um
+    # identificador de Postgres: só minúsculas, números, underscore e
+    # hífen, começando por letra minúscula ou underscore, até 32
+    # caracteres (limite comum de UTF_LEN em vários sistemas). Sem essa
+    # checagem, alguém digitando o próprio nome de pessoa (com espaço
+    # e maiúsculas, ex: "Gerson Ferreira") só descobre que é inválido
+    # quando o `useradd` já falhou lá na frente — depois da instalação
+    # já ter ido longe (pacotes de sistema instalados, banco criado).
+    [[ "$1" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]]
 }
 
 valid_domain() {
@@ -431,8 +443,8 @@ run_backup_now() {
 list_backups() {
     section "Backups existentes"
     local dir="${APP_DIR}/deploy/backups"
-    if [ -d "$dir" ] && ls "${dir}"/comanda_backup_*.tar.gz* >/dev/null 2>&1; then
-        for f in "${dir}"/comanda_backup_*.tar.gz*; do
+    if [ -d "$dir" ] && ls "${dir}"/menulink_backup_*.tar.gz* >/dev/null 2>&1; then
+        for f in "${dir}"/menulink_backup_*.tar.gz*; do
             [[ "$f" == *.sha256 ]] && continue
             ls -lh "$f"
         done
@@ -728,11 +740,11 @@ case "$DB_CHOICE" in
         echo
         info "Nome e usuário do banco: só letras, números e underscore, começando"
         info "por letra. Pode manter os padrões se não tiver preferência."
-        ask "Nome do banco de dados a criar" "comanda"
+        ask "Nome do banco de dados a criar" "menulink"
         DB_NAME="$REPLY_VALUE"
         valid_identifier "$DB_NAME" || die "Nome de banco inválido: '${DB_NAME}'."
 
-        ask "Nome do usuário do banco de dados a criar" "comanda"
+        ask "Nome do usuário do banco de dados a criar" "menulink"
         DB_USER="$REPLY_VALUE"
         valid_identifier "$DB_USER" || die "Nome de usuário inválido: '${DB_USER}'."
 
@@ -763,15 +775,18 @@ esac
 
 echo
 log "Usuário de sistema"
-info "A aplicação roda com um usuário sem privilégios de root — pode ser um"
-info "usuário já existente no servidor (ex.: o mesmo usado para dar deploy"
-info "por SSH) ou um novo, se preferir um dedicado só para a aplicação."
+info "A aplicação roda com um usuário técnico sem privilégios de root — pode"
+info "ser um usuário já existente no servidor (ex.: o mesmo usado para dar"
+info "deploy por SSH) ou um novo, se preferir um dedicado só para a aplicação."
+info "É um nome de usuário LINUX, não o seu nome de pessoa: só minúsculas,"
+info "números, underscore e hífen (ex.: 'menulink', não 'Gerson Ferreira')."
 DEFAULT_SERVICE_USER="${SUDO_USER:-}"
 if [ -z "$DEFAULT_SERVICE_USER" ] || [ "$DEFAULT_SERVICE_USER" = "root" ]; then
-    DEFAULT_SERVICE_USER="comanda"
+    DEFAULT_SERVICE_USER="menulink"
 fi
 ask "Nome do usuário de sistema (criado automaticamente se não existir)" "$DEFAULT_SERVICE_USER"
 SERVICE_USER="$REPLY_VALUE"
+valid_username "$SERVICE_USER" || die "Nome de usuário inválido: '${SERVICE_USER}'. Use só minúsculas, números, underscore e hífen, começando por letra (ex.: 'menulink') — não é o seu nome de pessoa."
 if id "${SERVICE_USER}" &>/dev/null; then
     info "Usuário '${SERVICE_USER}' já existe — será reaproveitado, nada será criado."
 fi
@@ -874,7 +889,7 @@ if ! id "${SERVICE_USER}" &>/dev/null; then
     useradd --system --create-home --home-dir "/home/${SERVICE_USER}" --shell /usr/sbin/nologin "${SERVICE_USER}"
 fi
 # Não assume que o grupo primário tem o mesmo nome do usuário — verdade
-# para o "comanda" criado por este script, mas não necessariamente para
+# para o "menulink" criado por este script, mas não necessariamente para
 # um usuário existente reaproveitado (ex: alguns provedores de VPS criam
 # o usuário inicial num grupo "users" ou "sudo" em vez de um grupo próprio).
 SERVICE_GROUP="$(id -gn "${SERVICE_USER}")"
@@ -1015,17 +1030,17 @@ fi
 
 STEP="Serviço systemd (Gunicorn)"
 log "Configurando o serviço systemd..."
-render_template "${TEMPLATES_DIR}/comanda.service.tmpl" "/etc/systemd/system/comanda.service"
+render_template "${TEMPLATES_DIR}/menulink.service.tmpl" "/etc/systemd/system/menulink.service"
 systemctl daemon-reload
-systemctl enable comanda
-systemctl restart comanda
+systemctl enable menulink
+systemctl restart menulink
 sleep 2
-if ! systemctl is-active --quiet comanda; then
-    err "O serviço 'comanda' não subiu corretamente. Últimas linhas do log:"
-    journalctl -u comanda --no-pager -n 40
-    die "Corrija o problema acima e rode: systemctl restart comanda"
+if ! systemctl is-active --quiet menulink; then
+    err "O serviço 'menulink' não subiu corretamente. Últimas linhas do log:"
+    journalctl -u menulink --no-pager -n 40
+    die "Corrija o problema acima e rode: systemctl restart menulink"
 fi
-info "Serviço 'comanda' ativo (systemctl status comanda / journalctl -u comanda -f)."
+info "Serviço 'menulink' ativo (systemctl status menulink / journalctl -u menulink -f)."
 
 # --------------------------------------------------------------------------
 # 9. Nginx
@@ -1033,10 +1048,10 @@ info "Serviço 'comanda' ativo (systemctl status comanda / journalctl -u comanda
 
 STEP="Nginx"
 log "Configurando o Nginx..."
-render_template "${TEMPLATES_DIR}/nginx.conf.tmpl" "/etc/nginx/sites-available/comanda"
-ln -sf /etc/nginx/sites-available/comanda /etc/nginx/sites-enabled/comanda
+render_template "${TEMPLATES_DIR}/nginx.conf.tmpl" "/etc/nginx/sites-available/menulink"
+ln -sf /etc/nginx/sites-available/menulink /etc/nginx/sites-enabled/menulink
 rm -f /etc/nginx/sites-enabled/default
-nginx -t || die "O Nginx recusou a configuração gerada (/etc/nginx/sites-available/comanda) — veja o erro acima. Isso não deveria acontecer com um domínio/IP válido; se persistir, é um bug no template (deploy/templates/nginx.conf.tmpl)."
+nginx -t || die "O Nginx recusou a configuração gerada (/etc/nginx/sites-available/menulink) — veja o erro acima. Isso não deveria acontecer com um domínio/IP válido; se persistir, é um bug no template (deploy/templates/nginx.conf.tmpl)."
 systemctl reload nginx || systemctl restart nginx || die "O Nginx não recarregou nem reiniciou. Rode 'systemctl status nginx' e 'journalctl -u nginx -n 50' para diagnosticar."
 
 # --------------------------------------------------------------------------
@@ -1094,7 +1109,7 @@ if [ "$WANT_SSL" = "s" ]; then
                 --key-file       "/etc/nginx/ssl/${CERT_NAME}/privkey.pem" \
                 --fullchain-file "/etc/nginx/ssl/${CERT_NAME}/fullchain.pem" \
                 --reloadcmd      "systemctl reload nginx"
-            render_template "${TEMPLATES_DIR}/nginx-ssl.conf.tmpl" "/etc/nginx/sites-available/comanda"
+            render_template "${TEMPLATES_DIR}/nginx-ssl.conf.tmpl" "/etc/nginx/sites-available/menulink"
             nginx -t && systemctl reload nginx
             SSL_OK=1
             info "Certificado ZeroSSL emitido para ${SSL_NAMES} e instalado. acme.sh já agenda a renovação automática via cron."
@@ -1130,14 +1145,14 @@ DESIRED_FORCE_HTTPS="false"
 
 if [ "$DESIRED_FORCE_HTTPS" != "$FORCE_HTTPS" ]; then
     if ! sed -i "s/^FORCE_HTTPS=.*/FORCE_HTTPS=${DESIRED_FORCE_HTTPS}/" "${APP_DIR}/.env"; then
-        warn "Não consegui atualizar FORCE_HTTPS em ${APP_DIR}/.env (valor atual pode estar incorreto). Ajuste manualmente para FORCE_HTTPS=${DESIRED_FORCE_HTTPS} e rode: systemctl restart comanda"
+        warn "Não consegui atualizar FORCE_HTTPS em ${APP_DIR}/.env (valor atual pode estar incorreto). Ajuste manualmente para FORCE_HTTPS=${DESIRED_FORCE_HTTPS} e rode: systemctl restart menulink"
     else
         FORCE_HTTPS="$DESIRED_FORCE_HTTPS"
-        systemctl restart comanda || warn "FORCE_HTTPS foi atualizado no .env, mas não consegui reiniciar o serviço 'comanda'. Rode manualmente: systemctl restart comanda"
+        systemctl restart menulink || warn "FORCE_HTTPS foi atualizado no .env, mas não consegui reiniciar o serviço 'menulink'. Rode manualmente: systemctl restart menulink"
         if [ "$DESIRED_FORCE_HTTPS" = "false" ]; then
             warn "FORCE_HTTPS foi desligado em ${APP_DIR}/.env porque o certificado SSL não pôde ser emitido — sem isso, o login ficaria quebrado em HTTP (cookie de sessão marcado como só-HTTPS). Depois de resolver o SSL, rode o instalador de novo (ou emita o certificado manualmente e ajuste FORCE_HTTPS=true) para religar."
         else
-            info "FORCE_HTTPS foi ativado em ${APP_DIR}/.env (HTTPS confirmado) e o serviço 'comanda' foi reiniciado."
+            info "FORCE_HTTPS foi ativado em ${APP_DIR}/.env (HTTPS confirmado) e o serviço 'menulink' foi reiniciado."
         fi
     fi
 fi
@@ -1167,7 +1182,7 @@ STEP="Salvando configuração"
 cat > "${CONF_FILE}" <<CONFEOF
 APP_DIR="${APP_DIR}"
 SERVICE_USER="${SERVICE_USER}"
-SERVICE_NAME="comanda"
+SERVICE_NAME="menulink"
 APP_PORT="${APP_PORT}"
 DB_ENGINE="${DB_ENGINE}"
 DOMAIN="${DOMAIN}"
@@ -1189,8 +1204,8 @@ elif [ -n "$DOMAIN" ]; then
 else
     echo "  Acesse: http://${SERVER_NAME}/"
 fi
-echo "  Logs da aplicação : journalctl -u comanda -f"
-echo "  Reiniciar         : systemctl restart comanda"
+echo "  Logs da aplicação : journalctl -u menulink -f"
+echo "  Reiniciar         : systemctl restart menulink"
 echo "  Atualizar         : sudo bash ${APP_DIR}/deploy/update.sh"
 echo "  Backup (migração) : sudo bash ${APP_DIR}/deploy/backup.sh"
 echo "  Restaurar backup  : sudo bash ${APP_DIR}/deploy/restore.sh <arquivo>"
@@ -1200,7 +1215,7 @@ fi
 echo
 
 if [ "$DB_ENGINE" = "postgres_local" ]; then
-    CRED_FILE="/root/comanda-db-credentials-$(date +%Y%m%d%H%M%S).txt"
+    CRED_FILE="/root/menulink-db-credentials-$(date +%Y%m%d%H%M%S).txt"
     cat > "$CRED_FILE" <<CREDEOF
 Credenciais do banco de dados PostgreSQL do Menu Link
 Geradas em $(date -Iseconds) por deploy/install.sh — únicas desta instalação

@@ -156,7 +156,7 @@ source "$CONF_FILE"
 
 APP_DIR="${APP_DIR:?"APP_DIR não definido em ${CONF_FILE} — o arquivo está corrompido? Rode deploy/install.sh de novo."}"
 SERVICE_USER="${SERVICE_USER:?"SERVICE_USER não definido em ${CONF_FILE} — o arquivo está corrompido? Rode deploy/install.sh de novo."}"
-SERVICE_NAME="${SERVICE_NAME:-comanda}"
+SERVICE_NAME="${SERVICE_NAME:-menulink}"
 APP_PORT="${APP_PORT:-8000}"
 DB_ENGINE="${DB_ENGINE:-postgres_local}"
 ALLOW_UPDATE_WITHOUT_BACKUP="${ALLOW_UPDATE_WITHOUT_BACKUP:-0}"

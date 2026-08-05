@@ -27,8 +27,8 @@ server {
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 
-    access_log /var/log/nginx/comanda.access.log;
-    error_log  /var/log/nginx/comanda.error.log;
+    access_log /var/log/nginx/menulink.access.log;
+    error_log  /var/log/nginx/menulink.error.log;
 
     location /static/ {
         alias __APP_DIR__/app/static/;

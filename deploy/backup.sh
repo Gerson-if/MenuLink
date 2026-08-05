@@ -13,7 +13,7 @@
 #
 # Uso:
 #   sudo bash deploy/backup.sh
-#       Gera deploy/backups/comanda_backup_<data>.tar.gz.gpg (pede uma
+#       Gera deploy/backups/menulink_backup_<data>.tar.gz.gpg (pede uma
 #       senha de criptografia duas vezes, interativamente).
 #
 #   BACKUP_PASSPHRASE='minha-senha' sudo -E bash deploy/backup.sh
@@ -31,7 +31,7 @@
 #
 # Depois de gerado, copie o arquivo para FORA deste servidor (é o ponto
 # principal de ter um backup!) — por exemplo, do seu computador:
-#   scp root@SEU_SERVIDOR:/opt/comanda/deploy/backups/comanda_backup_*.tar.gz.gpg .
+#   scp root@SEU_SERVIDOR:/opt/menulink/deploy/backups/menulink_backup_*.tar.gz.gpg .
 #
 # Para restaurar na VPS nova, veja deploy/restore.sh.
 
@@ -104,7 +104,7 @@ BACKUP_DIR="${APP_DIR}/deploy/backups"
 mkdir -p "$BACKUP_DIR"
 chmod 700 "$BACKUP_DIR"
 STAMP="$(date +%Y%m%d%H%M%S)"
-ARCHIVE_NAME="comanda_backup_${STAMP}"
+ARCHIVE_NAME="menulink_backup_${STAMP}"
 
 get_database_url() {
     grep -m1 '^DATABASE_URL=' "${APP_DIR}/.env" | cut -d= -f2- \

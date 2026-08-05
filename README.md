@@ -289,7 +289,7 @@ demais.
   dia num cron do servidor:
   ```bash
   # roda todo dia às 6h da manhã
-  0 6 * * * root cd /opt/comanda && venv/bin/flask process-trials >> /var/log/comanda-trials.log 2>&1
+  0 6 * * * root cd /opt/menulink && venv/bin/flask process-trials >> /var/log/menulink-trials.log 2>&1
   ```
   No painel do lojista, o aviso fica discreto (uma linha pequena)
   durante a maior parte do teste, e vira uma barra fixa e chamativa no
@@ -323,7 +323,7 @@ demais.
   pagamento. Programe também para rodar 1x por dia num cron do
   servidor:
   ```bash
-  0 7 * * * root cd /opt/comanda && venv/bin/flask process-dunning >> /var/log/comanda-dunning.log 2>&1
+  0 7 * * * root cd /opt/menulink && venv/bin/flask process-dunning >> /var/log/menulink-dunning.log 2>&1
   ```
 - Todas as rotas protegidas por `@super_admin_required`.
 
@@ -621,26 +621,31 @@ virtual, migrations, serviço systemd, Nginx e, se você tiver um
 domínio, certificado SSL gratuito com renovação automática.
 
 > **Nota sobre nomes**: o produto se chama "Menu Link" (marca exibida
-> pro usuário final — navbar, e-mails, PWA etc.), mas os identificadores
-> técnicos internos (nome do repositório, diretório `/opt/comanda`,
-> serviço systemd `comanda`, banco de dados `comanda`, arquivo
-> `comanda.css`) continuam com o nome de código original "Comanda" DE
-> PROPÓSITO: são só rótulos internos de infraestrutura, invisíveis pra
-> quem usa o sistema, e renomeá-los quebraria qualquer instalação já
-> em produção (o serviço/diretório/banco reais no servidor continuariam
-> se chamando "comanda" até uma migração manual coordenada — não é algo
-> que um `git pull` resolve sozinho). Os comandos abaixo refletem os
-> nomes técnicos reais usados pelos scripts, não a marca.
+> pro usuário final — navbar, e-mails, PWA etc.), e os identificadores
+> técnicos de infraestrutura que o instalador cria (usuário de sistema,
+> serviço systemd, site do Nginx, banco de dados, diretório sugerido)
+> usam `menulink` por padrão, já alinhados com a marca. Duas exceções
+> de propósito: o **nome do repositório no GitHub** continua
+> `Gerson-if/Comanda` (renomear um repositório é uma decisão à parte,
+> não coberta por este instalador) e **arquivos-fonte do código**
+> (`app/static/css/comanda.css`, `comanda.js`) mantêm o nome de código
+> original — são detalhes internos de implementação, invisíveis pra
+> quem usa o sistema. Se você tem uma instalação MAIS ANTIGA já em
+> produção com os identificadores do nome anterior (`comanda`), rodar
+> os scripts de novo não renomeia nada sozinho — um `git pull` não migra
+> serviço systemd, banco de dados nem diretório já existentes; continue
+> usando `comanda` nessa instalação (ex: `SERVICE_NAME=comanda sudo -E
+> bash deploy/update.sh`) ou migre manualmente.
 
 ### Requisitos
 
 - Um servidor com **Ubuntu 22.04 ou 24.04** (VPS de qualquer provedor),
   acessado via SSH como root (ou um usuário com `sudo`).
 - O código do projeto já clonado no servidor, por exemplo em
-  `/opt/comanda`:
+  `/opt/menulink`:
   ```bash
-  sudo git clone https://github.com/Gerson-if/Comanda.git /opt/comanda
-  cd /opt/comanda
+  sudo git clone https://github.com/Gerson-if/Comanda.git /opt/menulink
+  cd /opt/menulink
   ```
 - Se for usar um domínio com SSL, aponte o DNS dele (registro `A`) para
   o IP do servidor **antes** de rodar o instalador.
@@ -695,7 +700,7 @@ certificado SSL já instalado, se você escolheu essa opção.
 Ao final, o script mostra a URL de acesso, os comandos mais usados
 (ver logs, reiniciar, atualizar) e — se criou um PostgreSQL local — o
 nome do banco, o usuário e a senha gerados, além de salvar essa mesma
-informação uma única vez em `/root/comanda-db-credentials-<data>.txt`
+informação uma única vez em `/root/menulink-db-credentials-<data>.txt`
 (permissão 600, só o root lê), para você guardar num gerenciador de
 senhas e depois apagar o arquivo.
 
@@ -742,7 +747,7 @@ servidor sempre atualizado sem intervenção manual:
 
 ```bash
 # roda toda segunda-feira às 4h da manhã
-0 4 * * 1 root bash /opt/comanda/deploy/update.sh >> /var/log/comanda-update.log 2>&1
+0 4 * * 1 root bash /opt/menulink/deploy/update.sh >> /var/log/menulink-update.log 2>&1
 ```
 
 ### Backup e restauração (migração entre servidores)
@@ -777,7 +782,7 @@ Também dá para rodar os scripts diretamente, sem passar pelo menu:
 sudo bash deploy/backup.sh
 
 # Restaurar um backup (peça para digitar "restaurar" como confirmação)
-sudo bash deploy/restore.sh deploy/backups/comanda_backup_2026-07-25_12-00-00.tar.gz.gpg
+sudo bash deploy/restore.sh deploy/backups/menulink_backup_2026-07-25_12-00-00.tar.gz.gpg
 ```
 
 **O que o backup contém:**
@@ -827,11 +832,11 @@ outra) em vez de sobrescrevê-lo com o `.env` do backup.
 
 ### Detalhes técnicos do que o instalador configura
 
-- **Serviço systemd** (`/etc/systemd/system/comanda.service`): roda o
+- **Serviço systemd** (`/etc/systemd/system/menulink.service`): roda o
   Gunicorn com o usuário de sistema dedicado, reinicia automaticamente
-  em caso de falha. Comandos úteis: `systemctl status comanda`,
-  `systemctl restart comanda`, `journalctl -u comanda -f`.
-- **Nginx** (`/etc/nginx/sites-available/comanda`): proxy reverso para
+  em caso de falha. Comandos úteis: `systemctl status menulink`,
+  `systemctl restart menulink`, `journalctl -u menulink -f`.
+- **Nginx** (`/etc/nginx/sites-available/menulink`): proxy reverso para
   o Gunicorn (que só escuta localmente) e serve `/static` diretamente,
   com cache.
 - **SSL**: com Let's Encrypt, o `certbot` já configura a renovação
