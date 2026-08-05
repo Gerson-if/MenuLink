@@ -79,8 +79,8 @@
 
     {# Passo 4 — Endereço do cardápio (slug) #}
     <div class="reg-step">
-      <h2 class="reg-step-question">Qual vai ser o link do seu cardápio?</h2>
-      <p class="reg-step-hint">É o link que você vai mandar pro cliente pedir — no WhatsApp, no Instagram, onde for. Pode trocar depois se quiser.</p>
+      <h2 class="reg-step-question">Como seus clientes vão te encontrar?</h2>
+      <p class="reg-step-hint">Já preenchemos com base no nome da sua loja — é só o link que você vai compartilhar no WhatsApp, Instagram etc. Pode ajustar à vontade (sem espaços ou acentos, tudo bem juntar com hífen).</p>
       {{ form.slug.label(class="visually-hidden") }}
       {# O domínio ({{ request.host }}/loja/) NÃO fica como prefixo aqui
          dentro do campo: em telas estreitas (celular) esse prefixo
@@ -97,7 +97,7 @@
       {% for error in form.slug.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
       <div class="slug-preview-box mt-2">
         <i class="bi bi-link-45deg"></i>
-        Seu cardápio vai ficar em:
+        Seu cardápio vai ficar neste endereço:
         <span class="font-mono">{{ request.host }}/loja/<span id="slug-preview-value">{{ form.slug.data or "minha-loja" }}</span></span>
       </div>
       <div class="reg-step-nav">
@@ -276,10 +276,38 @@
         return ok;
       }
 
+      // Sugere o endereço do cardápio a partir do nome da loja assim que
+      // a pessoa sai do passo "Como se chama sua loja?" — sem isso, o
+      // passo seguinte ("link do cardápio") chegava com o campo em
+      // branco e pedia pra pessoa inventar um valor técnico do zero
+      // (minúsculas, sem espaço/acento, hífen no lugar de espaço), o que
+      // confundia bastante. Só preenche se a pessoa ainda não digitou
+      // nada ali (não sobrescreve uma escolha já feita, inclusive ao
+      // voltar/avançar entre os passos).
+      function slugify(text) {
+        return (text || '')
+          .normalize('NFD').replace(/[̀-ͯ]/g, '') // remove acentos
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '');
+      }
+
+      var storeNameField = form.querySelector('[name="store_name"]');
+      var slugField = form.querySelector('[name="slug"]');
+      function suggestSlugFromStoreName() {
+        if (!storeNameField || !slugField) return;
+        if (slugField.value.trim()) return; // já tem algo digitado, não mexe
+        var suggestion = slugify(storeNameField.value);
+        if (!suggestion) return;
+        slugField.value = suggestion;
+        slugField.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+
       form.querySelectorAll('[data-wizard="next"]').forEach(function (btn) {
         btn.addEventListener('click', function () {
           var step = btn.closest('.reg-step');
           if (!stepIsValid(step)) return;
+          if (step.contains(storeNameField)) suggestSlugFromStoreName();
           goTo(current + 1, 'next');
         });
       });
