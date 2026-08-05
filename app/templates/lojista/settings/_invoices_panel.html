@@ -43,8 +43,13 @@
   {% endif %}
 
   {% if invoices %}
+  {# min-width força rolagem horizontal (via overflow-x: auto no wrapper)
+     em vez do navegador espremer as colunas — sem isso, em telas
+     estreitas os botões "Detalhes"/"Pagar agora" ficavam praticamente
+     ilegíveis tentando caber lado a lado no espaço que sobrava depois
+     de Vencimento/Valor/Status. #}
   <div style="overflow-x: auto;">
-  <table class="table table-borderless table-sm mb-0" style="color: var(--card-text);">
+  <table class="table table-borderless table-sm mb-0" style="color: var(--card-text); min-width: 640px;">
     <thead class="text-muted-custom small text-uppercase"><tr><th>Vencimento</th><th>Valor</th><th>Status</th><th></th></tr></thead>
     <tbody>
       {% for invoice in invoices %}
