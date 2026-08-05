@@ -87,9 +87,17 @@
          comprimia demais o espaço de digitação. A caixa de
          pré-visualização logo abaixo já mostra o link completo e
          atualizado em tempo real. #}
+      {# "data-user-edited" só vira "1" num toque de verdade da pessoa
+         (event.isTrusted) — a sugestão automática (ver
+         suggestSlugFromStoreName mais abaixo) também dispara este mesmo
+         "input", mas de forma programática (isTrusted=false), então não
+         conta como edição manual. É o que permite a sugestão continuar
+         acompanhando o nome da loja se a pessoa voltar e corrigi-lo,
+         MAS parar de mexer assim que a pessoa realmente editar o link
+         com as próprias mãos. #}
       {{ form.slug(class="form-control font-mono", placeholder="minha-loja", maxlength=150,
           **{"data-required": "1",
-             "oninput": "this.value = this.value.toLowerCase().replace(/[^a-z0-9-]+/g,'-'); document.getElementById('slug-preview-value').textContent = this.value || 'minha-loja';",
+             "oninput": "this.value = this.value.toLowerCase().replace(/[^a-z0-9-]+/g,'-'); document.getElementById('slug-preview-value').textContent = this.value || 'minha-loja'; if (event.isTrusted) { this.dataset.userEdited = '1'; }",
              "hx-get": url_for('auth.check_slug_availability'), "hx-trigger": "keyup changed delay:400ms",
              "hx-target": "#slug-feedback", "hx-swap": "innerHTML"}) }}
       <p class="upload-error reg-required-msg mt-1" data-error-for="slug" style="display:none;">Escolha um endereço pra continuar.</p>
@@ -210,6 +218,17 @@
           break;
         }
       }
+      // Se caímos aqui por causa de um erro do servidor (startIndex > 0),
+      // os demais passos já foram preenchidos e validados com sucesso na
+      // tentativa anterior — só um precisa de correção. Sem isso, a
+      // pessoa tinha que clicar "Continuar" de novo em CADA passo já
+      // certo só pra chegar de volta no fim do formulário, repetitivo e
+      // cansativo pra quem só errou um campo. Enquanto isso for verdade,
+      // qualquer "Continuar" pula direto pro último passo em vez de ir
+      // um a um — assim que ela mesma voltar e navegar livremente, os
+      // botões "Continuar" ao longo do caminho continuam funcionando
+      // normalmente, um passo de cada vez.
+      var correctionMode = startIndex > 0;
 
       var fillEl = document.getElementById('reg-progress-fill');
       var labelEl = document.getElementById('reg-progress-label');
@@ -281,9 +300,12 @@
       // passo seguinte ("link do cardápio") chegava com o campo em
       // branco e pedia pra pessoa inventar um valor técnico do zero
       // (minúsculas, sem espaço/acento, hífen no lugar de espaço), o que
-      // confundia bastante. Só preenche se a pessoa ainda não digitou
-      // nada ali (não sobrescreve uma escolha já feita, inclusive ao
-      // voltar/avançar entre os passos).
+      // confundia bastante. Continua atualizando a sugestão toda vez
+      // que a pessoa volta e corrige o nome da loja (senão a correção
+      // "não refletia" ao avançar de novo pro passo do link — bug
+      // reportado) — só para de mexer depois que a pessoa edita o
+      // campo do link com as próprias mãos (ver data-user-edited no
+      // oninput do campo, marcado só em evento de verdade do usuário).
       function slugify(text) {
         return (text || '')
           .normalize('NFD').replace(/[̀-ͯ]/g, '') // remove acentos
@@ -296,7 +318,7 @@
       var slugField = form.querySelector('[name="slug"]');
       function suggestSlugFromStoreName() {
         if (!storeNameField || !slugField) return;
-        if (slugField.value.trim()) return; // já tem algo digitado, não mexe
+        if (slugField.dataset.userEdited === '1') return; // pessoa já editou o link com a mão, não mexe mais
         var suggestion = slugify(storeNameField.value);
         if (!suggestion) return;
         slugField.value = suggestion;
@@ -308,7 +330,7 @@
           var step = btn.closest('.reg-step');
           if (!stepIsValid(step)) return;
           if (step.contains(storeNameField)) suggestSlugFromStoreName();
-          goTo(current + 1, 'next');
+          goTo(correctionMode ? total - 1 : current + 1, 'next');
         });
       });
 

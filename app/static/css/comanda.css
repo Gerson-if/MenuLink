@@ -329,6 +329,10 @@ body {
   color: #E5544E; display: flex; align-items: center; gap: 5px; margin-bottom: 8px;
 }
 .ticket-stale-warning .ticket-stale-flag { color: #F0AD4E; }
+/* Mesmo problema do bloco .alert-*/.toast-flash-* logo abaixo: cor
+   pensada pro fundo escuro fica "fantasma" (ilegível) no tema claro. */
+html[data-theme="light"] .ticket-stale-flag { color: #B3261E; }
+html[data-theme="light"] .ticket-stale-warning .ticket-stale-flag { color: #7A4A00; }
 @keyframes ticket-stale-pulse {
   0%, 100% { box-shadow: 0 0 0 1px rgba(229,84,78,.3); }
   50% { box-shadow: 0 0 0 4px rgba(229,84,78,.18); }
@@ -344,6 +348,13 @@ body {
 .status-out_for_delivery, .status-ready_for_pickup { background: rgba(122,160,109,0.15); color: #BCE2AF; }
 .status-completed { background: rgba(255,255,255,0.08); color: var(--paper); }
 .status-canceled { background: rgba(255,255,255,0.04); color: var(--muted-text); text-decoration: line-through; }
+/* Mesmo problema do bloco .alert-*/.toast-flash-* acima: essas cores
+   pastel (pensadas pro fundo escuro) ficam "fantasma" no tema claro. */
+html[data-theme="light"] .status-pending { color: #B3261E; }
+html[data-theme="light"] .status-confirmed { color: #1A2B8F; }
+html[data-theme="light"] .status-preparing { color: #7A4A00; }
+html[data-theme="light"] .status-out_for_delivery,
+html[data-theme="light"] .status-ready_for_pickup { color: #1B5E20; }
 
 /* ---------- Carrossel de filtros (chips) ----------
    Barras de filtro tipo "chip" (status de Pedidos/Histórico, período do
@@ -601,6 +612,9 @@ body {
 
 .upload-meta { font-size: .75rem; color: var(--muted-text); margin-top: 4px; }
 .upload-error { font-size: .8rem; color: #FF8A7A; background: rgba(229,74,54,0.1); border: 1px solid rgba(229,74,54,0.2); border-radius: 8px; padding: 8px 12px; margin-top: 8px; }
+/* Mesmo problema do bloco .alert-*/.toast-flash-* acima: essa cor
+   pastel (pensada pro fundo escuro) fica "fantasma" no tema claro. */
+html[data-theme="light"] .upload-error { color: #B3261E; }
 
 /* Pré-visualização do link do cardápio no cadastro — mostra pra quem
    está criando a loja, em texto simples (sem "URL"/"slug"), qual vai
@@ -637,6 +651,18 @@ body {
 .alert-info { background: rgba(67,97,238,.16); border: 1px solid rgba(67,97,238,.4); color: #9DB2FF; }
 .alert a, .alert strong { color: inherit; }
 
+/* As cores pastel acima (#BCE2AF, #FF8A7A, #FCD581, #9DB2FF) foram
+   pensadas pra ficar legíveis sobre o fundo ESCURO padrão — no tema
+   claro ("claro" em Configurações → Aparência) o fundo por trás vira
+   claro, e esse texto pastel praticamente some ("fica fantasma"),
+   ficando ilegível. Troca por versões bem mais escuras da mesma cor
+   (contraste alto sobre fundo claro), mantendo o mesmo fundo/borda
+   translúcidos de antes pra não mudar a identidade visual. */
+html[data-theme="light"] .alert-success { color: #1B5E20; }
+html[data-theme="light"] .alert-danger { color: #B3261E; }
+html[data-theme="light"] .alert-warning { color: #7A4A00; }
+html[data-theme="light"] .alert-info { color: #1A2B8F; }
+
 /* ---------- Barra de progresso de navegação ---------- */
 /* Elemento único, criado via JS (comanda.js) e reaproveitado a cada
    requisição HTMX (navegação boosted da sidebar/barra inferior E
@@ -671,6 +697,14 @@ body:has(.app-shell) .toast-flash-stack { top: 84px; }
 .toast-flash-warning { background: rgba(240,173,78,.16); border-color: rgba(240,173,78,.4); color: #FCD581; }
 .toast-flash-info { background: rgba(67,97,238,.16); border-color: rgba(67,97,238,.4); color: #9DB2FF; }
 .toast-flash-secondary { background: rgba(255,255,255,.07); border-color: var(--card-border); color: var(--paper); }
+
+/* Mesmo problema e mesma correção do bloco .alert-* acima: no tema
+   claro, o texto pastel dos toasts fica "fantasma" (quase invisível)
+   sobre o fundo claro por trás. */
+html[data-theme="light"] .toast-flash-success { color: #1B5E20; }
+html[data-theme="light"] .toast-flash-danger { color: #B3261E; }
+html[data-theme="light"] .toast-flash-warning { color: #7A4A00; }
+html[data-theme="light"] .toast-flash-info { color: #1A2B8F; }
 
 /* Entrada: desliza da direita + some suavemente. Saída: um pouco mais
    rápida, encolhendo pra cima — evita o "pisca" de esconder/mostrar
