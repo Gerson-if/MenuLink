@@ -281,6 +281,7 @@ manage_super_admin_menu() {
 }
 
 run_verificacoes() {
+    STEP="Verificações do sistema"
     section "Verificações do sistema"
 
     if systemctl is-active --quiet "${SERVICE_NAME}" 2>/dev/null; then
@@ -318,7 +319,14 @@ run_verificacoes() {
     fi
 
     if [ "${SSL_ENABLED:-n}" = "s" ] && [ -n "${DOMAIN:-}" ] && command -v openssl >/dev/null 2>&1; then
-        cert_expiry="$(echo | timeout 5 openssl s_client -servername "${DOMAIN}" -connect "${DOMAIN}:443" 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)"
+        # "|| true": isto é uma checagem best-effort (só informativa) — sem
+        # o "|| true", com `set -e`/`pipefail` ligados no topo do script,
+        # qualquer soluço nessa conexão de teste (timeout, TLS falhando,
+        # porta 443 bloqueada) derruba o script INTEIRO aqui, e o "fail"
+        # tratado logo abaixo nunca chega a rodar — bug real encontrado ao
+        # vivo (script morria com "Falha inesperada na etapa" em vez de só
+        # reportar "não consegui confirmar o certificado").
+        cert_expiry="$(echo | timeout 5 openssl s_client -servername "${DOMAIN}" -connect "${DOMAIN}:443" 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)" || true
         if [ -n "$cert_expiry" ]; then
             ok "Certificado SSL de ${DOMAIN} válido até: ${cert_expiry}"
         else
@@ -327,7 +335,7 @@ run_verificacoes() {
     fi
 
     if [ -d "${APP_DIR}" ]; then
-        disk_info="$(df -h "${APP_DIR}" 2>/dev/null | awk 'NR==2{print $4" livres de "$2" ("$5" em uso)"}')"
+        disk_info="$(df -h "${APP_DIR}" 2>/dev/null | awk 'NR==2{print $4" livres de "$2" ("$5" em uso)"}')" || true
         [ -n "$disk_info" ] && info "Espaço em disco em ${APP_DIR}: ${disk_info}"
     fi
 
