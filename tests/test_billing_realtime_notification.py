@@ -73,7 +73,11 @@ class TestLojistaBillingPollingFragment:
         html = resp.get_data(as_text=True)
         assert "settings_subscription_billing_fragment" not in html  # URL real, não o nome da view
         assert 'hx-trigger="every 8s"' in html
-        assert "Aguardando confirmação do pagamento" in html
+        # Sem spinner/aviso visível aqui — só liga o polling silencioso da
+        # lista (ver _billing_panel_context). O aviso "aguardando
+        # confirmação" de verdade agora mora na tela de pagamento Pix
+        # embutida (ver TestInvoicePayPage neste mesmo arquivo).
+        assert "Aguardando confirmação do pagamento" not in html
 
     def test_polling_disabled_without_pending_payment_link(self, app, client, login_as):
         with app.app_context():

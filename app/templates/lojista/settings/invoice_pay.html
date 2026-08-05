@@ -1,0 +1,72 @@
+{% extends "layouts/lojista_panel.html" %}
+{% block title %}Pagar fatura — Assinatura{% endblock %}
+{% block page_title %}Assinatura{% endblock %}
+
+{% block panel_content %}
+<a href="{{ url_for('lojista.settings_subscription_invoice_detail', invoice_id=invoice.id) }}" class="text-muted-custom small d-inline-flex align-items-center gap-1 mb-3" hx-boost="true" hx-swap="innerHTML show:window:top">
+  <i class="bi bi-arrow-left"></i> Voltar para a fatura
+</a>
+
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="panel">
+      <div class="panel-title"><i class="bi bi-qr-code"></i> Pagar com Pix</div>
+
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="fw-bold fs-3 font-display">R$ {{ "%.2f"|format(invoice.amount_cents / 100) }}</div>
+        <span class="text-muted-custom small">Vencimento {{ invoice.due_date.strftime("%d/%m/%Y") }}</span>
+      </div>
+
+      {% if pix_error %}
+      <div class="alert alert-warning small">
+        <i class="bi bi-exclamation-triangle"></i> Não foi possível carregar o QR Code Pix agora: {{ pix_error }}
+      </div>
+      {% if invoice.payment_link_url %}
+      <a href="{{ invoice.payment_link_url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-box-arrow-up-right"></i> Abrir checkout alternativo
+      </a>
+      {% endif %}
+      {% elif pix %}
+      <div id="pix-qr-block">
+        {# `data:` URI direto do base64 que o Asaas devolve — sem
+           precisar salvar a imagem em disco nem fazer uma segunda
+           requisição só pra buscar o PNG. #}
+        <div class="text-center mb-3">
+          <img src="data:image/png;base64,{{ pix.encoded_image }}" alt="QR Code Pix" style="max-width: 240px; width: 100%; background: #fff; padding: 12px; border-radius: 12px;">
+        </div>
+
+        <p class="text-muted-custom small mb-1">Ou copie o código Pix (copia e cola):</p>
+        <div class="password-field-wrap mb-2" style="padding-right: 0;">
+          <input type="text" class="form-control form-control-sm" id="pix-copy-input" value="{{ pix.payload }}" readonly onclick="this.select()" style="padding-right: 90px;">
+          <button type="button" class="btn btn-sm btn-chili pix-copy-btn" data-target="pix-copy-input" style="position: absolute; top: 3px; right: 3px; border-radius: 6px;">
+            <i class="bi bi-clipboard"></i> Copiar
+          </button>
+        </div>
+
+        {% if pix.expiration_date %}
+        <p class="text-muted-custom small mb-0"><i class="bi bi-clock"></i> Código válido até {{ pix.expiration_date }}.</p>
+        {% endif %}
+      </div>
+      {% else %}
+      <p class="text-muted-custom small mb-0">Nenhuma cobrança Pix disponível para esta fatura.</p>
+      {% endif %}
+
+      {% include "lojista/settings/_invoice_pay_status.html" %}
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="panel">
+      <div class="panel-title"><i class="bi bi-shield-check"></i> Pagamento seguro</div>
+      <p class="text-muted-custom small mb-2">
+        Este QR Code é gerado na hora pelo Asaas, processador de pagamentos responsável pela
+        cobrança — o Menu Link nunca recebe nem armazena nenhum dado bancário ou de cartão.
+      </p>
+      <p class="text-muted-custom small mb-0">
+        Assim que o Pix cair, a confirmação chega automaticamente (geralmente em poucos segundos)
+        e esta página atualiza sozinha — não é preciso enviar comprovante nem avisar o suporte.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

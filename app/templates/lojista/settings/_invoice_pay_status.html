@@ -1,0 +1,47 @@
+{# Fragmento de status da tela de pagamento Pix (ver invoice_pay.html),
+   recarregado via polling HTMX enquanto a fatura ainda está pendente —
+   só relê o status já salvo no NOSSO banco (atualizado pelo webhook do
+   Asaas, ver app/controllers/webhooks_controller.py), sem chamar a API
+   do Asaas de novo a cada poll. Ao virar "paga", o próprio fragmento
+   para de se auto-recarregar (deixa de incluir hx-trigger) e esconde o
+   bloco do QR Code acima, que não faz mais sentido mostrar. #}
+<div
+  id="invoice-pay-status" class="mt-4"
+  {% if invoice.status.value in ('pending', 'overdue') %}
+  hx-get="{{ url_for('lojista.settings_subscription_invoice_pay_status', invoice_id=invoice.id) }}"
+  hx-trigger="every 4s" hx-swap="outerHTML"
+  {% endif %}
+>
+  {% if invoice.status.value == 'paid' %}
+  <div class="alert alert-success d-flex align-items-center gap-2 mb-3">
+    <i class="bi bi-check-circle-fill fs-4"></i>
+    <div><strong>Pagamento confirmado!</strong> Sua fatura já foi liberada.</div>
+  </div>
+  <a href="{{ url_for('lojista.settings_subscription') }}" class="btn btn-chili" hx-boost="true" hx-swap="innerHTML show:window:top">
+    Voltar para assinatura
+  </a>
+  <script>
+    (function () {
+      try {
+        var qr = document.getElementById('pix-qr-block');
+        if (qr) qr.style.display = 'none';
+      } catch (e) {}
+    })();
+  </script>
+  {% elif invoice.status.value == 'canceled' %}
+  <div class="alert alert-secondary mb-0">Esta fatura foi cancelada — não é mais possível pagá-la.</div>
+  <script>
+    (function () {
+      try {
+        var qr = document.getElementById('pix-qr-block');
+        if (qr) qr.style.display = 'none';
+      } catch (e) {}
+    })();
+  </script>
+  {% else %}
+  <p class="text-muted-custom small mb-0 d-flex align-items-center gap-2">
+    <span class="spinner-border spinner-border-sm" style="width: .9rem; height: .9rem;"></span>
+    Aguardando confirmação do pagamento — assim que o Pix cair, esta página atualiza sozinha.
+  </p>
+  {% endif %}
+</div>

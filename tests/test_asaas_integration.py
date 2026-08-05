@@ -231,6 +231,25 @@ class TestAsaasGatewayRequests:
             with pytest.raises(PaymentGatewayError):
                 gateway.ensure_customer(tenant)
 
+    def test_get_pix_qr_code_parses_response_fields(self, monkeypatch):
+        def fake_request(method, url, headers=None, timeout=None, **kwargs):
+            assert method == "GET"
+            assert url.endswith("/payments/pay_123/pixQrCode")
+            return _FakeResponse(200, {
+                "encodedImage": "aGVsbG8=",
+                "payload": "00020101...6304ABCD",
+                "expirationDate": "2026-08-10 23:59:59",
+            })
+
+        monkeypatch.setattr("app.services.payment_gateway.asaas_gateway.requests.request", fake_request)
+
+        gateway = AsaasGateway(api_key="fake", environment="sandbox")
+        pix = gateway.get_pix_qr_code("pay_123")
+
+        assert pix["encoded_image"] == "aGVsbG8="
+        assert pix["payload"] == "00020101...6304ABCD"
+        assert pix["expiration_date"] == "2026-08-10 23:59:59"
+
     def test_sandbox_vs_production_base_url(self):
         sandbox = AsaasGateway(api_key="x", environment="sandbox")
         production = AsaasGateway(api_key="x", environment="production")
@@ -271,6 +290,190 @@ class TestAdminBillingServiceAsaasIntegration:
 
         resp = client.get(f"/admin/lojistas/{tenant_id}")
         assert "não está configurada" in resp.get_data(as_text=True)
+
+
+def _make_invoice_with_charge(tenant, *, status=InvoiceStatus.PENDING, asaas_payment_id="pay_pix_1"):
+    from app.models import Plan, Subscription, SubscriptionStatus
+
+    plan = Plan.query.first()
+    subscription = Subscription(
+        tenant_id=tenant.id, plan_id=plan.id, status=SubscriptionStatus.ACTIVE,
+        current_period_start=date.today(), current_period_end=date.today() + timedelta(days=30),
+    )
+    db.session.add(subscription)
+    db.session.flush()
+    invoice = Invoice(
+        tenant_id=tenant.id, subscription_id=subscription.id, amount_cents=4990, status=status,
+        due_date=date.today() + timedelta(days=5), asaas_payment_id=asaas_payment_id,
+        payment_link_url="https://sandbox.asaas.com/i/pay_pix_1",
+    )
+    db.session.add(invoice)
+    db.session.commit()
+    return invoice
+
+
+class TestGetInvoicePixQrCode:
+    """AdminBillingService.get_invoice_pix_qr_code — usado pela tela de
+    pagamento Pix embutida do lojista (invoice_pay.html)."""
+
+    def test_raises_when_invoice_not_pending(self, app):
+        with app.app_context():
+            from app.services.admin_billing_service import AdminBillingService, BillingError
+
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            invoice = _make_invoice_with_charge(tenant, status=InvoiceStatus.CANCELED)
+
+            with pytest.raises(BillingError, match="não está mais aguardando pagamento"):
+                AdminBillingService().get_invoice_pix_qr_code(invoice)
+
+    def test_raises_when_no_charge_generated_yet(self, app):
+        with app.app_context():
+            from app.services.admin_billing_service import AdminBillingService, BillingError
+
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            invoice = _make_invoice_with_charge(tenant, asaas_payment_id=None)
+
+            with pytest.raises(BillingError, match="ainda não tem uma cobrança gerada"):
+                AdminBillingService().get_invoice_pix_qr_code(invoice)
+
+    def test_raises_when_gateway_not_configured(self, app):
+        with app.app_context():
+            app.config["ASAAS_API_KEY"] = ""
+            from app.services.admin_billing_service import AdminBillingService, BillingError
+
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            invoice = _make_invoice_with_charge(tenant)
+
+            with pytest.raises(BillingError, match="indisponível"):
+                AdminBillingService().get_invoice_pix_qr_code(invoice)
+
+    def test_returns_gateway_payload_when_configured(self, app, monkeypatch):
+        def fake_request(method, url, headers=None, timeout=None, **kwargs):
+            return _FakeResponse(200, {"encodedImage": "aGVsbG8=", "payload": "codigo-copia-cola", "expirationDate": "2026-08-10 23:59:59"})
+
+        monkeypatch.setattr("app.services.payment_gateway.asaas_gateway.requests.request", fake_request)
+
+        with app.app_context():
+            app.config["ASAAS_API_KEY"] = "fake-key-123"
+            from app.services.admin_billing_service import AdminBillingService
+
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            invoice = _make_invoice_with_charge(tenant)
+
+            pix = AdminBillingService().get_invoice_pix_qr_code(invoice)
+            assert pix["payload"] == "codigo-copia-cola"
+            assert pix["encoded_image"] == "aGVsbG8="
+
+    def test_wraps_gateway_error_as_billing_error(self, app, monkeypatch):
+        def fake_request(method, url, headers=None, timeout=None, **kwargs):
+            return _FakeResponse(400, {"errors": [{"description": "QR Code indisponível para esta cobrança"}]})
+
+        monkeypatch.setattr("app.services.payment_gateway.asaas_gateway.requests.request", fake_request)
+
+        with app.app_context():
+            app.config["ASAAS_API_KEY"] = "fake-key-123"
+            from app.services.admin_billing_service import AdminBillingService, BillingError
+
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            invoice = _make_invoice_with_charge(tenant)
+
+            with pytest.raises(BillingError, match="QR Code indisponível"):
+                AdminBillingService().get_invoice_pix_qr_code(invoice)
+
+
+class TestInvoicePayPage:
+    """Tela de pagamento Pix embutida no painel do lojista (ver
+    app/controllers/lojista/settings.py:settings_subscription_invoice_pay
+    e o template lojista/settings/invoice_pay.html)."""
+
+    def test_shows_qr_code_when_pix_available(self, app, client, login_as, monkeypatch):
+        def fake_request(method, url, headers=None, timeout=None, **kwargs):
+            return _FakeResponse(200, {"encodedImage": "aGVsbG8=", "payload": "codigo-copia-cola-xyz", "expirationDate": "2026-08-10 23:59:59"})
+
+        monkeypatch.setattr("app.services.payment_gateway.asaas_gateway.requests.request", fake_request)
+
+        with app.app_context():
+            app.config["ASAAS_API_KEY"] = "fake-key-123"
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            invoice = _make_invoice_with_charge(tenant)
+            invoice_id = invoice.id
+
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        resp = client.get(f"/painel/configuracoes/assinatura/faturas/{invoice_id}/pagar")
+        assert resp.status_code == 200
+        html = resp.get_data(as_text=True)
+        assert "codigo-copia-cola-xyz" in html
+        assert "aGVsbG8=" in html
+        assert 'hx-trigger="every 4s"' in html
+
+    def test_shows_fallback_message_when_gateway_unavailable(self, app, client, login_as):
+        with app.app_context():
+            app.config["ASAAS_API_KEY"] = ""
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            invoice = _make_invoice_with_charge(tenant)
+            invoice_id = invoice.id
+
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        resp = client.get(f"/painel/configuracoes/assinatura/faturas/{invoice_id}/pagar")
+        assert resp.status_code == 200
+        html = resp.get_data(as_text=True)
+        assert "Não foi possível carregar o QR Code Pix" in html
+        assert "Abrir checkout alternativo" in html  # fallback pro payment_link_url
+
+    def test_redirects_when_invoice_already_paid(self, app, client, login_as):
+        with app.app_context():
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            invoice = _make_invoice_with_charge(tenant, status=InvoiceStatus.PAID)
+            invoice_id = invoice.id
+
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        resp = client.get(f"/painel/configuracoes/assinatura/faturas/{invoice_id}/pagar", follow_redirects=False)
+        assert resp.status_code == 302
+        assert f"/faturas/{invoice_id}" in resp.headers["Location"]
+
+    def test_redirects_when_invoice_canceled(self, app, client, login_as):
+        with app.app_context():
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            invoice = _make_invoice_with_charge(tenant, status=InvoiceStatus.CANCELED)
+            invoice_id = invoice.id
+
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        resp = client.get(f"/painel/configuracoes/assinatura/faturas/{invoice_id}/pagar", follow_redirects=False)
+        assert resp.status_code == 302
+
+    def test_other_tenant_invoice_returns_404(self, app, client, login_as):
+        with app.app_context():
+            other_tenant = Tenant(name="Outra Loja", slug="outra-loja-pix", email="outra@example.com")
+            db.session.add(other_tenant)
+            db.session.flush()
+            invoice = _make_invoice_with_charge(other_tenant)
+            invoice_id = invoice.id
+
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        resp = client.get(f"/painel/configuracoes/assinatura/faturas/{invoice_id}/pagar")
+        assert resp.status_code == 404
+
+    def test_status_fragment_stops_polling_and_shows_success_once_paid(self, app, client, login_as):
+        from app.services.admin_billing_service import AdminBillingService
+
+        with app.app_context():
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            invoice = _make_invoice_with_charge(tenant)
+            invoice_id = invoice.id
+
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+
+        before = client.get(f"/painel/configuracoes/assinatura/faturas/{invoice_id}/pagar/status")
+        assert 'hx-trigger="every 4s"' in before.get_data(as_text=True)
+
+        with app.app_context():
+            invoice = db.session.get(Invoice, invoice_id)
+            AdminBillingService().mark_paid(invoice)
+
+        after = client.get(f"/painel/configuracoes/assinatura/faturas/{invoice_id}/pagar/status")
+        after_html = after.get_data(as_text=True)
+        assert 'hx-trigger="every 4s"' not in after_html
+        assert "Pagamento confirmado" in after_html
 
 
 class TestAsaasWebhook:

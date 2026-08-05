@@ -179,6 +179,39 @@ function initPasswordToggles() {
 }
 
 /*
+ * Botão "Copiar código" do Pix copia-e-cola (ver
+ * lojista/settings/invoice_pay.html) — usa a Clipboard API com
+ * fallback pro método antigo (select + execCommand) para navegadores/
+ * contextos sem `navigator.clipboard` (ex: página aberta via HTTP puro
+ * em vez de HTTPS, onde a Clipboard API moderna é bloqueada). Mostra
+ * "Copiado!" por 2s no lugar do texto do botão, sem precisar de toast.
+ */
+function initPixCopyButtons() {
+  document.querySelectorAll('.pix-copy-btn').forEach((btn) => {
+    if (btn.dataset.copyBound) return;
+    btn.dataset.copyBound = '1';
+    btn.addEventListener('click', () => {
+      const input = document.getElementById(btn.dataset.target);
+      if (!input) return;
+      const finish = () => {
+        const original = btn.dataset.originalLabel || btn.innerHTML;
+        btn.dataset.originalLabel = original;
+        btn.innerHTML = '<i class="bi bi-check-lg"></i> Copiado!';
+        setTimeout(() => { btn.innerHTML = original; }, 2000);
+      };
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(input.value).then(finish).catch(() => {});
+      } else {
+        input.removeAttribute('readonly');
+        input.select();
+        try { document.execCommand('copy'); finish(); } catch (e) {}
+        input.setAttribute('readonly', 'readonly');
+      }
+    });
+  });
+}
+
+/*
  * Preview local (antes do envio) de imagens/vídeos escolhidos em
  * qualquer ".dropzone" (banner, logo da loja, ícone de categoria,
  * fotos de produto, mídia da landing) — usa URL.createObjectURL (mais
@@ -456,6 +489,7 @@ function initPageChrome() {
   initSidebarTooltips();
   initActiveNavScroll();
   initPasswordToggles();
+  initPixCopyButtons();
   initProductDraftDiscard();
   initRevealOnScroll();
   initChipScrollCentering();

@@ -1,13 +1,13 @@
 from datetime import datetime, timedelta, timezone
 
-from flask import flash, make_response, redirect, render_template, request, url_for, Response
+from flask import abort, flash, make_response, redirect, render_template, request, url_for, Response
 
 from app.forms.tenant_settings_forms import (
     AppearanceSettingsForm, CheckoutSettingsForm, MenuSettingsForm, OpeningHoursForm, StoreInfoForm,
 )
 from app.models import InvoiceStatus, TenantStatus
 from app.repositories.plan_repository import PlanRepository
-from app.services.admin_billing_service import AdminBillingService
+from app.services.admin_billing_service import AdminBillingService, BillingError
 from app.services.tenant_settings_service import TenantSettingsError, TenantSettingsService
 from app.utils.decorators import lojista_login_required, lojista_required
 from app.utils.tenant_context import get_current_tenant
@@ -27,7 +27,18 @@ def _billing_panel_context(tenant, service: AdminBillingService) -> dict:
     """Contexto compartilhado por settings_subscription e seu fragmento
     de polling (settings_subscription_billing_fragment) — mantém as
     duas rotas sempre calculando `awaiting_payment`/`recently_paid_invoice`
-    do mesmo jeito, ver lojista/settings/_invoices_panel.html."""
+    do mesmo jeito, ver lojista/settings/_invoices_panel.html.
+
+    `awaiting_payment` só liga um polling SILENCIOSO de 8s (sem nenhum
+    spinner/aviso na tela) — é só pra esta lista se atualizar sozinha
+    caso o lojista pague por fora enquanto olha esta página (ex: link
+    de checkout externo, ou marcado como paga manualmente pelo Super
+    Admin). O spinner visível "aguardando confirmação do pagamento"
+    saiu daqui: antes ele acendia só por existir uma fatura pendente com
+    cobrança gerada, mesmo que o lojista nunca tivesse clicado em nada
+    para pagar — hoje esse aviso só existe na tela de pagamento Pix
+    embutida (ver settings_subscription_invoice_pay), que é onde o
+    lojista de fato está esperando algo acontecer."""
     invoices = service.list_invoices_for_tenant(tenant.id)
 
     awaiting_payment = any(
@@ -299,11 +310,62 @@ def settings_subscription_invoice_detail(invoice_id):
     service = AdminBillingService()
     invoice = service.get_invoice_or_404(invoice_id)
     if invoice.tenant_id != tenant.id:
-        from flask import abort
-
         abort(404)
 
     return render_template("lojista/settings/invoice_detail.html", tenant=tenant, invoice=invoice)
+
+
+@lojista_bp.route("/configuracoes/assinatura/faturas/<int:invoice_id>/pagar")
+@lojista_required
+def settings_subscription_invoice_pay(invoice_id):
+    """Tela de pagamento Pix embutida no próprio painel — em vez de
+    mandar o lojista pro checkout hospedado do Asaas (visual fora do
+    nosso controle, e um link que continua "válido" no nosso banco
+    mesmo depois da fatura ser cancelada aqui, ver histórico do bug),
+    buscamos o QR Code/copia-e-cola direto da API na hora e mostramos
+    aqui, com polling pra detectar a confirmação sem o lojista precisar
+    fazer nada além de esperar."""
+    tenant = get_current_tenant()
+    service = AdminBillingService()
+    invoice = service.get_invoice_or_404(invoice_id)
+    if invoice.tenant_id != tenant.id:
+        abort(404)
+
+    if invoice.status == InvoiceStatus.PAID:
+        return redirect(url_for("lojista.settings_subscription_invoice_detail", invoice_id=invoice.id))
+
+    if invoice.status not in (InvoiceStatus.PENDING, InvoiceStatus.OVERDUE) or not invoice.payment_link_url:
+        flash("Esta fatura não está mais disponível para pagamento.", "warning")
+        return redirect(url_for("lojista.settings_subscription_invoice_detail", invoice_id=invoice.id))
+
+    pix = None
+    pix_error = None
+    try:
+        pix = service.get_invoice_pix_qr_code(invoice)
+    except BillingError as exc:
+        pix_error = str(exc)
+
+    return render_template(
+        "lojista/settings/invoice_pay.html", tenant=tenant, invoice=invoice, pix=pix, pix_error=pix_error,
+    )
+
+
+@lojista_bp.route("/configuracoes/assinatura/faturas/<int:invoice_id>/pagar/status")
+@lojista_required
+def settings_subscription_invoice_pay_status(invoice_id):
+    """Fragmento reaproveitado pelo polling HTMX da tela de pagamento
+    Pix (ver invoice_pay.html, hx-trigger="every 4s") — só relê o
+    status da fatura no NOSSO banco (atualizado pelo webhook do Asaas
+    em app/controllers/webhooks_controller.py), sem chamar a API do
+    Asaas de novo a cada poll: o QR Code/copia-e-cola não mudam
+    enquanto a fatura está pendente, só o status importa aqui."""
+    tenant = get_current_tenant()
+    service = AdminBillingService()
+    invoice = service.get_invoice_or_404(invoice_id)
+    if invoice.tenant_id != tenant.id:
+        abort(404)
+
+    return render_template("lojista/settings/_invoice_pay_status.html", invoice=invoice)
 
 
 @lojista_bp.route("/configuracoes/assinatura/plano", methods=["POST"])

@@ -447,6 +447,31 @@ class AdminBillingService:
         db.session.commit()
         return invoice
 
+    def get_invoice_pix_qr_code(self, invoice: Invoice) -> dict:
+        """Busca o QR Code Pix (imagem + copia-e-cola) da cobrança já
+        gerada para esta fatura, para a tela de pagamento embutida do
+        lojista (ver lojista/settings/invoice_pay.html). Levanta
+        BillingError com uma mensagem segura para exibir ao lojista em
+        qualquer caso que impeça mostrar o Pix — cada um corresponde a
+        uma causa real já vista: fatura sem cobrança gerada ainda,
+        gateway desligado no meio do caminho, forma de cobrança trocada
+        para boleto/cartão depois da cobrança já ter sido criada como
+        Pix (o Asaas recusa pixQrCode nesse caso)."""
+        if invoice.status not in (InvoiceStatus.PENDING, InvoiceStatus.OVERDUE):
+            raise BillingError("Esta fatura não está mais aguardando pagamento.")
+
+        if not invoice.asaas_payment_id:
+            raise BillingError("Esta fatura ainda não tem uma cobrança gerada.")
+
+        gateway = get_gateway()
+        if gateway is None:
+            raise BillingError("A cobrança automática está temporariamente indisponível.")
+
+        try:
+            return gateway.get_pix_qr_code(invoice.asaas_payment_id)
+        except PaymentGatewayError as exc:
+            raise BillingError(str(exc)) from exc
+
     def mark_paid_by_asaas_payment_id(self, asaas_payment_id: str) -> Invoice | None:
         """Usado pelo webhook: localiza a fatura pelo ID da cobrança no
         Asaas e marca como paga. Retorna None se não encontrar (ex:

@@ -40,7 +40,12 @@
 
         <div class="mb-3">
           {{ form.api_key.label(class="form-label small fw-semibold") }}
-          {{ form.api_key(class="form-control", placeholder="$aact_...") }}
+          <div class="password-field-wrap">
+            {{ form.api_key(class="form-control", placeholder="$aact_...", id="asaas-api-key") }}
+            <button type="button" class="password-toggle-btn" data-target="asaas-api-key" aria-label="Mostrar chave" title="Mostrar/ocultar chave">
+              <i class="bi bi-eye"></i>
+            </button>
+          </div>
           {% for error in form.api_key.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
           <div class="form-check mt-2">
             {{ form.clear_api_key(class="form-check-input") }}
@@ -52,7 +57,12 @@
 
         <div class="mb-3">
           {{ form.webhook_token.label(class="form-label small fw-semibold") }}
-          {{ form.webhook_token(class="form-control", placeholder="deixe em branco para manter o atual") }}
+          <div class="password-field-wrap">
+            {{ form.webhook_token(class="form-control", placeholder="deixe em branco para manter o atual", id="asaas-webhook-token") }}
+            <button type="button" class="password-toggle-btn" data-target="asaas-webhook-token" aria-label="Mostrar token" title="Mostrar/ocultar token">
+              <i class="bi bi-eye"></i>
+            </button>
+          </div>
           {% for error in form.webhook_token.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
           <div class="form-check mt-2">
             {{ form.clear_webhook_token(class="form-check-input") }}

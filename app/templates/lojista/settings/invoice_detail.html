@@ -46,8 +46,8 @@
       </table>
 
       {% if invoice.payment_link_url and invoice.status.value in ('pending', 'overdue') %}
-      <a href="{{ invoice.payment_link_url }}" target="_blank" rel="noopener" class="btn btn-sm btn-chili mt-3">
-        <i class="bi bi-box-arrow-up-right"></i> Pagar agora
+      <a href="{{ url_for('lojista.settings_subscription_invoice_pay', invoice_id=invoice.id) }}" class="btn btn-sm btn-chili mt-3" hx-boost="true" hx-swap="innerHTML show:window:top">
+        <i class="bi bi-qr-code"></i> Pagar agora
       </a>
       {% endif %}
     </div>

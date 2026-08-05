@@ -4,6 +4,7 @@ from flask_wtf import FlaskForm
 from flask_wtf.file import FileAllowed, FileField
 from wtforms import BooleanField, DateField, DecimalField, IntegerField, PasswordField, SelectField, StringField, SubmitField, TextAreaField
 from wtforms.validators import DataRequired, Email, EqualTo, Length, NumberRange, Optional, ValidationError
+from wtforms.widgets import PasswordInput
 
 from app.models.platform_settings import ASAAS_BILLING_TYPE_CHOICES, ASAAS_ENVIRONMENT_CHOICES, SYSTEM_THEME_CHOICES
 from app.utils.colors import normalize_hex
@@ -109,24 +110,34 @@ class SubscriptionCycleForm(FlaskForm):
 
 class AsaasSettingsForm(FlaskForm):
     """
-    Chave de API e token de webhook nunca são pré-preenchidos no GET
-    (só um indicador de "já configurado" é mostrado no template) — os
-    campos abaixo servem para DEFINIR um novo valor. Deixar em branco
-    mantém o valor atual sem alterá-lo; marcar a caixa "remover"
-    desativa a respectiva configuração.
+    Chave de API e token de webhook são pré-preenchidos no GET com o
+    valor atual (descriptografado só nesta tela, exclusiva do Super
+    Admin) — renderizados como campo de senha (mascarado, com botão de
+    mostrar/ocultar) em vez de texto puro, e editáveis diretamente:
+    salvar sem tocar neles simplesmente regrava o mesmo valor. Marcar a
+    caixa "remover" desativa a respectiva configuração.
     """
 
     environment = SelectField("Ambiente", choices=ASAAS_ENVIRONMENT_CHOICES)
     billing_type = SelectField("Forma de cobrança gerada", choices=ASAAS_BILLING_TYPE_CHOICES, default="PIX")
 
-    api_key = StringField(
-        "Nova chave de API (deixe em branco para manter a atual)",
+    # `PasswordInput(hide_value=False)`: o padrão do WTForms
+    # (`hide_value=True`) sempre renderiza o campo VAZIO, mesmo se
+    # `field.data` tiver um valor — proteção pensada pra formulário de
+    # troca de senha, onde nunca faz sentido mostrar a senha atual. Aqui
+    # é o oposto: o controller pré-preenche `api_key.data`/
+    # `webhook_token.data` com o valor atual de propósito (ver
+    # settings_asaas), então precisamos desligar essa proteção para o
+    # valor pré-preenchido realmente aparecer (mascarado, com o botão de
+    # mostrar/ocultar cuidando da revelação).
+    api_key = PasswordField(
+        "Chave de API", widget=PasswordInput(hide_value=False),
         validators=[Optional(), Length(max=255)],
     )
     clear_api_key = BooleanField("Remover chave de API (desativa a integração)")
 
-    webhook_token = StringField(
-        "Novo token de webhook (deixe em branco para manter o atual)",
+    webhook_token = PasswordField(
+        "Token de webhook", widget=PasswordInput(hide_value=False),
         validators=[Optional(), Length(min=16, max=255, message="Use pelo menos 16 caracteres — prefira o botão \"Gerar token aleatório\".")],
     )
     clear_webhook_token = BooleanField("Remover token de webhook")

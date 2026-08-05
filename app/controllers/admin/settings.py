@@ -22,6 +22,12 @@ def settings_asaas():
     if not form.is_submitted():
         form.environment.data = settings.asaas_environment
         form.billing_type.data = settings.asaas_billing_type or "PIX"
+        # Pré-preenche com o valor atual (já descriptografado pelo tipo
+        # EncryptedString ao ler do banco) — só nesta tela, exclusiva do
+        # Super Admin (ver AsaasSettingsForm). Deixar em branco no
+        # submit reenvia este mesmo valor sem alterar nada.
+        form.api_key.data = settings.asaas_api_key
+        form.webhook_token.data = settings.asaas_webhook_token
 
     if form.validate_on_submit():
         service.update_asaas(

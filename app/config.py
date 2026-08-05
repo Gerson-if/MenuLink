@@ -94,9 +94,12 @@ class DevelopmentConfig(BaseConfig):
     """Ambiente local de desenvolvimento — SQLite, pronto pra uso imediato."""
 
     DEBUG = True
-    SQLALCHEMY_DATABASE_URI = os.environ.get(
-        "DATABASE_URL", f"sqlite:///{os.path.join(BASE_DIR, 'instance', 'dev.db')}"
-    )
+    # `os.environ.get("DATABASE_URL", fallback)` sozinho NÃO cai no
+    # fallback quando a variável existe só que vazia (ex: ".env" copiado
+    # de ".env.example" com a linha "DATABASE_URL=" sem valor) — o `or`
+    # cobre esse caso, como o comentário no .env promete ("pode deixar
+    # em branco, cai no default").
+    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL") or f"sqlite:///{os.path.join(BASE_DIR, 'instance', 'dev.db')}"
     SESSION_COOKIE_SECURE = False
 
 

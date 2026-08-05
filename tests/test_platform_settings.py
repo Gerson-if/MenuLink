@@ -83,6 +83,19 @@ class TestAsaasSettingsRoutes:
         assert resp.status_code == 200
         assert "Cobrança" in resp.get_data(as_text=True)
 
+    def test_get_prefills_current_api_key_and_webhook_token_for_reveal(self, app, client, login_as):
+        with app.app_context():
+            settings = PlatformSettings.get_or_create()
+            settings.asaas_api_key = "chave-secreta-atual"
+            settings.asaas_webhook_token = "token-secreto-atual-1234567890"
+            db.session.commit()
+
+        login_as(client, "admin@cardapio.saas", "admin123")
+        html = client.get("/admin/configuracoes/asaas").get_data(as_text=True)
+        assert "chave-secreta-atual" in html
+        assert "token-secreto-atual-1234567890" in html
+        assert "password-toggle-btn" in html  # mascarado por padrão, com botão de revelar
+
     def test_post_saves_api_key_and_environment(self, app, client, login_as):
         login_as(client, "admin@cardapio.saas", "admin123")
         resp = client.post(
