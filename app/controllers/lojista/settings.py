@@ -57,6 +57,21 @@ def _billing_panel_context(tenant, service: AdminBillingService) -> dict:
     return {"invoices": invoices, "awaiting_payment": awaiting_payment, "recently_paid_invoice": recently_paid_invoice}
 
 
+def _missing_billing_fields(tenant) -> list[str]:
+    """E-mail e CPF/CNPJ são exigidos pelo Asaas para gerar a cobrança de
+    uma fatura (ver AdminBillingService.generate_asaas_charge) — sem
+    eles, a fatura é lançada normalmente mas fica sem link de pagamento
+    até o lojista completar o cadastro. Usado para avisar
+    proativamente na tela de Assinatura, em vez do lojista só descobrir
+    o problema quando uma fatura não gerar cobrança."""
+    missing = []
+    if not (tenant.email or "").strip():
+        missing.append("e-mail")
+    if not (tenant.document or "").strip():
+        missing.append("CPF/CNPJ")
+    return missing
+
+
 @lojista_bp.route("/conta-bloqueada")
 @lojista_login_required
 def billing_lockout():
@@ -279,7 +294,8 @@ def settings_subscription():
     available_plans = PlanRepository().list_active_for_landing()
     return render_template(
         "lojista/settings/subscription.html", tenant=tenant, subscription=subscription,
-        available_plans=available_plans, **_billing_panel_context(tenant, service),
+        available_plans=available_plans, missing_billing_fields=_missing_billing_fields(tenant),
+        **_billing_panel_context(tenant, service),
     )
 
 

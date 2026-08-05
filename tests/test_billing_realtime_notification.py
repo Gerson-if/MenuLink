@@ -61,6 +61,67 @@ class TestMarkPaidSendsChatConfirmation:
             assert before == after  # payment_id desconhecido -> ignorado, sem nova mensagem
 
 
+class TestNewInvoiceSendsChatNotification:
+    """Aviso "em tempo real" de que uma fatura nova ficou disponível — ver
+    AdminBillingService._send_new_invoice_message, chamado por
+    `create_invoice` (lançamento manual) e `generate_next_invoice`
+    (renovação automática)."""
+
+    def test_manual_invoice_notifies_tenant(self, app):
+        with app.app_context():
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            service = AdminBillingService()
+
+            invoice = service.create_invoice(
+                tenant, amount_reais=79.90, due_date=date.today() + timedelta(days=10),
+            )
+
+            message = (
+                ChatMessage.query.filter_by(tenant_id=tenant.id, sender_role=ChatSenderRole.SUPER_ADMIN)
+                .order_by(ChatMessage.created_at.desc())
+                .first()
+            )
+            assert message is not None
+            assert "nova fatura está disponível" in message.body
+            assert "79.90" in message.body
+            assert invoice.due_date.strftime("%d/%m/%Y") in message.body
+
+    def test_next_invoice_notifies_tenant(self, app):
+        with app.app_context():
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            service = AdminBillingService()
+            subscription = service.get_or_create_subscription(tenant)
+
+            service.generate_next_invoice(subscription)
+
+            message = (
+                ChatMessage.query.filter_by(tenant_id=tenant.id, sender_role=ChatSenderRole.SUPER_ADMIN)
+                .order_by(ChatMessage.created_at.desc())
+                .first()
+            )
+            assert message is not None
+            assert "nova fatura está disponível" in message.body
+
+    def test_message_asks_to_complete_registration_when_document_missing(self, app):
+        with app.app_context():
+            app.config["ASAAS_API_KEY"] = "fake-key"
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            tenant.document = None
+            db.session.commit()
+            service = AdminBillingService()
+            subscription = service.get_or_create_subscription(tenant)
+
+            service.generate_next_invoice(subscription)
+
+            message = (
+                ChatMessage.query.filter_by(tenant_id=tenant.id, sender_role=ChatSenderRole.SUPER_ADMIN)
+                .order_by(ChatMessage.created_at.desc())
+                .first()
+            )
+            assert "CPF/CNPJ" in message.body
+            assert "Complete seu cadastro" in message.body
+
+
 class TestLojistaBillingPollingFragment:
     def test_polling_enabled_while_invoice_awaits_payment(self, app, client, login_as):
         with app.app_context():

@@ -4,6 +4,16 @@
 
 {% block panel_content %}
 
+{% if missing_billing_fields %}
+<div class="alert alert-warning py-2 small mb-4">
+  <i class="bi bi-exclamation-triangle"></i>
+  <strong>Cadastro incompleto:</strong> falta {{ missing_billing_fields|join(' e ') }} da sua loja. Atualize
+  o quanto antes em
+  <a href="{{ url_for('lojista.settings_store') }}" class="alert-link" hx-boost="true" hx-swap="innerHTML show:window:top">Configurações &gt; Dados da loja</a>,
+  para suas próximas faturas serem geradas e cobradas corretamente.
+</div>
+{% endif %}
+
 {% if tenant.status.value == 'trial' %}
 <div class="alert alert-secondary py-2 small mb-4">
   <i class="bi bi-shield-check"></i>

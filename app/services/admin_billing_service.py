@@ -183,6 +183,20 @@ class AdminBillingService:
         subscription.current_period_end = next_due_date
 
         db.session.commit()
+
+        # Renovação automática: já tenta deixar a fatura pronta para
+        # pagamento imediato (sem depender do Super Admin lembrar de
+        # clicar em "gerar cobrança Asaas" depois) — se a integração não
+        # estiver configurada, ou faltar algum dado do lojista (e-mail/
+        # documento), simplesmente não gera o link agora; a fatura
+        # continua válida e pode ser cobrada manualmente depois.
+        if self.is_asaas_configured():
+            try:
+                self.generate_asaas_charge(invoice)
+            except BillingError:
+                pass
+
+        self._send_new_invoice_message(invoice)
         return invoice
 
     def _apply_pending_plan_change(self, subscription: Subscription) -> None:
@@ -272,6 +286,7 @@ class AdminBillingService:
         )
         db.session.add(invoice)
         db.session.commit()
+        self._send_new_invoice_message(invoice)
         return invoice
 
     def mark_paid(self, invoice: Invoice):
@@ -322,6 +337,51 @@ class AdminBillingService:
             f"✅ Pagamento confirmado! Recebemos R$ {invoice.amount_cents / 100:.2f} referente à "
             f"fatura de vencimento {invoice.due_date.strftime('%d/%m/%Y')}{plan_line}, "
             f"confirmado em {paid_at_label}. Sua assinatura está em dia — obrigado!",
+        )
+
+    def _send_new_invoice_message(self, invoice: Invoice) -> None:
+        """Avisa o lojista pelo chat de suporte assim que uma fatura nova
+        fica disponível — lançamento manual (`create_invoice`) ou
+        renovação automática (`generate_next_invoice`). Sem isso, o
+        lojista só descobria a fatura nova abrindo a página de Assinatura
+        por conta própria; agora é avisado no mesmo canal "em tempo real"
+        (polling HTMX a cada 5s) usado por `_send_payment_confirmed_message`
+        e pelos lembretes de TrialService. Se a cobrança Asaas já foi
+        gerada nesse meio tempo (ver `generate_next_invoice`), o aviso já
+        deixa claro que dá pra pagar imediatamente, sem esperar o
+        vencimento chegar."""
+        from app.services.chat_service import ChatService
+
+        tenant = invoice.tenant
+        if tenant is None:
+            return
+
+        plan = invoice.subscription.plan if invoice.subscription else tenant.plan
+        plan_line = f" do plano '{plan.name}'" if plan else ""
+
+        missing_fields = []
+        if not (tenant.email or "").strip():
+            missing_fields.append("e-mail")
+        if not (tenant.document or "").strip():
+            missing_fields.append("CPF/CNPJ")
+
+        if invoice.payment_link_url:
+            call_to_action = "Já é possível pagar agora mesmo pela página de Assinatura."
+        elif missing_fields:
+            # Sem isso, o Asaas não gera cobrança pra fatura nenhuma (ver
+            # `generate_asaas_charge`) — avisa já na hora, em vez do
+            # lojista só descobrir quando tentar pagar e não houver link.
+            call_to_action = (
+                f"Complete seu cadastro (falta {' e '.join(missing_fields)}) em Configurações > Dados da "
+                "loja o quanto antes, para suas faturas serem geradas e cobradas corretamente."
+            )
+        else:
+            call_to_action = "Acompanhe a liberação do pagamento na página de Assinatura."
+
+        ChatService.send_system_message(
+            tenant.id,
+            f"🧾 Uma nova fatura está disponível: R$ {invoice.amount_cents / 100:.2f}{plan_line}, "
+            f"com vencimento em {invoice.due_date.strftime('%d/%m/%Y')}. {call_to_action}",
         )
 
     def mark_overdue(self, invoice: Invoice):

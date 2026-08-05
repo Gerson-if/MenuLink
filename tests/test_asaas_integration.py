@@ -495,3 +495,33 @@ class TestAsaasWebhook:
         with app.app_context():
             invoice = db.session.get(Invoice, invoice_id)
             assert invoice.status == InvoiceStatus.PENDING  # não mudou
+
+
+class TestSubscriptionPageMissingBillingDataBanner:
+    """Aviso proativo na tela de Assinatura quando falta e-mail/CPF-CNPJ —
+    sem esses dados o Asaas não gera cobrança pra nenhuma fatura (ver
+    AdminBillingService.generate_asaas_charge), então o lojista deve ser
+    avisado antes de esbarrar nisso."""
+
+    def test_shows_banner_when_document_missing(self, app, client, login_as):
+        with app.app_context():
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            tenant.document = None
+            db.session.commit()
+
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        resp = client.get("/painel/configuracoes/assinatura")
+        html = resp.get_data(as_text=True)
+        assert "Cadastro incompleto" in html
+        assert "CPF/CNPJ" in html
+
+    def test_no_banner_when_registration_complete(self, app, client, login_as):
+        with app.app_context():
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            tenant.document = "11222333000181"
+            db.session.commit()
+
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        resp = client.get("/painel/configuracoes/assinatura")
+        html = resp.get_data(as_text=True)
+        assert "Cadastro incompleto" not in html
