@@ -80,29 +80,64 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="{{ static_versioned('vendor/chartjs/chart.umd.js') }}"></script>
 <script>
-  const dailyData = {{ daily_series | tojson }};
-  new Chart(document.getElementById('revenueChart'), {
-    type: 'line',
-    data: {
-      labels: dailyData.map(d => d.date.slice(5)),
-      datasets: [{
-        label: 'Receita (R$)',
-        data: dailyData.map(d => d.revenue_cents / 100),
-        borderColor: '#E54A36',
-        backgroundColor: 'rgba(229,74,54,0.12)',
-        tension: 0.3, fill: true,
-      }],
-    },
-    options: {
-      plugins: { legend: { display: false } },
-      scales: {
-        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,.06)' }, ticks: { color: '#AFA491' } },
-        x: { grid: { display: false }, ticks: { color: '#AFA491' } },
-      },
-      maintainAspectRatio: false,
-    },
-  });
+  {# Tudo dentro de uma IIFE de propósito: esta página é alcançada via
+     navegação "boosted" (hx-boost, ver sidebar) — cada visita reexecuta
+     este <script> do zero (htmx reinsere o nó pra rodar de novo, já que
+     scripts inseridos via innerHTML não rodam sozinhos). Um `const`/`let`
+     solto aqui no topo do arquivo vazaria pro escopo global do documento
+     e, na SEGUNDA visita à página (ex: Vendas -> outra aba -> Vendas de
+     novo), colidiria com a declaração da vez anterior — o navegador
+     lançava "Identifier 'dailyData' has already been declared" bem no
+     meio da troca do htmx, o que interrompia a troca inteira e deixava a
+     navegação seguinte (mesmo em OUTRA página, tipo Configurações)
+     quebrada, exigindo F5 pra voltar ao normal. #}
+  (function () {
+    var dailyData = {{ daily_series | tojson }};
+
+    function renderChart() {
+      var canvas = document.getElementById('revenueChart');
+      if (!canvas || typeof Chart === 'undefined') return;
+      new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels: dailyData.map(d => d.date.slice(5)),
+          datasets: [{
+            label: 'Receita (R$)',
+            data: dailyData.map(d => d.revenue_cents / 100),
+            borderColor: '#E54A36',
+            backgroundColor: 'rgba(229,74,54,0.12)',
+            tension: 0.3, fill: true,
+          }],
+        },
+        options: {
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,.06)' }, ticks: { color: '#AFA491' } },
+            x: { grid: { display: false }, ticks: { color: '#AFA491' } },
+          },
+          maintainAspectRatio: false,
+        },
+      });
+    }
+
+    {# Carrega o Chart.js sob demanda em vez de <script src> fixo aqui:
+       um <script src> reinserido pelo htmx a cada visita dispara um
+       fetch ASSÍNCRONO, então o <script> inline seguinte (que já chamava
+       `new Chart(...)`) rodava antes da lib terminar de carregar na
+       segunda visita — "Chart is not defined", mesmo erro fatal que
+       travava a troca do htmx no meio do caminho. Só busca de novo se
+       ainda não tiver sido carregada (window.Chart já existe depois da
+       primeira visita, porque o <script> fica no <head>, que não é
+       trocado pela navegação boosted). #}
+    if (typeof Chart !== 'undefined') {
+      renderChart();
+    } else {
+      var script = document.createElement('script');
+      script.src = "{{ static_versioned('vendor/chartjs/chart.umd.js') }}";
+      script.onload = renderChart;
+      document.head.appendChild(script);
+    }
+  })();
 </script>
 {% endblock %}

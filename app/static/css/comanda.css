@@ -390,6 +390,16 @@ body {
 .customer-card-actions { display: flex; gap: 8px; margin-top: 10px; }
 .customer-card-actions [data-bs-toggle="collapse"] .bi-chevron-down { transition: transform .2s; }
 .customer-card-actions [data-bs-toggle="collapse"][aria-expanded="true"] .bi-chevron-down { transform: rotate(180deg); }
+
+/* Cartão de fatura em telas estreitas (ver _invoices_panel.html) —
+   mesma ideia do customer-card acima: abaixo do breakpoint `md` a
+   tabela de faturas dá lugar a um cartão por fatura, com os botões
+   "Detalhes"/"Pagar agora" em largura total em vez de espremidos lado
+   a lado numa célula de tabela estreita. */
+.invoice-card { border: 1px solid var(--card-border); border-radius: var(--radius); padding: 14px; background: var(--card-bg); margin-bottom: 10px; color: var(--card-text); }
+.invoice-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+.invoice-card-actions { display: flex; gap: 8px; }
+.invoice-card-actions .btn { flex: 1; }
 .badge-order { font-family: 'JetBrains Mono'; background: rgba(255,255,255,.05); border: 1px solid var(--card-border); border-radius: 6px; padding: 3px 10px; font-size: .75rem; color: var(--muted-text); }
 
 /* ---------- Chat (suporte lojista <-> Super Admin) ----------

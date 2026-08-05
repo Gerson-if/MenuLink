@@ -43,13 +43,13 @@
   {% endif %}
 
   {% if invoices %}
-  {# min-width força rolagem horizontal (via overflow-x: auto no wrapper)
-     em vez do navegador espremer as colunas — sem isso, em telas
-     estreitas os botões "Detalhes"/"Pagar agora" ficavam praticamente
-     ilegíveis tentando caber lado a lado no espaço que sobrava depois
-     de Vencimento/Valor/Status. #}
-  <div style="overflow-x: auto;">
-  <table class="table table-borderless table-sm mb-0" style="color: var(--card-text); min-width: 640px;">
+  {# Tabela de 4 colunas + 2 botões de ação ficava espremida em telas
+     estreitas (rolagem horizontal não é uma boa experiência aqui) —
+     mesma solução já usada em clientes/list.html: abaixo do breakpoint
+     `md` a tabela dá lugar a um cartão por fatura, com os botões em
+     largura total. #}
+  <div class="d-none d-md-block" style="overflow-x: auto;">
+  <table class="table table-borderless table-sm mb-0" style="color: var(--card-text);">
     <thead class="text-muted-custom small text-uppercase"><tr><th>Vencimento</th><th>Valor</th><th>Status</th><th></th></tr></thead>
     <tbody>
       {% for invoice in invoices %}
@@ -81,6 +81,34 @@
       {% endfor %}
     </tbody>
   </table>
+  </div>
+
+  <div class="d-md-none">
+    {% for invoice in invoices %}
+    <div class="invoice-card">
+      <div class="invoice-card-head">
+        <div>
+          <div class="fw-semibold">{{ invoice.due_date.strftime("%d/%m/%Y") }}</div>
+          {% if invoice.description %}<div class="text-muted-custom" style="font-size: .72rem;">{{ invoice.description }}</div>{% endif %}
+        </div>
+        {% if invoice.status.value == 'paid' %}<span class="status-badge status-active">Paga</span>
+        {% elif invoice.status.value == 'overdue' %}<span class="status-badge status-blocked">Vencida</span>
+        {% elif invoice.status.value == 'canceled' %}<span class="status-badge status-suspended">Cancelada</span>
+        {% else %}<span class="status-badge status-trial">Pendente</span>{% endif %}
+      </div>
+      <div class="fw-bold fs-5 font-display mb-2">R$ {{ "%.2f"|format(invoice.amount_cents / 100) }}</div>
+      <div class="invoice-card-actions">
+        <a href="{{ url_for('lojista.settings_subscription_invoice_detail', invoice_id=invoice.id) }}" class="btn btn-sm btn-outline-secondary" hx-boost="true" hx-swap="innerHTML show:window:top">
+          <i class="bi bi-eye"></i> Detalhes
+        </a>
+        {% if invoice.payment_link_url and invoice.status.value in ('pending', 'overdue') %}
+        <a href="{{ url_for('lojista.settings_subscription_invoice_pay', invoice_id=invoice.id) }}" class="btn btn-sm btn-chili" hx-boost="true" hx-swap="innerHTML show:window:top">
+          <i class="bi bi-qr-code"></i> Pagar agora
+        </a>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
   </div>
   {% else %}
   <p class="text-muted-custom small mb-0">Nenhuma fatura lançada ainda.</p>
