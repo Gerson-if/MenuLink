@@ -8,11 +8,20 @@
    pagamento Pix embutida (ver invoice_pay.html), que é onde o lojista
    efetivamente iniciou o pagamento. Espera `invoices`,
    `awaiting_payment` e `recently_paid_invoice` no contexto. #}
+{# SEM hx-select aqui de propósito: o endpoint do polling
+   (settings_subscription_billing_fragment) já renderiza este mesmo
+   fragmento como raiz da resposta, então "hx-select" era redundante —
+   e, na prática, sua presença corrompia a troca de qualquer navegação
+   "boosted" (hx-boost) feita em OUTRO link da página enquanto este
+   polling estava ativo (ex: clicar em "Pagar agora" numa fatura podia
+   resultar em página em branco até um F5 manual). Reproduzido e isolado
+   com Playwright: o problema desaparecia removendo só este atributo,
+   mantendo o polling normalmente. #}
 <div
   id="billing-invoices-panel" class="panel"
   {% if awaiting_payment %}
   hx-get="{{ url_for('lojista.settings_subscription_billing_fragment') }}"
-  hx-trigger="every 8s" hx-swap="outerHTML" hx-select="#billing-invoices-panel"
+  hx-trigger="every 8s" hx-swap="outerHTML"
   {% endif %}
 >
   <div class="panel-title"><i class="bi bi-receipt-cutoff"></i> Faturas</div>
