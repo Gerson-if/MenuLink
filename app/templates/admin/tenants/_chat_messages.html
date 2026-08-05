@@ -53,77 +53,134 @@
 </div>
 <script>
   (function () {
-    // Este fragmento é trocado inteiro (hx-swap="outerHTML") a cada
-    // atualização (envio de mensagem ou o poll de 5s) — sem este cuidado,
-    // toda vez o painel voltava pro topo/fundo do zero, "arrancando" o
-    // Super Admin de onde estava lendo. window.__chatShouldAutoScroll
-    // (global, sobrevive à troca do elemento) guarda se ele estava perto
-    // do fim na ÚLTIMA vez que vimos o scroll: se sim, mantemos colado no
-    // fim (comportamento normal de chat); se ele rolou pra cima pra ler o
-    // histórico, respeitamos e não forçamos a volta a cada atualização.
-    var el = document.getElementById('chat-messages');
-    if (!el) return;
+    // BUG REAL encontrado e corrigido aqui (era a causa de fundo de "o
+    // chat sobe sozinho pro topo" e "enviar mensagem não rola pra ela"
+    // continuarem acontecendo mesmo depois da tentativa anterior de
+    // corrigir isso): esta tag <script> é IRMÃ de #chat-messages, FORA
+    // dele — mas as trocas usam `hx-select="#chat-messages"` pra
+    // extrair só a conversa da resposta HTML, o que significa que esta
+    // tag literalmente NUNCA faz parte do conteúdo selecionado depois
+    // da primeira vez. Ela só roda UMA ÚNICA vez, no carregamento
+    // normal da página — nunca mais, nem no poll de 5s nem ao enviar
+    // uma mensagem. E como `hx-swap="outerHTML"` substitui o
+    // `#chat-messages` INTEIRO por um nó novo a cada troca, esse nó
+    // novo nasce com `scrollTop = 0` (topo) por padrão do navegador —
+    // sem ninguém rodando de novo pra corrigir isso, a conversa
+    // "pulava pro topo" a cada atualização, sempre.
+    //
+    // Corrigido morando inteiramente em listeners presos no
+    // document.body (que SOBREVIVE a qualquer troca, ao contrário do
+    // #chat-messages) — window.__chatScrollSetupDone garante que isso
+    // só é configurado uma vez de verdade (mesmo que esta tag ainda
+    // rode de novo em algum cenário futuro, não duplica listener).
+    if (window.__chatScrollSetupDone) return;
+    window.__chatScrollSetupDone = true;
 
-    function scrollToBottomIfAppropriate() {
-      if (window.__chatShouldAutoScroll !== false) {
-        el.scrollTop = el.scrollHeight;
-      }
+    function getEl() {
+      return document.getElementById('chat-messages');
+    }
+
+    function isNearBottom(el) {
+      return (el.scrollHeight - el.scrollTop - el.clientHeight) < 80;
     }
 
     // BUG CORRIGIDO (mensagens "cortadas" atrás da barra de digitar,
-    // sobretudo no celular): rolar pro fim aqui, na hora em que o script
-    // roda, mede um scrollHeight ainda provisório — as fontes web
-    // (Inter, ver fonts.css) costumam terminar de carregar/aplicar DEPOIS
-    // desse primeiro cálculo, e o texto reflui (fica um pouco mais alto),
-    // então "o fim de agora" não é mais o fim de verdade e a última
-    // mensagem passa a ficar parcialmente escondida atrás da barra de
-    // digitar. Por isso rolamos de novo depois que o layout assenta
-    // (requestAnimationFrame) e de novo quando as fontes terminam de
-    // carregar (document.fonts.ready) — corrigindo a posição sem esperar
-    // o usuário perceber.
-    scrollToBottomIfAppropriate();
-    requestAnimationFrame(scrollToBottomIfAppropriate);
-    if (window.document.fonts && document.fonts.ready) {
-      document.fonts.ready.then(scrollToBottomIfAppropriate);
+    // sobretudo no celular): rolar pro fim na hora em que o layout
+    // ainda está provisório mede um scrollHeight que muda logo depois
+    // (as fontes web — Inter, ver fonts.css — terminam de
+    // carregar/aplicar e o texto reflui). Por isso rolamos de novo
+    // depois que o layout assenta (requestAnimationFrame) e de novo
+    // quando as fontes terminam de carregar (document.fonts.ready).
+    function scrollToBottomWhenSettled(el) {
+      function apply() { el.scrollTop = el.scrollHeight; }
+      apply();
+      requestAnimationFrame(apply);
+      if (window.document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(apply);
+      }
     }
 
-    el.addEventListener('scroll', function () {
-      window.__chatShouldAutoScroll = (el.scrollHeight - el.scrollTop - el.clientHeight) < 80;
-    });
+    // window.__chatShouldAutoScroll guarda se, da última vez que
+    // checamos, o Super Admin estava perto do fim da conversa (ou
+    // acabou de mandar uma mensagem) — se sim, cada atualização o
+    // mantém colado no fim (comportamento normal de chat); se ele
+    // rolou pra cima pra ler o histórico, respeitamos e não forçamos a
+    // volta.
+    window.__chatShouldAutoScroll = true;
 
-    // BUG CORRIGIDO ("fica voltando pra cima"/não parece um chat ao
-    // vivo): o listener de 'scroll' acima é a fonte de verdade ENQUANTO
-    // o Super Admin está com a lista aberta e rolando — mas eventos de
-    // resize (ex: teclado do celular abrindo) podem corromper esse
-    // cálculo e deixar `__chatShouldAutoScroll` travado em `false` mesmo
-    // com ele realmente no fim da conversa. Na PRÓXIMA troca (poll de 5s
-    // cria um elemento novo, sempre com scrollTop=0), isso deixava o
-    // usuário "preso" no topo. Por isso capturamos o estado "perto do
-    // fim?" de novo, de forma síncrona, no exato momento da troca
-    // (htmx:beforeSwap, delegado em document.body porque #chat-messages
-    // em si é substituído a cada troca) — lê o DOM real na hora H, em
-    // vez de confiar num valor que pode ter ficado desatualizado por um
-    // resize sem relação nenhuma com leitura/rolagem de verdade.
-    //
-    // window.__chatBeforeSwapBound: este <script> roda de novo a cada
-    // troca (é reinjetado junto com o fragmento) — sem essa trava, cada
-    // troca acumularia mais um listener idêntico em document.body.
-    if (!window.__chatBeforeSwapBound) {
-      window.__chatBeforeSwapBound = true;
-      document.body.addEventListener('htmx:beforeSwap', function (evt) {
-        var target = evt.detail && evt.detail.target;
-        if (!target || target.id !== 'chat-messages') return;
-        var current = document.getElementById('chat-messages');
-        if (!current) return;
-        var nearBottom = (current.scrollHeight - current.scrollTop - current.clientHeight) < 80;
-        // Troca veio do PRÓPRIO envio (rota termina em ".../enviar")?
-        // Sempre rola pro fim depois — mandar uma mensagem sempre deve
-        // mostrar o que você acabou de escrever, igual
-        // WhatsApp/iMessage, independente de onde você estava rolado.
-        var path = (evt.detail.pathInfo && evt.detail.pathInfo.requestPath) || '';
-        var isOwnSend = path.indexOf('enviar') !== -1;
-        window.__chatShouldAutoScroll = isOwnSend || nearBottom;
+    function bindScrollTracking(el) {
+      el.addEventListener('scroll', function () {
+        window.__chatShouldAutoScroll = isNearBottom(el);
       });
     }
+
+    // Primeira renderização (carregamento normal da página): rola pro
+    // fim e liga o acompanhamento de scroll no elemento que já existe.
+    var initialEl = getEl();
+    if (initialEl) {
+      scrollToBottomWhenSettled(initialEl);
+      bindScrollTracking(initialEl);
+    }
+
+    // Antes de QUALQUER troca do #chat-messages (poll de 5s OU envio de
+    // mensagem), decide se a troca deve terminar rolada pro fim —
+    // medido de forma síncrona, no exato momento da troca, direto do
+    // elemento ainda visível (mais confiável que confiar só no último
+    // valor visto pelo listener de 'scroll', que no celular pode ficar
+    // desatualizado por um resize do teclado sem relação nenhuma com
+    // leitura/rolagem de verdade).
+    document.body.addEventListener('htmx:beforeSwap', function (evt) {
+      var target = evt.detail && evt.detail.target;
+      if (!target || target.id !== 'chat-messages') return;
+      var current = getEl();
+      if (!current) return;
+      // Troca veio do PRÓPRIO envio (rota termina em ".../enviar")?
+      // Sempre rola pro fim depois — mandar uma mensagem sempre deve
+      // mostrar o que você acabou de escrever, igual WhatsApp/iMessage,
+      // independente de onde você estava rolado antes.
+      var path = (evt.detail.pathInfo && evt.detail.pathInfo.requestPath) || '';
+      var isOwnSend = path.indexOf('enviar') !== -1;
+      window.__chatShouldAutoScroll = isOwnSend || isNearBottom(current);
+      // Guarda a DISTÂNCIA até o fundo (não o scrollTop absoluto): se
+      // chegou mensagem nova durante a troca, a conversa cresce por
+      // BAIXO — preservar a distância até o fundo mantém o Super Admin
+      // olhando pro mesmo trecho de mensagens que já estava lendo, em
+      // vez de um scrollTop fixo que ficaria "errado" assim que o
+      // conteúdo abaixo mudar de tamanho.
+      window.__chatDistanceFromBottom = current.scrollHeight - current.scrollTop;
+    });
+
+    // DEPOIS da troca: o #chat-messages antigo já foi removido do DOM
+    // (evt.detail.target aqui aponta pro nó VELHO, desconectado — por
+    // isso buscamos de novo com getEl() em vez de reaproveitar
+    // qualquer referência guardada antes da troca) — aplicamos a
+    // decisão tomada no beforeSwap e religamos o acompanhamento de
+    // scroll no nó NOVO (o listener do nó antigo morreu junto com ele).
+    //
+    // BUG REAL corrigido aqui: quando a decisão era "NÃO rolar pro
+    // fim" (Super Admin lendo o histórico), a versão anterior
+    // simplesmente não fazia nada — mas um `#chat-messages`
+    // recém-criado pela troca SEMPRE nasce com `scrollTop = 0` (topo),
+    // então "não fazer nada" ainda assim jogava a conversa pro topo a
+    // cada atualização, o oposto do que o comentário prometia. Agora
+    // restauramos ativamente a posição de leitura usando a distância
+    // até o fundo guardada acima.
+    document.body.addEventListener('htmx:afterSwap', function (evt) {
+      var target = evt.detail && evt.detail.target;
+      if (!target || target.id !== 'chat-messages') return;
+      var fresh = getEl();
+      if (!fresh) return;
+      if (window.__chatShouldAutoScroll !== false) {
+        scrollToBottomWhenSettled(fresh);
+      } else {
+        var distance = window.__chatDistanceFromBottom || 0;
+        function restore() {
+          fresh.scrollTop = Math.max(0, fresh.scrollHeight - distance);
+        }
+        restore();
+        requestAnimationFrame(restore);
+      }
+      bindScrollTracking(fresh);
+    });
   })();
 </script>

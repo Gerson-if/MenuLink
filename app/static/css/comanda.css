@@ -383,7 +383,23 @@ body {
    sem precisar de SVG/máscara), separador de dia centralizado, e uma
    barra de entrada em formato de pílula com botão de enviar redondo. */
 .chat-panel {
-  display: flex; flex-direction: column; height: min(640px, 75vh); overflow: hidden;
+  display: flex; flex-direction: column; overflow: hidden;
+  /* `dvh` (altura DINÂMICA de viewport, já usada em .app-shell acima)
+     em vez de `vh` puro: no celular, `vh` é calculado sobre a altura
+     "cheia" da tela, incluindo a área que a barra de endereço do
+     navegador ocupa quando está visível — só que essa barra
+     esconde/aparece sozinha ao rolar a página, o que muda a altura
+     REAL disponível sem disparar nenhum evento de resize "de verdade".
+     Isso fazia .chat-panel mudar de tamanho embaixo do usuário durante
+     o simples ato de rolar a conversa, corrompendo a conta de "estou
+     perto do fim?" (ver _chat_messages.html) e dando a impressão de
+     que o chat "subia sozinho". `dvh` já considera esse
+     encolhimento/expansão, então o tamanho fica estável. Mantido `vh`
+     ANTES como fallback pra navegador muito antigo sem suporte a
+     `dvh` — se a regra de baixo não for reconhecida, o parser CSS
+     descarta ela inteira e o `vh` de cima continua valendo. */
+  height: min(640px, 75vh);
+  height: min(640px, 75dvh);
 }
 
 .chat-header {
@@ -996,6 +1012,27 @@ body:has(.app-shell) .toast-flash-stack { top: 84px; }
      ficar escondido atrás dos ícones sem dar pra rolar até lá. */
   .content { padding: 16px; padding-bottom: 82px; }
   .kpi-card .kpi-value { font-size: 1.4rem; }
+
+  /* .chat-panel { height: min(640px, 75dvh) } sobrava demais nessa
+     faixa de tela (é onde a barra de navegação inferior — .bottom-tab-bar
+     — passa a existir, ver layouts/lojista_panel.html): 75% da altura
+     do viewport, DE CIMA (abaixo da topbar) até embaixo, ignorando que
+     ainda tem topbar (~48-56px) e a barra inferior fixa (~64px + área
+     seguro do notch) sobrando fora dele. O painel ficava alto demais
+     pra caber entre as duas, sobrando pra fora e obrigando a PÁGINA
+     inteira a rolar só pra revelar o chat inteiro — dois scrolls
+     empilhados (o da página e o de dentro do chat), o que por si só já
+     parecia "bugado" (uma barra de rolagem grande demais, o conteúdo
+     "subindo sozinho" ao alternar qual dos dois estava mais visível).
+     Aqui o teto passa a ser calculado descontando esse espaço
+     (~190px, com folga) da altura real da tela — o chat passa a caber
+     inteiro entre a topbar e a barra inferior, sobrando só UM scroll
+     de verdade: o de dentro da conversa. `max(320px, ...)` evita ele
+     ficar espremido demais em telas bem baixas (celular deitado). */
+  .chat-panel {
+    height: min(560px, max(320px, calc(100vh - 190px)));
+    height: min(560px, max(320px, calc(100dvh - 190px)));
+  }
 }
 @media (max-width: 575.98px) {
   .topbar h1 { font-size: 1.05rem; }
