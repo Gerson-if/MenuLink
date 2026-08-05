@@ -40,7 +40,7 @@ class StoreInfoForm(FlaskForm):
     )
     whatsapp_number = StringField("WhatsApp (com DDI+DDD)", validators=[Optional(), Length(max=20), phone_number()])
     phone = StringField("Telefone (opcional)", validators=[Optional(), Length(max=20), phone_number()])
-    logo = FileField("Logo da loja", validators=[FileAllowed(["png", "jpg", "jpeg", "webp"], message="Formato não suportado.")])
+    logo = FileField("Logo da loja", validators=[FileAllowed(["png", "jpg", "jpeg", "webp", "heic", "heif"], message="Formato não suportado.")])
 
     legal_name = StringField("Razão social (opcional)", validators=[Optional(), Length(max=150), not_blank])
     document = StringField("CPF ou CNPJ", validators=[Optional(), Length(max=20), cpf_cnpj])

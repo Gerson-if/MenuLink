@@ -150,6 +150,81 @@ class TestProductCRUD:
             assert primary_flags[second_id] is True
             assert sum(primary_flags.values()) == 1  # só uma principal
 
+    def test_replace_image_keeps_same_record_but_new_file(self, app, client, login_as):
+        # Clicar numa foto já enviada troca o ARQUIVO no lugar (mesmo
+        # registro, mesma posição/flag de principal) — ver
+        # ProductService.replace_image e o botão "Trocar foto" em
+        # _image_gallery.html.
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        client.post(
+            "/painel/produtos/novo",
+            data={"name": "Frango Assado", "category_id": "0", "price": "45.00", "is_active": "y"},
+        )
+        from app.models import Product, ProductImage
+
+        with app.app_context():
+            product_id = Product.query.filter_by(name="Frango Assado").first().id
+
+        client.post(
+            f"/painel/produtos/{product_id}/imagens",
+            data={"image": (io.BytesIO(_make_test_image_bytes()), "original.png")},
+            content_type="multipart/form-data",
+        )
+        with app.app_context():
+            image = ProductImage.query.filter_by(product_id=product_id).first()
+            image_id = image.id
+            original_path = image.file_path
+            assert image.is_primary is True
+
+        resp = client.post(
+            f"/painel/produtos/{product_id}/imagens/{image_id}/substituir",
+            data={"image": (io.BytesIO(_make_test_image_bytes()), "nova-foto.png")},
+            content_type="multipart/form-data",
+            follow_redirects=True,
+        )
+        assert "Foto atualizada" in resp.get_data(as_text=True)
+
+        with app.app_context():
+            images = ProductImage.query.filter_by(product_id=product_id).all()
+            assert len(images) == 1  # continua sendo o MESMO registro, não um novo
+            assert images[0].id == image_id
+            assert images[0].is_primary is True  # continua principal
+            assert images[0].file_path != original_path  # mas o arquivo mudou
+
+    def test_replace_image_of_another_tenant_is_404(self, app, client, login_as):
+        from app.models import Product, ProductImage
+
+        with app.app_context():
+            plan = Plan.query.first()
+            other_tenant = Tenant(
+                name="Outra Loja", slug="outra-loja-img", email="outra-img@example.com",
+                plan_id=plan.id, status=TenantStatus.ACTIVE,
+            )
+            db.session.add(other_tenant)
+            db.session.commit()
+            other_product = Product(
+                tenant_id=other_tenant.id, name="Produto Alheio", slug="produto-alheio",
+                price_cents=1000, is_active=True,
+            )
+            db.session.add(other_product)
+            db.session.commit()
+            other_image = ProductImage(
+                tenant_id=other_tenant.id, product_id=other_product.id,
+                file_path="uploads/tenant_x/products/1/fake.webp", is_primary=True, display_order=0,
+            )
+            db.session.add(other_image)
+            db.session.commit()
+            other_product_id = other_product.id
+            other_image_id = other_image.id
+
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        resp = client.post(
+            f"/painel/produtos/{other_product_id}/imagens/{other_image_id}/substituir",
+            data={"image": (io.BytesIO(_make_test_image_bytes()), "hack.png")},
+            content_type="multipart/form-data",
+        )
+        assert resp.status_code == 404
+
     def test_invalid_image_is_rejected(self, app, client, login_as):
         login_as(client, "lojista@braseiroecia.com.br", "lojista123")
         client.post(

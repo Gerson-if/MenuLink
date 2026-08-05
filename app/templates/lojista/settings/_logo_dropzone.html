@@ -6,7 +6,7 @@
          src="{{ url_for('static', filename=tenant.logo_path) if tenant.logo_path else '' }}">
     <i class="bi bi-cloud-arrow-up d-block {{ 'd-none' if tenant.logo_path }}"></i>
     <span class="small {{ 'd-none' if tenant.logo_path }}">Clique para enviar/trocar a logo</span>
-    {{ form.logo() }}
+    {{ form.logo(accept="image/*") }}
   </label>
   {% if tenant.logo_path %}
   <button type="button" class="dropzone-remove-btn dropzone-remove-existing"

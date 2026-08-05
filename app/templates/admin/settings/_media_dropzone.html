@@ -13,7 +13,7 @@
          src="{{ url_for('static', filename=current_path) if current_path else '' }}">
     <i class="bi bi-cloud-arrow-up d-block {{ 'd-none' if current_path }}"></i>
     <span class="small {{ 'd-none' if current_path }}">{{ empty_text }}</span>
-    {{ field() }}
+    {{ field(accept="image/*") }}
   </label>
   {% if current_path %}
   <button type="button" class="dropzone-remove-btn dropzone-remove-existing"

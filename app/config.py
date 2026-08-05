@@ -44,7 +44,13 @@ class BaseConfig:
     # cair na validação com mensagem amigável — o Werkzeug já cortava a
     # conexão antes com um 413 genérico.
     MAX_CONTENT_LENGTH = 26 * 1024 * 1024  # 26 MB por request
-    ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
+    # "heic"/"heif": formato padrão das fotos tiradas por iPhone (iOS 11+).
+    # Sem isso, uma foto de produto/logo/banner enviada direto da galeria
+    # de um iPhone (sem passar pela conversão automática que o Safari só
+    # faz em alguns fluxos do seletor de arquivo) era recusada com "Arquivo
+    # enviado não é uma imagem válida" — ver register_heif_opener() em
+    # app/utils/uploads.py, que ensina o Pillow a abrir esse formato.
+    ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "heic", "heif"}
 
     # --- Multi-tenant ---
     # Estratégia adotada: banco compartilhado (shared database, shared schema)

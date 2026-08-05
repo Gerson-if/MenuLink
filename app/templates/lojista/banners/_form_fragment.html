@@ -24,7 +24,7 @@
                src="{{ url_for('static', filename=banner.image_path) if banner else '' }}" style="height: 160px; object-fit: cover;">
           <i class="bi bi-cloud-arrow-up d-block {{ 'd-none' if banner }}"></i>
           <span class="small {{ 'd-none' if banner }}">Clique para enviar a imagem do banner</span>
-          {{ form.image() }}
+          {{ form.image(accept="image/*") }}
         </label>
         {% if banner %}
         <button type="button" class="dropzone-remove-btn dropzone-remove-existing"

@@ -256,7 +256,7 @@ class AdminAppearanceForm(FlaskForm):
 
     platform_logo = FileField(
         "Logo do sistema (opcional)",
-        validators=[FileAllowed(["png", "jpg", "jpeg", "webp"], message="Formato não suportado.")],
+        validators=[FileAllowed(["png", "jpg", "jpeg", "webp", "heic", "heif"], message="Formato não suportado.")],
     )
 
     auth_background_video = FileField(
@@ -284,7 +284,7 @@ class LandingContentForm(FlaskForm):
 
     hero_title = StringField("Título principal", validators=[DataRequired(), Length(max=200), not_blank])
     hero_subtitle = TextAreaField("Subtítulo", validators=[DataRequired(), Length(max=500), not_blank])
-    hero_image = FileField("Arte de destaque (opcional)", validators=[FileAllowed(["png", "jpg", "jpeg", "webp"], message="Formato não suportado.")])
+    hero_image = FileField("Arte de destaque (opcional)", validators=[FileAllowed(["png", "jpg", "jpeg", "webp", "heic", "heif"], message="Formato não suportado.")])
     hero_image_opacity = IntegerField(
         "Opacidade da arte de destaque (%)", default=100,
         validators=[Optional(), NumberRange(min=10, max=100)],
@@ -302,16 +302,16 @@ class LandingContentForm(FlaskForm):
     feature1_icon = StringField("Ícone 1 (Bootstrap Icons)", validators=[DataRequired(), Length(max=40)])
     feature1_title = StringField("Título 1", validators=[DataRequired(), Length(max=100), not_blank])
     feature1_description = TextAreaField("Descrição 1", validators=[DataRequired(), Length(max=300), not_blank])
-    feature1_image = FileField("Imagem 1 (opcional — substitui o ícone)", validators=[FileAllowed(["png", "jpg", "jpeg", "webp"], message="Formato não suportado.")])
+    feature1_image = FileField("Imagem 1 (opcional — substitui o ícone)", validators=[FileAllowed(["png", "jpg", "jpeg", "webp", "heic", "heif"], message="Formato não suportado.")])
 
     feature2_icon = StringField("Ícone 2 (Bootstrap Icons)", validators=[DataRequired(), Length(max=40)])
     feature2_title = StringField("Título 2", validators=[DataRequired(), Length(max=100), not_blank])
     feature2_description = TextAreaField("Descrição 2", validators=[DataRequired(), Length(max=300), not_blank])
-    feature2_image = FileField("Imagem 2 (opcional — substitui o ícone)", validators=[FileAllowed(["png", "jpg", "jpeg", "webp"], message="Formato não suportado.")])
+    feature2_image = FileField("Imagem 2 (opcional — substitui o ícone)", validators=[FileAllowed(["png", "jpg", "jpeg", "webp", "heic", "heif"], message="Formato não suportado.")])
 
     feature3_icon = StringField("Ícone 3 (Bootstrap Icons)", validators=[DataRequired(), Length(max=40)])
     feature3_title = StringField("Título 3", validators=[DataRequired(), Length(max=100), not_blank])
     feature3_description = TextAreaField("Descrição 3", validators=[DataRequired(), Length(max=300), not_blank])
-    feature3_image = FileField("Imagem 3 (opcional — substitui o ícone)", validators=[FileAllowed(["png", "jpg", "jpeg", "webp"], message="Formato não suportado.")])
+    feature3_image = FileField("Imagem 3 (opcional — substitui o ícone)", validators=[FileAllowed(["png", "jpg", "jpeg", "webp", "heic", "heif"], message="Formato não suportado.")])
 
     submit = SubmitField("Salvar landing page")

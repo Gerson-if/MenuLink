@@ -35,6 +35,23 @@ from flask import current_app
 from PIL import Image, ImageOps, UnidentifiedImageError
 from werkzeug.utils import secure_filename
 
+try:
+    # Ensina o Pillow a abrir HEIC/HEIF — formato padrão das fotos do
+    # iPhone (iOS 11+). Sem isso, `Image.open()` simplesmente não
+    # reconhece o arquivo (UnidentifiedImageError), e qualquer upload de
+    # imagem (produto, banner, logo, ícone de categoria, anexo de chat)
+    # feito direto da galeria de um iPhone falhava com "Arquivo enviado
+    # não é uma imagem válida" — mesmo o arquivo sendo uma foto legítima.
+    # Import opcional: se o pacote não estiver instalado (ambiente antigo
+    # sem `pip install -r requirements.txt` atualizado), a aplicação
+    # continua funcionando normalmente para todo o resto — só HEIC/HEIF
+    # especificamente volta a falhar, sem quebrar upload de imagem algum.
+    import pillow_heif
+
+    pillow_heif.register_heif_opener()
+except ImportError:
+    pass
+
 MAX_DIMENSION = 1600
 ICON_DIMENSION = 128
 IMAGE_QUALITY = 82
@@ -83,7 +100,9 @@ class InvalidAttachmentError(Exception):
 # virar um jeito barato de hospedar arquivo grande qualquer (o envio é
 # síncrono, dentro do próprio request HTTP, sem fila de processamento).
 MAX_CHAT_ATTACHMENT_BYTES = 8 * 1024 * 1024  # 8MB
-ALLOWED_CHAT_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
+# heic/heif: foto de comprovante tirada e enviada direto de um iPhone (ver
+# comentário do register_heif_opener() no topo do arquivo).
+ALLOWED_CHAT_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "heic", "heif"}
 ALLOWED_CHAT_ATTACHMENT_EXTENSIONS = ALLOWED_CHAT_IMAGE_EXTENSIONS | {"pdf"}
 
 

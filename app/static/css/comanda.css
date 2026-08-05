@@ -610,6 +610,20 @@ html[data-theme="light"] .status-ready_for_pickup { color: #1B5E20; }
 }
 .dropzone-remove-btn:hover { background: rgba(229,74,54,.85); }
 
+/* Galeria de fotos do produto (ver _image_gallery.html): clicar numa
+   foto já enviada abre o seletor de arquivo pra TROCÁ-LA no lugar. O
+   selo "Trocar foto" só aparece ao passar o mouse (desktop) — no touch
+   o gesto de tocar na foto já é intuitivo o bastante sem precisar de
+   dica visual permanente ocupando espaço. */
+.product-gallery-replace { position: relative; cursor: pointer; border-radius: 8px; overflow: hidden; }
+.product-gallery-replace-hint {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 6px;
+  background: rgba(0,0,0,.5); color: #fff; font-size: .75rem; font-weight: 600;
+  opacity: 0; transition: opacity .15s ease; pointer-events: none;
+}
+.product-gallery-replace:hover .product-gallery-replace-hint,
+.product-gallery-replace:focus-within .product-gallery-replace-hint { opacity: 1; }
+
 .upload-meta { font-size: .75rem; color: var(--muted-text); margin-top: 4px; }
 .upload-error { font-size: .8rem; color: #FF8A7A; background: rgba(229,74,54,0.1); border: 1px solid rgba(229,74,54,0.2); border-radius: 8px; padding: 8px 12px; margin-top: 8px; }
 /* Mesmo problema do bloco .alert-*/.toast-flash-* acima: essa cor
@@ -1009,6 +1023,22 @@ html[data-theme="light"] .toast-flash-info { color: #1A2B8F; }
 .drawer-narrow { --bs-offcanvas-width: min(560px, 95vw); background: var(--charcoal); color: var(--paper); }
 .drawer-narrow .offcanvas-header { border-bottom: 1px solid var(--card-border); }
 .drawer-narrow .btn-close { filter: invert(1) brightness(2); }
+
+/* No celular, os 95vw acima ainda deixavam uma fresta da página por
+   trás visível na lateral — dava uma sensação de "painel flutuante"
+   em vez de uma tela cheia, típica de app nativo. Editar um produto
+   (ou banner/categoria) é justamente a tarefa que mais pede esse
+   foco total no celular, sem nenhum pedaço do menu/sidebar espiando
+   do lado. Também troca a transição padrão do Bootstrap (linear) por
+   uma curva suave, mesmo efeito já usado nos toasts de notificação. */
+@media (max-width: 575.98px) {
+  .offcanvas.offcanvas-end.drawer-wide,
+  .offcanvas.offcanvas-end.drawer-narrow {
+    --bs-offcanvas-width: 100vw;
+    height: 100dvh;
+    transition: transform .32s cubic-bezier(.22, .9, .32, 1);
+  }
+}
 
 .main { flex: 1; min-width: 0; background: var(--charcoal); }
 .topbar {

@@ -43,7 +43,7 @@ class ImageUploadForm(FlaskForm):
         "Imagem do produto",
         validators=[
             FileRequired(message="Selecione uma imagem."),
-            FileAllowed(["png", "jpg", "jpeg", "webp"], message="Formato não suportado (use PNG, JPG, JPEG ou WEBP)."),
+            FileAllowed(["png", "jpg", "jpeg", "webp", "heic", "heif"], message="Formato não suportado (use PNG, JPG, JPEG ou WEBP)."),
         ],
     )
     submit = SubmitField("Enviar imagem")

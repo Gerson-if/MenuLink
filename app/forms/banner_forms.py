@@ -12,7 +12,7 @@ class BannerForm(FlaskForm):
     link_url = StringField("Link ao clicar (opcional)", validators=[Optional(), URL(require_tld=False, message="URL inválida."), Length(max=255)])
     image = FileField(
         "Imagem do banner",
-        validators=[FileAllowed(["png", "jpg", "jpeg", "webp"], message="Formato não suportado.")],
+        validators=[FileAllowed(["png", "jpg", "jpeg", "webp", "heic", "heif"], message="Formato não suportado.")],
     )
     is_active = BooleanField("Banner ativo (visível no cardápio)", default=True)
     submit = SubmitField("Salvar banner")

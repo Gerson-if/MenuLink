@@ -15,6 +15,6 @@ class ChatMessageForm(FlaskForm):
     body = TextAreaField("Mensagem", validators=[Optional(), Length(max=MAX_MESSAGE_LENGTH)])
     attachment = FileField(
         "Anexo",
-        validators=[FileAllowed(["png", "jpg", "jpeg", "webp", "pdf"], message="Formato não suportado. Envie uma imagem (JPG, PNG, WEBP) ou um PDF.")],
+        validators=[FileAllowed(["png", "jpg", "jpeg", "webp", "heic", "heif", "pdf"], message="Formato não suportado. Envie uma imagem (JPG, PNG, WEBP) ou um PDF.")],
     )
     submit = SubmitField("Enviar")

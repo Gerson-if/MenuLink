@@ -50,6 +50,32 @@ def images_upload(product_id):
     return _render_gallery(product, message=error_message, message_type="danger")
 
 
+@lojista_bp.route("/produtos/<int:product_id>/imagens/<int:image_id>/substituir", methods=["POST"])
+@lojista_required
+def images_replace(product_id, image_id):
+    tenant = get_current_tenant()
+    service = ProductService(tenant)
+    product = service.get_or_404(product_id)
+
+    image_repo = ProductImageRepository(tenant.id)
+    image = image_repo.get_by_id(image_id)
+    if image is None or image.product_id != product.id:
+        from flask import abort
+
+        abort(404)
+
+    form = ImageUploadForm()
+    if form.validate_on_submit():
+        try:
+            service.replace_image(image, form.image.data)
+        except InvalidImageError as exc:
+            return _render_gallery(product, message=str(exc), message_type="danger")
+        return _render_gallery(product, message="Foto atualizada.", message_type="success")
+
+    error_message = " ".join(form.image.errors) or "Não foi possível atualizar a foto."
+    return _render_gallery(product, message=error_message, message_type="danger")
+
+
 @lojista_bp.route("/produtos/<int:product_id>/imagens/<int:image_id>/excluir", methods=["POST"])
 @lojista_required
 def images_delete(product_id, image_id):

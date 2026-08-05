@@ -106,6 +106,22 @@ class ProductService:
         db.session.commit()
         return image
 
+    def replace_image(self, image: ProductImage, file_storage) -> ProductImage:
+        """Troca o ARQUIVO de uma foto já existente, mantendo o mesmo
+        registro (posição na galeria, se é a principal etc.) — usada
+        quando o lojista clica direto numa foto já enviada pra trocá-la,
+        em vez de precisar remover e enviar de novo do zero (ver
+        _image_gallery.html). Só apaga o arquivo antigo DEPOIS do commit
+        do novo caminho dar certo — se `save_product_image` falhar (ex:
+        arquivo inválido), a foto antiga continua no ar normalmente."""
+        old_path = image.file_path
+        relative_path, dominant_color = save_product_image(self.tenant.id, image.product_id, file_storage)
+        image.file_path = relative_path
+        image.dominant_color = dominant_color
+        db.session.commit()
+        delete_product_image_file(old_path)
+        return image
+
     def delete_image(self, image: ProductImage) -> None:
         product = image.product
         was_primary = image.is_primary

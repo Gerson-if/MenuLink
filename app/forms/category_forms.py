@@ -19,7 +19,7 @@ class CategoryForm(FlaskForm):
     )
     icon_image = FileField(
         "Ícone próprio (opcional — substitui o ícone da biblioteca)",
-        validators=[FileAllowed(["png", "jpg", "jpeg", "webp"], message="Formato não suportado.")],
+        validators=[FileAllowed(["png", "jpg", "jpeg", "webp", "heic", "heif"], message="Formato não suportado.")],
     )
     is_active = BooleanField("Categoria ativa (visível no cardápio)", default=True)
     submit = SubmitField("Salvar categoria")

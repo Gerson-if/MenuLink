@@ -12,7 +12,32 @@
     {% for image in product.images %}
     <div class="col-6">
       <div class="position-relative">
-        <img src="{{ url_for('static', filename=image.file_path) }}" class="rounded w-100" style="height: 110px; object-fit: cover;">
+        {# Clicar na foto já enviada TROCA ela no lugar — antes não fazia
+           nada, e clicar numa foto existente é justamente o gesto mais
+           natural de quem quer trocá-la (em vez de precisar excluir e
+           enviar de novo do zero). Mostra na hora a foto escolhida (sem
+           esperar o servidor responder) — antes ficava sem nenhum
+           retorno visual até o upload terminar, parecendo travado. A
+           pré-visualização "otimista" some sozinha assim que o HTMX
+           troca a galeria inteira pela resposta real do servidor.
+           Importante: "window.URL.createObjectURL", não "URL.createOb-
+           jectURL" — dentro de um atributo onchange="" inline, o
+           navegador resolve identificadores soltos passando primeiro
+           por um "with(document){...}" implícito, e "document.URL" já
+           existe (é uma STRING com a URL da página) — sem o "window."
+           explícito, "URL" resolvia pra essa string em vez do
+           construtor de verdade, e ".createObjectURL" quebrava com
+           "is not a function". #}
+        <form hx-post="{{ url_for('lojista.images_replace', product_id=product.id, image_id=image.id) }}"
+              hx-target="#image-gallery" hx-swap="outerHTML" hx-encoding="multipart/form-data">
+          {{ image_form.hidden_tag() }}
+          <label class="d-block product-gallery-replace" title="Clique para trocar esta foto" onclick="this.querySelector('input[type=file]').click()">
+            <img src="{{ url_for('static', filename=image.file_path) }}" class="rounded w-100" style="height: 110px; object-fit: cover;">
+            <span class="product-gallery-replace-hint"><i class="bi bi-arrow-repeat"></i> Trocar foto</span>
+            <input type="file" name="image" class="d-none" accept="image/*"
+                   onchange="var f=this.files[0]; if(f){ this.closest('label').querySelector('img').src = window.URL.createObjectURL(f); } this.closest('form').requestSubmit();">
+          </label>
+        </form>
         {% if image.is_primary %}
           <span class="status-badge status-active position-absolute top-0 start-0 m-1">Principal</span>
         {% endif %}
@@ -52,7 +77,11 @@
       <img class="dropzone-preview d-none" alt="">
       <i class="bi bi-cloud-arrow-up d-block"></i>
       <span class="small">Clique para enviar uma foto</span>
-      {{ image_form.image(onchange="this.closest('form').requestSubmit()") }}
+      {# A pré-visualização instantânea aqui já é cuidada de forma
+         genérica por initDropzonePreviews() em comanda.js (toda
+         ".dropzone input[type=file]" ganha isso automaticamente) — só
+         falta mesmo enviar o form assim que um arquivo é escolhido. #}
+      {{ image_form.image(onchange="this.closest('form').requestSubmit()", accept="image/*") }}
     </label>
   </form>
 </div>

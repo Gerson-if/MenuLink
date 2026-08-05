@@ -6,7 +6,7 @@
          src="{{ url_for('static', filename=category.icon_image_path) if category and category.icon_image_path else '' }}">
     <i class="bi bi-cloud-arrow-up d-block {{ 'd-none' if category and category.icon_image_path }}" style="font-size: 1.4rem; margin-bottom: 0;"></i>
     <span class="small {{ 'd-none' if category and category.icon_image_path }}">Clique para enviar um ícone próprio (PNG com fundo transparente fica melhor)</span>
-    {{ form.icon_image() }}
+    {{ form.icon_image(accept="image/*") }}
   </label>
   {% if category and category.icon_image_path %}
   <button type="button" class="dropzone-remove-btn dropzone-remove-existing"
