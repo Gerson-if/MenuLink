@@ -1,13 +1,19 @@
 {# Espera `order` no contexto — usado tanto em orders/list.html (pedidos
    ativos) quanto em orders/history.html (concluídos/cancelados), pra não
    duplicar o markup do card entre as duas telas. #}
+{% set stale_level = order_stale_level(order) %}
 <div class="col-md-6 col-lg-4">
   <a href="{{ url_for('lojista.orders_detail', order_id=order.id) }}" class="text-decoration-none" hx-boost="true" hx-swap="innerHTML show:window:top">
-    <div class="ticket">
+    <div class="ticket {{ 'ticket-stale-warning' if stale_level == 'warning' else 'ticket-stale-danger' if stale_level == 'danger' else '' }}">
       <div class="ticket-head">
         <span class="ticket-num">#{{ order.order_number }}</span>
         {% include "lojista/orders/_status_badge.html" %}
       </div>
+      {% if stale_level != 'ok' %}
+      <div class="ticket-stale-flag">
+        <i class="bi bi-alarm"></i> Parado há muito tempo neste status
+      </div>
+      {% endif %}
       <div class="small mb-1">{{ order.customer_name }}</div>
       <div class="ticket-items">
         {% for item in order.items[:2] %}{{ item.quantity }}x {{ item.product_name }}<br>{% endfor %}

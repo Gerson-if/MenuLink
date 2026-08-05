@@ -8,8 +8,16 @@
   &larr; Voltar para {{ "histórico" if is_history_order else "pedidos" }}
 </a>
 
+{% set stale_level = order_stale_level(order) %}
 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
-  {% include "lojista/orders/_status_badge.html" %}
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    {% include "lojista/orders/_status_badge.html" %}
+    {% if stale_level != 'ok' %}
+    <span class="ticket-stale-flag mb-0">
+      <i class="bi bi-alarm"></i> Parado há muito tempo neste status
+    </span>
+    {% endif %}
+  </div>
   <span class="text-muted-custom small">{{ order.created_at.strftime("%d/%m/%Y às %H:%M") }}</span>
 </div>
 

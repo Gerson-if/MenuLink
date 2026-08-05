@@ -485,6 +485,38 @@ def _register_template_filters(app: Flask) -> None:
 
         return FeedbackService.new_count()
 
+    @app.template_global("order_stale_level")
+    def order_stale_level(order) -> str:
+        """'ok' | 'warning' | 'danger' — há quanto tempo um pedido ATIVO
+        está parado no mesmo status (order.updated_at, que só muda
+        quando o status muda, ver OrderService.update_status/
+        revert_status), comparado ao limite configurável da loja
+        (Tenant.stale_order_alert_minutes): 'warning' ao passar do
+        limite, 'danger' ao dobro dele. Pedidos em status final
+        (completed/canceled) nunca ficam "parados" — sempre 'ok'. Usado
+        em orders/_order_card.html e orders/detail.html pra destacar um
+        pedido esquecido sem repetir esse cálculo em cada template."""
+        from datetime import datetime, timezone
+
+        from app.utils.tenant_context import get_current_tenant
+
+        if order.status.value in ("completed", "canceled"):
+            return "ok"
+
+        tenant = get_current_tenant()
+        threshold_minutes = tenant.stale_order_alert_minutes if tenant else 20
+
+        updated_at = order.updated_at
+        if updated_at.tzinfo is None:
+            updated_at = updated_at.replace(tzinfo=timezone.utc)
+        elapsed_minutes = (datetime.now(timezone.utc) - updated_at).total_seconds() / 60
+
+        if elapsed_minutes >= threshold_minutes * 2:
+            return "danger"
+        if elapsed_minutes >= threshold_minutes:
+            return "warning"
+        return "ok"
+
     @app.template_global("cheapest_plan_name")
     def cheapest_plan_name() -> str | None:
         """Nome do plano mais barato disponível para contratação — usado

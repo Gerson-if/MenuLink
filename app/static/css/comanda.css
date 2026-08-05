@@ -297,12 +297,29 @@ body {
 .ticket {
   background: var(--card-bg); border: 1px dashed var(--line); border-radius: 8px; padding: 16px;
   font-family: 'JetBrains Mono', monospace; position: relative; margin-bottom: 12px;
-  color: var(--card-text); transition: border-color .2s;
+  color: var(--card-text); transition: border-color .2s, box-shadow .2s, transform .2s;
 }
-.ticket:hover { border-color: var(--muted-text); }
+.ticket:hover { border-color: var(--muted-text); box-shadow: 0 6px 16px rgba(0,0,0,.12); transform: translateY(-2px); }
 .ticket-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .ticket-num { font-weight: 700; font-size: .95rem; color: var(--paper); }
 .ticket-items { font-size: .85rem; color: var(--muted-text); line-height: 1.6; }
+
+/* Pedido ativo parado há tempo demais no mesmo status (ver
+   order_stale_level em app/__init__.py e Tenant.stale_order_alert_minutes)
+   — borda sólida colorida (em vez da tracejada padrão) pra chamar
+   atenção sem depender só da cor, e o "danger" pulsa discretamente pra
+   se destacar numa lista com vários outros cards. */
+.ticket-stale-warning { border: 1px solid #F0AD4E; box-shadow: 0 0 0 1px rgba(240,173,78,.25); }
+.ticket-stale-danger { border: 1px solid #E5544E; box-shadow: 0 0 0 1px rgba(229,84,78,.3); animation: ticket-stale-pulse 2.2s ease-in-out infinite; }
+.ticket-stale-flag {
+  font-family: 'Inter'; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
+  color: #E5544E; display: flex; align-items: center; gap: 5px; margin-bottom: 8px;
+}
+.ticket-stale-warning .ticket-stale-flag { color: #F0AD4E; }
+@keyframes ticket-stale-pulse {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(229,84,78,.3); }
+  50% { box-shadow: 0 0 0 4px rgba(229,84,78,.18); }
+}
 
 .status-pill {
   font-family: 'Inter'; font-size: .7rem; font-weight: 700; padding: 4px 12px; border-radius: 30px;
