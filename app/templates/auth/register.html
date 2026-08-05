@@ -179,8 +179,10 @@
    passo está o erro e já abre direto nele). #}
 <div id="register-loading-overlay" class="register-loading-overlay" aria-hidden="true">
   <div class="register-loading-box">
-    <span class="spinner-border" role="status" aria-hidden="true"></span>
-    <p class="register-loading-text mt-3 mb-0" id="register-loading-text">Estamos preparando tudo pra você...</p>
+    <div class="register-loading-orbit" role="status" aria-hidden="true">
+      <span></span><span></span><span></span>
+    </div>
+    <p class="register-loading-text mb-0" id="register-loading-text">Estamos preparando tudo pra você...</p>
   </div>
 </div>
 <script>
@@ -334,10 +336,17 @@
       var submitBtn = form.querySelector('button[type=submit], input[type=submit]');
       if (submitBtn) submitBtn.disabled = true;
 
+      // Crossfade em vez de trocar o texto na hora — some, troca o
+      // texto por baixo e reaparece, pra não parecer que a mensagem
+      // "pisca" a cada 1.8s enquanto a loja é criada de verdade.
       var step = 0;
       setInterval(function () {
-        step = (step + 1) % messages.length;
-        textEl.textContent = messages[step];
+        textEl.classList.add('is-fading');
+        setTimeout(function () {
+          step = (step + 1) % messages.length;
+          textEl.textContent = messages[step];
+          textEl.classList.remove('is-fading');
+        }, 200);
       }, 1800);
     });
   })();

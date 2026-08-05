@@ -244,6 +244,19 @@ body {
 }
 .panel-title { font-family: 'Archivo Black'; font-size: 1rem; margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
 
+/* Variante decorativa de .panel — mancha de luz borrada no canto,
+   puramente cosmética (ver "Seu plano atual" em subscription.html).
+   position:relative + overflow:hidden no .panel pra recortar o blur
+   sem vazar quadrado nas bordas arredondadas; z-index no conteúdo
+   real pra ficar por cima da mancha. */
+.panel-glow { position: relative; overflow: hidden; }
+.panel-glow::before {
+  content: ""; position: absolute; top: -40px; right: -40px; width: 140px; height: 140px;
+  border-radius: 50%; background: color-mix(in srgb, var(--accent) 30%, transparent);
+  filter: blur(40px); pointer-events: none;
+}
+.panel-glow > * { position: relative; z-index: 1; }
+
 /* Tabela (Bootstrap) no tema escuro — sem isso, .table cai no fundo
    branco padrão do Bootstrap, ilegível sobre .panel/.charcoal. Usado na
    tabela de clientes e na tabela de complementos do produto. */
@@ -396,7 +409,8 @@ body {
    tabela de faturas dá lugar a um cartão por fatura, com os botões
    "Detalhes"/"Pagar agora" em largura total em vez de espremidos lado
    a lado numa célula de tabela estreita. */
-.invoice-card { border: 1px solid var(--card-border); border-radius: var(--radius); padding: 14px; background: var(--card-bg); margin-bottom: 10px; color: var(--card-text); }
+.invoice-card { border: 1px solid var(--card-border); border-radius: var(--radius); padding: 14px; background: var(--card-bg); margin-bottom: 10px; color: var(--card-text); transition: border-color .2s, box-shadow .2s, transform .2s; }
+.invoice-card:hover { border-color: var(--muted-text); box-shadow: 0 6px 16px rgba(0,0,0,.12); transform: translateY(-2px); }
 .invoice-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
 .invoice-card-actions { display: flex; gap: 8px; }
 .invoice-card-actions .btn { flex: 1; }
@@ -716,8 +730,23 @@ body:has(.app-shell) .toast-flash-stack { top: 84px; }
 }
 .register-loading-overlay.is-visible { opacity: 1; pointer-events: all; }
 .register-loading-box { text-align: center; color: #fff; padding: 0 24px; }
-.register-loading-box .spinner-border { color: var(--accent); width: 3rem; height: 3rem; }
-.register-loading-text { font-weight: 600; font-size: 1.05rem; max-width: 300px; margin-left: auto; margin-right: auto; }
+.register-loading-text { font-weight: 600; font-size: 1.05rem; max-width: 300px; margin-left: auto; margin-right: auto; transition: opacity .2s ease; }
+.register-loading-text.is-fading { opacity: 0; }
+
+/* Loader de 3 anéis concêntricos + ponto pulsante no centro — substitui
+   o spinner-border simples do Bootstrap por algo com mais "sensação de
+   progresso real" durante a criação da loja (tenant + usuário +
+   conteúdo de exemplo), sem trocar a cor de acento do resto do app. */
+.register-loading-orbit { position: relative; width: 88px; height: 88px; margin: 0 auto 28px; }
+.register-loading-orbit span { position: absolute; inset: 0; border-radius: 50%; border: 3px solid transparent; }
+.register-loading-orbit span:nth-child(1) { border-top-color: var(--accent); border-bottom-color: var(--accent); animation: registerOrbitSpin 2s linear infinite; opacity: .9; }
+.register-loading-orbit span:nth-child(2) { inset: 10px; border-left-color: var(--accent-dark); border-right-color: var(--accent-dark); animation: registerOrbitSpin 3s linear infinite reverse; opacity: .7; }
+.register-loading-orbit span:nth-child(3) { inset: 32px; background: var(--accent); box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 70%, transparent); animation: registerOrbitPulse 1.4s ease-in-out infinite; }
+@keyframes registerOrbitSpin { to { transform: rotate(360deg); } }
+@keyframes registerOrbitPulse { 0%, 100% { transform: scale(.85); opacity: .85; } 50% { transform: scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .register-loading-orbit span { animation: none; }
+}
 
 /* Assistente de cadastro em passos (auth/register.html) — um
    campo/pergunta por tela, com transição animada entre elas. Só some
@@ -726,7 +755,7 @@ body:has(.app-shell) .toast-flash-stack { top: 84px; }
    formulário inteiro de uma vez (camada 100% progressiva). */
 .reg-progress { margin-bottom: 18px; }
 .reg-progress-track { height: 6px; border-radius: 4px; overflow: hidden; background: color-mix(in srgb, var(--card-text) 10%, transparent); }
-.reg-progress-fill { height: 100%; border-radius: 4px; background: var(--accent); transition: width .35s cubic-bezier(.22, 1, .36, 1); }
+.reg-progress-fill { height: 100%; border-radius: 4px; background: var(--accent); transition: width .35s cubic-bezier(.22, 1, .36, 1); box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 60%, transparent); }
 .reg-progress-label { font-size: .75rem; color: var(--muted-text); margin: 6px 0 0; text-align: right; }
 
 #register-form.js-wizard .reg-step { display: none; }
@@ -738,12 +767,12 @@ body:has(.app-shell) .toast-flash-stack { top: 84px; }
 .reg-step-nav .btn-outline-secondary { border-color: var(--card-border); color: var(--card-text); white-space: nowrap; }
 
 @keyframes regStepInNext {
-  from { opacity: 0; transform: translateX(28px); }
-  to { opacity: 1; transform: translateX(0); }
+  from { opacity: 0; transform: translateX(28px) scale(.98); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
 }
 @keyframes regStepInBack {
-  from { opacity: 0; transform: translateX(-28px); }
-  to { opacity: 1; transform: translateX(0); }
+  from { opacity: 0; transform: translateX(-28px) scale(.98); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
 }
 .reg-step.reg-step-in-next { animation: regStepInNext .32s cubic-bezier(.22, 1, .36, 1); }
 .reg-step.reg-step-in-back { animation: regStepInBack .32s cubic-bezier(.22, 1, .36, 1); }

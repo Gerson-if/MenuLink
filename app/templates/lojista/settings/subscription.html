@@ -47,7 +47,7 @@
 
 <div class="row g-4">
   <div class="col-lg-5">
-    <div class="panel">
+    <div class="panel panel-glow">
       <div class="panel-title"><i class="bi bi-star"></i> Seu plano atual</div>
       {% if tenant.plan %}
       {% set cycle = subscription.billing_cycle.value if subscription else tenant.plan.billing_cycle.value %}
