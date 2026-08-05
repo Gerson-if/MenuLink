@@ -18,26 +18,28 @@
       </div>
 
       {# Checkout hospedado pelo próprio Asaas (Pix/boleto/cartão, conforme
-         a forma de cobrança configurada em Super Admin > Cobrança) —
-         mostrado embutido aqui via iframe pra o lojista não precisar sair
-         do painel. Alguns provedores de pagamento bloqueiam ser exibidos
-         dentro de <iframe> de outro site (proteção padrão contra
-         clickjacking em páginas de pagamento) — por isso o link "abrir em
-         nova aba" logo abaixo é sempre mostrado, nunca só um plano B
-         escondido: se o iframe aparecer em branco, é a saída garantida. #}
-      <div id="asaas-checkout-block" style="border: 1px solid var(--card-border); border-radius: 12px; overflow: hidden;">
-        <iframe
-          src="{{ invoice.payment_link_url }}" title="Checkout de pagamento"
-          style="width: 100%; height: 640px; border: 0; display: block; background: #fff;"
-          referrerpolicy="no-referrer"
-        ></iframe>
+         a forma de cobrança configurada em Super Admin > Cobrança). NÃO é
+         embutido em <iframe>: o próprio Asaas define, no cabeçalho da
+         página deles, uma Content-Security-Policy "frame-ancestors" que
+         só libera ser exibido dentro de um site específico deles (nada
+         relacionado ao nosso domínio) — ou seja, é uma restrição do LADO
+         DELES, não algo que a nossa CSP consiga contornar (confirmado
+         testando: mesmo liberando "frame-src" na nossa política, o
+         navegador ainda bloqueia por causa da política do Asaas). A
+         documentação oficial deles também só descreve integração por
+         redirecionamento/link, nunca iframe. Por isso o botão abaixo
+         sempre abre o checkout numa aba nova, e esta tela só acompanha a
+         confirmação do pagamento (ver _invoice_pay_status.html, polling
+         a cada 4s). #}
+      <div id="asaas-checkout-block" class="text-center py-4" style="border: 1px solid var(--card-border); border-radius: 12px;">
+        <i class="bi bi-qr-code-scan fs-1 text-accent d-block mb-2"></i>
+        <p class="text-muted-custom small mb-3">
+          O pagamento é feito numa página segura do Asaas, fora do painel.
+        </p>
+        <a href="{{ invoice.payment_link_url }}" target="_blank" rel="noopener" class="btn btn-chili">
+          <i class="bi bi-box-arrow-up-right"></i> Pagar agora
+        </a>
       </div>
-
-      <p class="text-muted-custom small mt-2 mb-0">
-        <i class="bi bi-box-arrow-up-right"></i>
-        Não conseguiu ver o checkout acima?
-        <a href="{{ invoice.payment_link_url }}" target="_blank" rel="noopener" class="link-chili">Abrir em uma nova aba</a>.
-      </p>
 
       {% include "lojista/settings/_invoice_pay_status.html" %}
     </div>
@@ -51,9 +53,9 @@
         Link nunca recebe nem armazena nenhum dado bancário ou de cartão.
       </p>
       <p class="text-muted-custom small mb-0">
-        Assim que o pagamento for confirmado, a liberação chega automaticamente (geralmente em
-        poucos segundos, para Pix) e esta página atualiza sozinha — não é preciso enviar
-        comprovante nem avisar o suporte.
+        Assim que o pagamento for confirmado, a liberação chega automaticamente (poucos segundos
+        no Pix; até 1-2 dias úteis no boleto) e esta página atualiza sozinha — não é preciso
+        enviar comprovante nem avisar o suporte.
       </p>
     </div>
   </div>

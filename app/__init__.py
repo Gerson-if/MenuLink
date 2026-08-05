@@ -362,16 +362,13 @@ def _register_request_hooks(app: Flask) -> None:
             "font-src 'self' data:; "
             "media-src 'self'; "
             "object-src 'none'; "
-            # Checkout hospedado do Asaas embutido em <iframe> na tela de
-            # pagamento de fatura (ver invoice_pay.html) — sem "frame-src"
-            # explícito, a diretiva cai no "default-src 'self'" acima e
-            # bloqueia SILENCIOSAMENTE o carregamento do checkout dentro do
-            # iframe (nenhum erro visível pro lojista, só a área do
-            # pagamento em branco). "sandbox.asaas.com" é o ambiente de
-            # testes; "asaas.com"/"www.asaas.com" é onde a cobrança real
-            # roda em produção — mantemos os dois porque ASAAS_ENVIRONMENT
-            # pode trocar sem precisar lembrar de atualizar isto aqui.
-            "frame-src 'self' https://sandbox.asaas.com https://www.asaas.com https://asaas.com; "
+            # SEM "frame-src" pra domínios do Asaas de propósito: o
+            # checkout deles não fica embutido em <iframe> (ver
+            # invoice_pay.html) — o próprio Asaas define, no cabeçalho da
+            # página deles, uma CSP "frame-ancestors" que só libera ser
+            # exibido dentro de um site específico deles, então liberar
+            # aqui do nosso lado não adiantaria nada (confirmado
+            # testando) e só abriria uma permissão sem uso real.
             "base-uri 'self'; "
             "frame-ancestors 'self';",
         )

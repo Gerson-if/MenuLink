@@ -1,10 +1,10 @@
-{# Fragmento de status da tela de pagamento Pix (ver invoice_pay.html),
+{# Fragmento de status da tela de pagamento (ver invoice_pay.html),
    recarregado via polling HTMX enquanto a fatura ainda está pendente —
    só relê o status já salvo no NOSSO banco (atualizado pelo webhook do
    Asaas, ver app/controllers/webhooks_controller.py), sem chamar a API
    do Asaas de novo a cada poll. Ao virar "paga", o próprio fragmento
    para de se auto-recarregar (deixa de incluir hx-trigger) e esconde o
-   bloco do QR Code acima, que não faz mais sentido mostrar. #}
+   bloco de pagamento acima, que não faz mais sentido mostrar. #}
 <div
   id="invoice-pay-status" class="mt-4"
   {% if invoice.status.value in ('pending', 'overdue') %}
@@ -39,9 +39,16 @@
     })();
   </script>
   {% else %}
+  {# Ícone estático (não um spinner) de propósito: isso aqui roda em segundo
+     plano por baixo do botão "Pagar agora" (ver invoice_pay.html) — um
+     spinner girando antes mesmo do lojista clicar em algo dá a impressão
+     de que a tela travou esperando o Asaas, quando na real é só um
+     polling silencioso torcendo pra pegar a confirmação assim que ela
+     chegar. #}
   <p class="text-muted-custom small mb-0 d-flex align-items-center gap-2">
-    <span class="spinner-border spinner-border-sm" style="width: .9rem; height: .9rem;"></span>
-    Aguardando confirmação do pagamento — assim que o Pix cair, esta página atualiza sozinha.
+    <i class="bi bi-clock-history"></i>
+    Assim que o pagamento for confirmado — poucos segundos no Pix, até 1-2 dias úteis no boleto —
+    esta página é atualizada sozinha, mesmo que você já tenha saído e voltado.
   </p>
   {% endif %}
 </div>

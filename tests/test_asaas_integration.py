@@ -296,10 +296,14 @@ def _make_invoice_with_charge(tenant, *, status=InvoiceStatus.PENDING, asaas_pay
 class TestInvoicePayPage:
     """Tela de pagamento embutida no painel do lojista (ver
     app/controllers/lojista/settings.py:settings_subscription_invoice_pay
-    e o template lojista/settings/invoice_pay.html) — mostra o checkout
-    hospedado do Asaas num iframe, com fallback pra abrir em nova aba."""
+    e o template lojista/settings/invoice_pay.html) — link do checkout do
+    Asaas sempre abre numa aba nova (nunca num <iframe>: o Asaas define
+    frame-ancestors no próprio checkout deles restringindo quem pode
+    embutir a página, e isso é do lado deles — nossa CSP não tem como
+    contornar), com esta tela só acompanhando a confirmação do pagamento
+    via polling."""
 
-    def test_shows_checkout_iframe_with_fallback_link(self, app, client, login_as):
+    def test_shows_pay_link_regardless_of_billing_type(self, app, client, login_as):
         with app.app_context():
             tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
             invoice = _make_invoice_with_charge(tenant)
@@ -309,9 +313,9 @@ class TestInvoicePayPage:
         resp = client.get(f"/painel/configuracoes/assinatura/faturas/{invoice_id}/pagar")
         assert resp.status_code == 200
         html = resp.get_data(as_text=True)
-        assert "<iframe" in html
+        assert "<iframe" not in html
         assert "https://sandbox.asaas.com/i/pay_pix_1" in html
-        assert "Abrir em uma nova aba" in html
+        assert 'target="_blank"' in html
         assert 'hx-trigger="every 4s"' in html
 
     def test_redirects_when_no_payment_link_yet(self, app, client, login_as):
