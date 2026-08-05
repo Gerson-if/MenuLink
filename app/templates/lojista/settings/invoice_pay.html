@@ -8,63 +8,52 @@
 </a>
 
 <div class="row g-4">
-  <div class="col-lg-7">
+  <div class="col-lg-8">
     <div class="panel">
-      <div class="panel-title"><i class="bi bi-qr-code"></i> Pagar com Pix</div>
+      <div class="panel-title"><i class="bi bi-credit-card"></i> Pagar fatura</div>
 
       <div class="d-flex align-items-center justify-content-between mb-3">
         <div class="fw-bold fs-3 font-display">R$ {{ "%.2f"|format(invoice.amount_cents / 100) }}</div>
         <span class="text-muted-custom small">Vencimento {{ invoice.due_date.strftime("%d/%m/%Y") }}</span>
       </div>
 
-      {% if pix_error %}
-      <div class="alert alert-warning small">
-        <i class="bi bi-exclamation-triangle"></i> Não foi possível carregar o QR Code Pix agora: {{ pix_error }}
+      {# Checkout hospedado pelo próprio Asaas (Pix/boleto/cartão, conforme
+         a forma de cobrança configurada em Super Admin > Cobrança) —
+         mostrado embutido aqui via iframe pra o lojista não precisar sair
+         do painel. Alguns provedores de pagamento bloqueiam ser exibidos
+         dentro de <iframe> de outro site (proteção padrão contra
+         clickjacking em páginas de pagamento) — por isso o link "abrir em
+         nova aba" logo abaixo é sempre mostrado, nunca só um plano B
+         escondido: se o iframe aparecer em branco, é a saída garantida. #}
+      <div id="asaas-checkout-block" style="border: 1px solid var(--card-border); border-radius: 12px; overflow: hidden;">
+        <iframe
+          src="{{ invoice.payment_link_url }}" title="Checkout de pagamento"
+          style="width: 100%; height: 640px; border: 0; display: block; background: #fff;"
+          referrerpolicy="no-referrer"
+        ></iframe>
       </div>
-      {% if invoice.payment_link_url %}
-      <a href="{{ invoice.payment_link_url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">
-        <i class="bi bi-box-arrow-up-right"></i> Abrir checkout alternativo
-      </a>
-      {% endif %}
-      {% elif pix %}
-      <div id="pix-qr-block">
-        {# `data:` URI direto do base64 que o Asaas devolve — sem
-           precisar salvar a imagem em disco nem fazer uma segunda
-           requisição só pra buscar o PNG. #}
-        <div class="text-center mb-3">
-          <img src="data:image/png;base64,{{ pix.encoded_image }}" alt="QR Code Pix" style="max-width: 240px; width: 100%; background: #fff; padding: 12px; border-radius: 12px;">
-        </div>
 
-        <p class="text-muted-custom small mb-1">Ou copie o código Pix (copia e cola):</p>
-        <div class="password-field-wrap mb-2" style="padding-right: 0;">
-          <input type="text" class="form-control form-control-sm" id="pix-copy-input" value="{{ pix.payload }}" readonly onclick="this.select()" style="padding-right: 90px;">
-          <button type="button" class="btn btn-sm btn-chili pix-copy-btn" data-target="pix-copy-input" style="position: absolute; top: 3px; right: 3px; border-radius: 6px;">
-            <i class="bi bi-clipboard"></i> Copiar
-          </button>
-        </div>
-
-        {% if pix.expiration_date %}
-        <p class="text-muted-custom small mb-0"><i class="bi bi-clock"></i> Código válido até {{ pix.expiration_date }}.</p>
-        {% endif %}
-      </div>
-      {% else %}
-      <p class="text-muted-custom small mb-0">Nenhuma cobrança Pix disponível para esta fatura.</p>
-      {% endif %}
+      <p class="text-muted-custom small mt-2 mb-0">
+        <i class="bi bi-box-arrow-up-right"></i>
+        Não conseguiu ver o checkout acima?
+        <a href="{{ invoice.payment_link_url }}" target="_blank" rel="noopener" class="link-chili">Abrir em uma nova aba</a>.
+      </p>
 
       {% include "lojista/settings/_invoice_pay_status.html" %}
     </div>
   </div>
 
-  <div class="col-lg-5">
+  <div class="col-lg-4">
     <div class="panel">
       <div class="panel-title"><i class="bi bi-shield-check"></i> Pagamento seguro</div>
       <p class="text-muted-custom small mb-2">
-        Este QR Code é gerado na hora pelo Asaas, processador de pagamentos responsável pela
-        cobrança — o Menu Link nunca recebe nem armazena nenhum dado bancário ou de cartão.
+        Este checkout é do Asaas, processador de pagamentos responsável pela cobrança — o Menu
+        Link nunca recebe nem armazena nenhum dado bancário ou de cartão.
       </p>
       <p class="text-muted-custom small mb-0">
-        Assim que o Pix cair, a confirmação chega automaticamente (geralmente em poucos segundos)
-        e esta página atualiza sozinha — não é preciso enviar comprovante nem avisar o suporte.
+        Assim que o pagamento for confirmado, a liberação chega automaticamente (geralmente em
+        poucos segundos, para Pix) e esta página atualiza sozinha — não é preciso enviar
+        comprovante nem avisar o suporte.
       </p>
     </div>
   </div>

@@ -7,7 +7,7 @@ from app.forms.tenant_settings_forms import (
 )
 from app.models import InvoiceStatus, TenantStatus
 from app.repositories.plan_repository import PlanRepository
-from app.services.admin_billing_service import AdminBillingService, BillingError
+from app.services.admin_billing_service import AdminBillingService
 from app.services.tenant_settings_service import TenantSettingsError, TenantSettingsService
 from app.utils.decorators import lojista_login_required, lojista_required
 from app.utils.tenant_context import get_current_tenant
@@ -318,13 +318,15 @@ def settings_subscription_invoice_detail(invoice_id):
 @lojista_bp.route("/configuracoes/assinatura/faturas/<int:invoice_id>/pagar")
 @lojista_required
 def settings_subscription_invoice_pay(invoice_id):
-    """Tela de pagamento Pix embutida no próprio painel — em vez de
-    mandar o lojista pro checkout hospedado do Asaas (visual fora do
-    nosso controle, e um link que continua "válido" no nosso banco
-    mesmo depois da fatura ser cancelada aqui, ver histórico do bug),
-    buscamos o QR Code/copia-e-cola direto da API na hora e mostramos
-    aqui, com polling pra detectar a confirmação sem o lojista precisar
-    fazer nada além de esperar."""
+    """Tela de pagamento embutida no próprio painel — mostra o checkout
+    hospedado do Asaas (Pix/boleto/cartão, conforme a forma de cobrança
+    configurada) num iframe, com polling pra detectar a confirmação sem
+    o lojista precisar fazer nada além de esperar. Não gera nada por
+    conta própria (nem QR Code, nem chamada à API do Asaas aqui) — só
+    reaproveita o `payment_link_url` já salvo quando o Super Admin gerou
+    a cobrança, com um link "abrir em nova aba" sempre visível caso o
+    provedor recuse ser exibido em iframe (proteção comum contra
+    clickjacking em páginas de pagamento)."""
     tenant = get_current_tenant()
     service = AdminBillingService()
     invoice = service.get_invoice_or_404(invoice_id)
@@ -338,27 +340,17 @@ def settings_subscription_invoice_pay(invoice_id):
         flash("Esta fatura não está mais disponível para pagamento.", "warning")
         return redirect(url_for("lojista.settings_subscription_invoice_detail", invoice_id=invoice.id))
 
-    pix = None
-    pix_error = None
-    try:
-        pix = service.get_invoice_pix_qr_code(invoice)
-    except BillingError as exc:
-        pix_error = str(exc)
-
-    return render_template(
-        "lojista/settings/invoice_pay.html", tenant=tenant, invoice=invoice, pix=pix, pix_error=pix_error,
-    )
+    return render_template("lojista/settings/invoice_pay.html", tenant=tenant, invoice=invoice)
 
 
 @lojista_bp.route("/configuracoes/assinatura/faturas/<int:invoice_id>/pagar/status")
 @lojista_required
 def settings_subscription_invoice_pay_status(invoice_id):
     """Fragmento reaproveitado pelo polling HTMX da tela de pagamento
-    Pix (ver invoice_pay.html, hx-trigger="every 4s") — só relê o
-    status da fatura no NOSSO banco (atualizado pelo webhook do Asaas
-    em app/controllers/webhooks_controller.py), sem chamar a API do
-    Asaas de novo a cada poll: o QR Code/copia-e-cola não mudam
-    enquanto a fatura está pendente, só o status importa aqui."""
+    (ver invoice_pay.html, hx-trigger="every 4s") — só relê o status da
+    fatura no NOSSO banco (atualizado pelo webhook do Asaas em
+    app/controllers/webhooks_controller.py), sem chamar a API do Asaas
+    de novo a cada poll."""
     tenant = get_current_tenant()
     service = AdminBillingService()
     invoice = service.get_invoice_or_404(invoice_id)

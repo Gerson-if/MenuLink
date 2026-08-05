@@ -144,19 +144,6 @@ class AsaasGateway(PaymentGateway):
         data = self._request("GET", f"/payments/{charge_id}")
         return {"id": data.get("id"), "status": data.get("status")}
 
-    def get_pix_qr_code(self, charge_id: str) -> dict:
-        # GET /payments/{id}/pixQrCode (ver docs.asaas.com/reference/
-        # obter-qr-code-para-pagamentos-via-pix) — só funciona para uma
-        # cobrança com billingType PIX (ou UNDEFINED, que aceita Pix
-        # entre outras formas); para BOLETO/CREDIT_CARD o Asaas recusa,
-        # e o chamador deve usar o payment_url (checkout hospedado) em
-        # vez desta tela embutida.
-        data = self._request("GET", f"/payments/{charge_id}/pixQrCode")
-        return {
-            "encoded_image": data.get("encodedImage"),
-            "payload": data.get("payload"),
-            "expiration_date": data.get("expirationDate"),
-        }
 
     def ping(self) -> None:
         # /myAccount é um endpoint leve de leitura só pra confirmar que

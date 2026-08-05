@@ -33,14 +33,6 @@ class PaymentGateway(ABC):
         """Consulta o status atual de uma cobrança no gateway."""
 
     @abstractmethod
-    def get_pix_qr_code(self, charge_id: str) -> dict:
-        """Recupera o QR Code Pix (imagem + copia-e-cola) de uma cobrança
-        já criada, para exibir o pagamento embutido no próprio painel do
-        lojista em vez de redirecionar para o checkout hospedado do
-        gateway. Retorna pelo menos `encoded_image` (PNG em base64) e
-        `payload` (código copia-e-cola)."""
-
-    @abstractmethod
     def ping(self) -> None:
         """
         Faz uma chamada leve e somente-leitura ao gateway só para
