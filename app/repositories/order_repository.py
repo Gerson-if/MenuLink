@@ -17,6 +17,9 @@ class OrderRepository(TenantScopedRepository[Order]):
     def list_ordered(self):
         return self._base_query().order_by(Order.created_at.desc()).all()
 
+    def count_by_status(self, status: str) -> int:
+        return self._base_query().filter(Order.status == status).count()
+
     def paginated(
         self, page: int, per_page: int = 12, status: str | None = None, statuses: list | None = None,
         date_from=None, date_to=None,

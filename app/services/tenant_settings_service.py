@@ -236,7 +236,7 @@ class TenantSettingsService:
 
     def update_menu_settings(
         self, *, slug: str, pickup_enabled: bool, delivery_enabled: bool, show_price_from_label: bool = True,
-        notes_placeholder: str | None = None,
+        notes_placeholder: str | None = None, stale_order_alert_minutes: int = 20,
     ):
         if slug != self.tenant.slug:
             existing = self.repo.get_by_slug(slug)
@@ -250,6 +250,7 @@ class TenantSettingsService:
         self.tenant.pickup_enabled = pickup_enabled
         self.tenant.delivery_enabled = delivery_enabled
         self.tenant.show_price_from_label = show_price_from_label
+        self.tenant.stale_order_alert_minutes = stale_order_alert_minutes
 
         # Mesmo padrão de merge de update_appearance() — theme_settings é
         # um JSON livre compartilhado, não sobrescrevemos as outras chaves

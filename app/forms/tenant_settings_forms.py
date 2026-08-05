@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileAllowed, FileField
-from wtforms import BooleanField, DecimalField, FormField, SelectField, StringField, SubmitField
+from wtforms import BooleanField, DecimalField, FormField, IntegerField, SelectField, StringField, SubmitField
 from wtforms import Form as NoCsrfForm
 from wtforms.validators import DataRequired, Length, Optional, NumberRange, Regexp, ValidationError
 
@@ -61,6 +61,11 @@ class MenuSettingsForm(FlaskForm):
     notes_placeholder = StringField(
         "Texto de exemplo no campo de observações do checkout",
         validators=[Optional(), Length(max=150)],
+    )
+    stale_order_alert_minutes = IntegerField(
+        "Avisar pedido parado após quantos minutos no mesmo status",
+        validators=[DataRequired(), NumberRange(min=1, max=240)],
+        default=20,
     )
     submit = SubmitField("Salvar")
 

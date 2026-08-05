@@ -34,6 +34,19 @@
           <div class="upload-meta">Aparece como dica no campo de observações do checkout do cliente. Deixe em branco para usar o texto padrão.</div>
         </div>
 
+        <div class="mb-4">
+          {{ form.stale_order_alert_minutes.label(class="form-label small fw-semibold") }}
+          <div class="input-group" style="max-width: 220px;">
+            {{ form.stale_order_alert_minutes(class="form-control" + (" border-danger" if form.stale_order_alert_minutes.errors else ""), min=1, max=240) }}
+            <span class="input-group-text small">minutos</span>
+          </div>
+          {% for error in form.stale_order_alert_minutes.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+          <div class="upload-meta">
+            Pedidos ativos (recebido, confirmado, em preparo...) ganham destaque amarelo no painel após esse
+            tempo parados no mesmo status, e vermelho após o dobro disso — pra nenhum pedido ser esquecido.
+          </div>
+        </div>
+
         {{ form.submit(class="btn btn-chili") }}
       </form>
     </div>

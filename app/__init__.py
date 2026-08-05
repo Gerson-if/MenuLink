@@ -459,6 +459,23 @@ def _register_template_filters(app: Flask) -> None:
 
         return len(ChatService.tenant_ids_with_unread_messages_for_admin())
 
+    @app.template_global("lojista_pending_orders_count")
+    def lojista_pending_orders_count() -> int:
+        """Selo de "Novos Pedidos" na sidebar/tab bar do lojista (ver
+        layouts/lojista_panel.html) — mesmo padrão de
+        lojista_unread_chat_count acima. O JS de polling
+        (comanda.js:initNewOrdersAlert) também consulta esse número via
+        /painel/pedidos/novos/contagem pra manter o selo e o som
+        atualizados sem precisar recarregar a página."""
+        from app.utils.tenant_context import get_current_tenant
+
+        tenant = get_current_tenant()
+        if tenant is None:
+            return 0
+        from app.repositories.order_repository import OrderRepository
+
+        return OrderRepository(tenant.id).count_by_status("pending")
+
     @app.template_global("admin_new_feedback_count")
     def admin_new_feedback_count() -> int:
         """Selo de sugestões/reportes ainda não tratados na sidebar do

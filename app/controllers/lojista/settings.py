@@ -183,6 +183,7 @@ def settings_menu():
                 delivery_enabled=form.delivery_enabled.data,
                 show_price_from_label=form.show_price_from_label.data,
                 notes_placeholder=form.notes_placeholder.data,
+                stale_order_alert_minutes=form.stale_order_alert_minutes.data,
             )
         except TenantSettingsError as exc:
             flash(str(exc), "danger")

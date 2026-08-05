@@ -579,3 +579,80 @@ initPageChrome();
     }, 60);
   });
 })();
+
+/*
+ * Alerta de pedido novo (som + selo na sidebar/barra inferior, ver
+ * layouts/lojista_panel.html) — roda em TODA página do painel do
+ * lojista, não só na tela de Pedidos, pra avisar mesmo quem está
+ * cadastrando produto ou olhando relatórios quando um pedido novo
+ * chega. Consulta só a contagem (não HTMX/hx-boost) via
+ * /painel/pedidos/novos/contagem a cada 15s.
+ *
+ * De propósito FORA de initPageChrome: aquela função é reamarrada a
+ * cada navegação boosted (o <body> inteiro é trocado), então um
+ * setInterval criado lá dentro empilharia um poll novo por clique de
+ * menu sem nunca limpar os anteriores. Aqui o setInterval é criado uma
+ * única vez (guardado em window.__comandaNewOrdersAlertStarted) e roda
+ * pro resto da sessão, só relendo os elementos do selo pelo id a cada
+ * tick — eles sempre existem de novo depois de qualquer swap, por
+ * fazerem parte do <body> inteiro trocado pelo hx-boost.
+ */
+function playNewOrderChime() {
+  try {
+    var AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    var ctx = new AudioCtx();
+    [880, 1175].forEach(function (freq, i) {
+      var start = ctx.currentTime + i * 0.18;
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.25, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.16);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.2);
+    });
+    setTimeout(function () { ctx.close(); }, 500);
+  } catch (e) {
+    // Autoplay bloqueado (navegador exige interação antes de tocar
+    // áudio) ou Web Audio indisponível — o selo visual continua
+    // funcionando normalmente, então falha aqui é só "sem som".
+  }
+}
+
+function updateNewOrdersBadges(count) {
+  ['new-orders-badge', 'new-orders-badge-mobile'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = count;
+    el.style.display = count > 0 ? '' : 'none';
+  });
+}
+
+function initNewOrdersAlert() {
+  var link = document.getElementById('nav-new-orders-link');
+  if (!link) return; // página fora do painel do lojista (login, cadastro público, etc.)
+  if (window.__comandaNewOrdersAlertStarted) return;
+  window.__comandaNewOrdersAlertStarted = true;
+
+  var countUrl = link.getAttribute('data-new-orders-count-url');
+  var badge = document.getElementById('new-orders-badge');
+  var lastCount = badge ? parseInt(badge.textContent, 10) || 0 : 0;
+
+  setInterval(function () {
+    fetch(countUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(function (resp) { return resp.ok ? resp.json() : null; })
+      .then(function (data) {
+        if (!data) return;
+        updateNewOrdersBadges(data.count);
+        if (data.count > lastCount) playNewOrderChime();
+        lastCount = data.count;
+      })
+      .catch(function () {});
+  }, 15000);
+}
+
+initNewOrdersAlert();

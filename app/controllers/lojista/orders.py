@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 
-from flask import flash, redirect, render_template, request, url_for
+from flask import flash, jsonify, redirect, render_template, request, url_for
 
 from app.services.order_service import OrderService, OrderValidationError
 from app.utils.decorators import lojista_required
@@ -94,6 +94,22 @@ def orders_list():
         status_labels=STATUS_LABELS,
         all_statuses=ACTIVE_STATUSES,
     )
+
+
+@lojista_bp.route("/pedidos/novos/contagem")
+@lojista_required
+def orders_pending_count():
+    """Consultada via polling JS em toda página do painel (ver
+    layouts/lojista_panel.html) pra tocar um som e atualizar o badge da
+    sidebar assim que um pedido novo chega — sem precisar HTMX/recarregar
+    a tela inteira a cada poll, já que isso roda em TODA página, não só
+    em /pedidos. Só a contagem, de propósito: o JS decide se toca som
+    comparando com o valor anterior, então o servidor não precisa saber
+    "o que já foi visto"."""
+    tenant = get_current_tenant()
+    service = OrderService(tenant)
+    count = service.order_repo.count_by_status("pending")
+    return jsonify({"count": count})
 
 
 @lojista_bp.route("/pedidos/historico")

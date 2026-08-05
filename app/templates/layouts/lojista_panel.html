@@ -91,8 +91,10 @@
       <a href="{{ url_for('lojista.dashboard') }}" class="nav-link nav-mobile-hide {{ 'active' if request.endpoint == 'lojista.dashboard' }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Dashboard">
         <i class="bi bi-speedometer2"></i><span class="nav-label">Dashboard</span>
       </a>
-      <a href="{{ url_for('lojista.orders_list', status='pending') }}" class="nav-link {{ 'active' if request.endpoint == 'lojista.orders_list' and request.args.get('status') == 'pending' }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Novos Pedidos">
+      {% set pending_orders = lojista_pending_orders_count() %}
+      <a href="{{ url_for('lojista.orders_list', status='pending') }}" id="nav-new-orders-link" data-new-orders-count-url="{{ url_for('lojista.orders_pending_count') }}" class="nav-link {{ 'active' if request.endpoint == 'lojista.orders_list' and request.args.get('status') == 'pending' }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Novos Pedidos">
         <i class="bi bi-bell"></i><span class="nav-label">Novos Pedidos</span>
+        <span id="new-orders-badge" class="status-badge status-blocked ms-1" {% if not pending_orders %}style="display: none;"{% endif %}>{{ pending_orders }}</span>
       </a>
       {% set order_is_history = request.endpoint == 'lojista.orders_detail' and order is defined and order and order.status.value in ('completed', 'canceled') %}
       <a href="{{ url_for('lojista.orders_list') }}" class="nav-link nav-mobile-hide {{ 'active' if (request.endpoint == 'lojista.orders_list' and request.args.get('status') != 'pending') or (request.endpoint == 'lojista.orders_detail' and not order_is_history) }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Pedidos">
@@ -238,8 +240,9 @@
     <a href="{{ url_for('lojista.dashboard') }}" class="bottom-tab-bar-item {{ 'active' if request.endpoint == 'lojista.dashboard' }}">
       <i class="bi bi-speedometer2"></i>Início
     </a>
-    <a href="{{ url_for('lojista.orders_list') }}" class="bottom-tab-bar-item {{ 'active' if request.endpoint and request.endpoint.startswith('lojista.orders') }}">
+    <a href="{{ url_for('lojista.orders_list') }}" id="bottom-tab-new-orders-link" class="bottom-tab-bar-item {{ 'active' if request.endpoint and request.endpoint.startswith('lojista.orders') }}">
       <i class="bi bi-receipt"></i>Pedidos
+      <span id="new-orders-badge-mobile" class="status-badge status-blocked" {% if not pending_orders %}style="display: none;"{% endif %}>{{ pending_orders }}</span>
     </a>
     <a href="{{ url_for('lojista.products_list') }}" class="bottom-tab-bar-item {{ 'active' if request.endpoint and (request.endpoint.startswith('lojista.products') or request.endpoint.startswith('lojista.categories') or request.endpoint.startswith('lojista.images') or request.endpoint.startswith('lojista.complement')) }}">
       <i class="bi bi-egg-fried"></i>Cardápio

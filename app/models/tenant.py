@@ -168,6 +168,14 @@ class Tenant(db.Model, TimestampMixin):
     min_order_cents = Column(Integer, nullable=True)
     pickup_enabled = Column(Boolean, nullable=False, default=True)
 
+    # Depois de quantos minutos parado no MESMO status um pedido ativo
+    # ganha destaque visual no painel (ver templates/lojista/orders/
+    # _order_card.html) — amarelo ao passar deste valor, vermelho ao
+    # dobro dele. Existe pra um pedido não ficar esquecido "em preparo"
+    # indefinidamente; configurável por loja em Configurações > Dados
+    # da loja, já que o ritmo de cada cozinha é diferente.
+    stale_order_alert_minutes = Column(Integer, nullable=False, default=20, server_default="20")
+
     # Mostra "a partir de R$ X" no card de produtos com variação/complemento
     # (preço mínimo, não o preço final). Alguns lojistas preferem esconder
     # esse texto e deixar só o preço base.
