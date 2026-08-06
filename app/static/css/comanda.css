@@ -260,7 +260,14 @@ body {
 /* Tabela (Bootstrap) no tema escuro — sem isso, .table cai no fundo
    branco padrão do Bootstrap, ilegível sobre .panel/.charcoal. Usado na
    tabela de clientes e na tabela de complementos do produto. */
-.table { --bs-table-bg: transparent; --bs-table-color: var(--card-text); --bs-table-striped-bg: rgba(255,255,255,.03); --bs-table-hover-bg: rgba(255,255,255,.05); --bs-table-border-color: var(--card-border); color: var(--card-text); }
+/* --bs-table-hover-color: o Bootstrap tem um valor PRÓPRIO pra isso
+   (var(--bs-emphasis-color), que sem o data-bs-theme dele fica travado
+   em preto) — sem sobrescrever aqui, passar o mouse numa linha de
+   tabela trocava o texto pra preto sozinho, ilegível em qualquer tema
+   escuro (a linha de fundo continuava escura, só bem de leve clareada
+   pelo --bs-table-hover-bg abaixo). Mesmo texto var(--card-text) de
+   sempre, só que também no hover. */
+.table { --bs-table-bg: transparent; --bs-table-color: var(--card-text); --bs-table-hover-color: var(--card-text); --bs-table-striped-bg: rgba(255,255,255,.03); --bs-table-hover-bg: rgba(255,255,255,.05); --bs-table-border-color: var(--card-border); color: var(--card-text); }
 .table > thead { border-bottom-color: var(--card-border); }
 .brand-mark {
   width: 44px; height: 44px; border-radius: 10px; background: var(--accent);
@@ -406,7 +413,15 @@ html[data-theme="light"] .status-ready_for_pickup { color: #1B5E20; }
 .status-active { background: var(--sage); }
 .status-trial { background: var(--accent); }
 .status-blocked { background: #C93522; }
-.status-suspended { background: var(--muted-text); color: var(--ink); }
+/* Fundo/texto FIXOS (não var(--muted-text)/var(--ink)) de propósito —
+   igual às outras variantes de .status-badge logo acima (--sage,
+   --accent, #C93522: nenhuma delas muda com o modo claro). O par
+   antigo (fundo var(--muted-text), que inverte, com texto var(--ink),
+   que nunca muda) tinha ótimo contraste no modo escuro só por
+   coincidência — em modo claro --muted-text vira um tom médio bem
+   perto do próprio --ink (que continua quase-preto), ficando
+   "encardido"/baixo contraste em vez de nitidamente legível. */
+.status-suspended { background: #6B7280; color: #fff; }
 
 /* ---------- Product / banner cards ---------- */
 /* Layout horizontal (foto à esquerda, infos à direita) inspirado no
@@ -421,7 +436,6 @@ html[data-theme="light"] .status-ready_for_pickup { color: #1B5E20; }
   transition: transform .2s, border-color .2s;
 }
 .product-card:hover { transform: translateY(-2px); border-color: var(--accent); }
-.product-card-clickable { cursor: pointer; }
 .product-card .thumb {
   width: 96px; height: 96px; flex-shrink: 0; border-radius: 12px; overflow: hidden;
   background: #3A3127; border: 1px solid var(--card-border);
@@ -705,6 +719,13 @@ html[data-theme="light"] .upload-error { color: #B3261E; }
 .modal-body { padding: 24px; }
 .modal-title { color: var(--paper); font-family: 'Archivo Black', sans-serif; }
 .btn-close { filter: invert(1) brightness(0.9); opacity: .6; }
+/* O X do Bootstrap já nasce preto (pensado pra fundo claro) — o invert()
+   acima vira ele branco pro fundo ESCURO de .modal-content (var(--card-bg),
+   que inverte com o modo claro). Sem desligar esse invert() de volta em
+   modo claro, o X ficava permanentemente branco mesmo com o fundo do
+   modal virando claro — quase invisível. `filter: none` restaura o X
+   preto original do Bootstrap, correto pra fundo claro. */
+html[data-theme="light"] .btn-close { filter: none; opacity: .6; }
 
 /* ---------- Alertas informativos (Bootstrap .alert-*) ---------- */
 /* Sem isso, o Bootstrap padrão usa fundo claro/branco com texto escuro
@@ -835,12 +856,20 @@ html[data-theme="light"] .toast-flash-info { color: #1A2B8F; }
    — cobre a tela inteira assim que o formulário é enviado de verdade,
    pra dar sensação de progresso durante o tempo real de criação da loja
    (tenant + usuário + conteúdo de exemplo + mensagem de boas-vindas). */
+/* 88% opacidade + blur(4px), com TUDO (fundo escuro e blur juntos)
+   entrando junto com o opacity num transition de só .2s — dava tempo
+   de "ver o formulário passando por baixo" no meio da entrada, e nem
+   em repouso (100% visível) escondia bem os campos preenchidos atrás,
+   ficando com cara de "página travada" em vez de uma transição de
+   verdade pra fora do formulário. Opacidade mais alta (96%) + blur bem
+   mais forte (16px) escondem de verdade o conteúdo atrás, e o
+   transition mais longo (.35s) suaviza a entrada. */
 .register-loading-overlay {
   position: fixed; inset: 0; z-index: 2000;
   display: flex; align-items: center; justify-content: center;
-  background: color-mix(in srgb, var(--ink) 88%, transparent);
-  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
-  opacity: 0; pointer-events: none; transition: opacity .2s ease;
+  background: color-mix(in srgb, var(--ink) 96%, transparent);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  opacity: 0; pointer-events: none; transition: opacity .35s ease;
 }
 .register-loading-overlay.is-visible { opacity: 1; pointer-events: all; }
 .register-loading-box { text-align: center; color: #fff; padding: 0 24px; }
@@ -1100,6 +1129,10 @@ html[data-theme="light"] .toast-flash-info { color: #1A2B8F; }
 .drawer-wide { --bs-offcanvas-width: min(640px, 95vw); background: var(--charcoal); color: var(--paper); }
 .drawer-wide .offcanvas-header { border-bottom: 1px solid var(--card-border); }
 .drawer-wide .btn-close { filter: invert(1) brightness(2); }
+/* Mesmo problema do .btn-close base (ver acima): --charcoal inverte com
+   o modo claro, mas nada desligava o invert() do X — ficava branco
+   sobre o fundo agora claro do drawer. */
+html[data-theme="light"] .drawer-wide .btn-close { filter: none; }
 
 /* Barra de ações (Salvar/Excluir) no final do drawer de produto —
    depois de fotos e complementos, não junto ao form de dados, pra
@@ -1157,6 +1190,11 @@ html[data-theme="light"] .toast-flash-info { color: #1A2B8F; }
 .drawer-narrow { --bs-offcanvas-width: min(560px, 95vw); background: var(--charcoal); color: var(--paper); }
 .drawer-narrow .offcanvas-header { border-bottom: 1px solid var(--card-border); }
 .drawer-narrow .btn-close { filter: invert(1) brightness(2); }
+/* Mesmo problema do .btn-close base (ver acima, "Modais") — usado em 9
+   drawers diferentes (lojistas, planos, categorias, banners, aparência
+   do lojista/Super Admin etc.), todos com --charcoal invertendo em modo
+   claro sem desligar o invert() do X. */
+html[data-theme="light"] .drawer-narrow .btn-close { filter: none; }
 
 /* No celular, os 95vw acima ainda deixavam uma fresta da página por
    trás visível na lateral — dava uma sensação de "painel flutuante"

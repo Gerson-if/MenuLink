@@ -11,7 +11,16 @@
   .hero-section .container { position: relative; z-index: 2; }
   .hero-video-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
   .hero-video-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,8,6,.6), rgba(10,8,6,.85)); z-index: 1; }
-  .navbar-custom { background: color-mix(in srgb, var(--ink) 90%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--card-border); }
+  {# `color: var(--sidebar-text)` aqui de propósito — var(--ink) acima
+     NUNCA muda com o modo claro (é o mesmo token "chrome fixo" usado na
+     sidebar do painel, ver comanda.css), mas os filhos desta navbar
+     (wordmark "MenuLink", ícone do menu hambúrguer, botão "Entrar no
+     Painel") usavam var(--card-text)/var(--paper) — variáveis que
+     INVERTEM em modo claro. Resultado: em modo claro, texto/ícone
+     escuros nascendo em cima de um fundo que continua escuro,
+     praticamente invisíveis. var(--sidebar-text) é o par certo de
+     var(--ink): também nunca muda com o modo claro. #}
+  .navbar-custom { background: color-mix(in srgb, var(--ink) 90%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--card-border); color: var(--sidebar-text); }
   .feature-panel { transition: transform .25s ease, box-shadow .25s ease; }
   .feature-panel:hover { transform: translateY(-4px); box-shadow: 0 12px 28px rgba(0,0,0,0.2); }
   .plan-card { border: 1px solid var(--card-border); transition: transform .2s, border-color .2s; }
@@ -33,7 +42,7 @@
   .landing-navbar-inner { padding-left: 24px; padding-right: 24px; }
   @media (min-width: 768px) { .landing-navbar-inner { padding-left: 40px; padding-right: 40px; } }
 
-  .landing-nav-toggle { background: transparent; border: 0; padding: 8px; display: inline-flex; align-items: center; justify-content: center; color: var(--card-text, #fff); cursor: pointer; }
+  .landing-nav-toggle { background: transparent; border: 0; padding: 8px; display: inline-flex; align-items: center; justify-content: center; color: var(--sidebar-text); cursor: pointer; }
   .landing-nav-toggle .hamburger-icon span { background: currentColor; }
 
   /* Botão "vidro fosco" da navbar — pill translúcida com blur, mesmo
@@ -44,14 +53,14 @@
      continua correto nos 4 temas do sistema, não só no "Picante". */
   .btn-navbar-glass {
     display: inline-flex; align-items: center; gap: 8px;
-    background: color-mix(in srgb, var(--card-text) 10%, transparent);
+    background: color-mix(in srgb, var(--sidebar-text) 10%, transparent);
     backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-    border: 1px solid color-mix(in srgb, var(--card-text) 18%, transparent);
-    color: var(--card-text); padding: 9px 22px; border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--sidebar-text) 18%, transparent);
+    color: var(--sidebar-text); padding: 9px 22px; border-radius: 999px;
     font-weight: 600; font-size: .92rem; text-decoration: none;
     transition: background .2s ease, border-color .2s ease, transform .2s ease;
   }
-  .btn-navbar-glass:hover { color: var(--card-text); background: color-mix(in srgb, var(--card-text) 18%, transparent); transform: translateY(-2px); }
+  .btn-navbar-glass:hover { color: var(--sidebar-text); background: color-mix(in srgb, var(--sidebar-text) 18%, transparent); transform: translateY(-2px); }
 
   /* Gaveta em "vidro fosco" (fundo translúcido + blur) em vez de sólida
      — pedido de referência visual do Super Admin. Continua usando
@@ -69,6 +78,10 @@
   #landingDrawer .offcanvas-header { border-bottom: 1px solid var(--card-border); padding: 16px 18px; }
   #landingDrawer .offcanvas-body { padding: 18px; }
   #landingDrawer .btn-close { filter: invert(1) brightness(2); }
+  /* Mesmo bug do .btn-close nos drawers do painel (ver comanda.css) —
+     .landing-drawer usa var(--charcoal), que inverte em modo claro, sem
+     desligar o invert() do X de volta. */
+  html[data-theme="light"] #landingDrawer .btn-close { filter: none; }
   .landing-drawer-link {
     display: block; padding: 12px 6px; color: var(--card-text); text-decoration: none;
     font-weight: 600; font-size: 1.1rem; border-radius: 8px; opacity: .88;

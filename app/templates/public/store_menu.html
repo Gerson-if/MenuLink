@@ -248,6 +248,11 @@
   .menu-modal .modal-header, .menu-modal .modal-footer { border-color: var(--line); }
   .menu-modal .modal-title { font-family: var(--font-display); font-weight: 700; }
   .menu-modal .btn-close { filter: invert(1) brightness(2); }
+  /* --bg-soft inverte em modo claro (linha 33 acima) mas nada desligava
+     o invert() do X de fechar — ficava branco sobre o fundo agora claro
+     do carrinho/modal de produto/checkout. */
+  [data-theme="light"] .offcanvas .btn-close,
+  [data-theme="light"] .menu-modal .btn-close { filter: none; }
 
   /* ===== TICKET (carrinho) ===== */
   .ticket { background: var(--paper); color: #2A2116; padding: 20px 18px; border-radius: 6px; font-family: var(--font-mono); font-size: .85rem; }
