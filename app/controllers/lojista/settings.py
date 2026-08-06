@@ -208,17 +208,37 @@ def settings_menu_qrcode():
     depender de nenhuma API externa — evita que a funcionalidade quebre
     se um serviço de terceiros estiver fora do ar ou bloqueado pela
     rede onde a aplicação está hospedada.
+
+    Calibrado pra impressão, não só pra tela: `box_size=12` (módulos
+    maiores = menos serrilhado ao ampliar/imprimir, ex. num cardápio de
+    mesa) e `dpi=(300, 300)` gravado no PNG — sem essa informação
+    embutida, programas que a respeitam (Word, Canva, a maioria das
+    gráficas) assumem 72dpi por padrão e imprimem o código do tamanho
+    errado (bem maior que o esperado na tela, ficando borrado); com
+    300dpi correto, o mesmo arquivo já sai do tamanho físico certo.
+    `ERROR_CORRECT_H` (~30% de tolerância a dano, o teto da
+    especificação) em vez do padrão M (~15%): amassado/dobra/sujeira de
+    impressão física tolera bem mais erro do que um código só exibido
+    em tela — e é o mesmo nível que uma eventual logo sobreposta no
+    centro (ver personalização premium, ainda não implementada) vai
+    precisar pra continuar lendo com um pedaço do código "tampado" pela
+    imagem.
     """
     import io
 
     import qrcode
+    from qrcode.constants import ERROR_CORRECT_H
 
     tenant = get_current_tenant()
     cardapio_url = url_for("public.store_home", slug=tenant.slug, _external=True)
 
-    img = qrcode.make(cardapio_url, box_size=8, border=2)
+    qr = qrcode.QRCode(error_correction=ERROR_CORRECT_H, box_size=12, border=4)
+    qr.add_data(cardapio_url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+
     buf = io.BytesIO()
-    img.save(buf, format="PNG")
+    img.save(buf, format="PNG", dpi=(300, 300))
     buf.seek(0)
 
     return Response(buf.getvalue(), mimetype="image/png")
