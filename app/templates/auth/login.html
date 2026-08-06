@@ -53,12 +53,12 @@
      Reposicionado pra depois do botão "Entrar", como um link isolado e
      discreto — longe da área onde o polegar realmente toca durante o
      login, sem brigar de espaço com mais nada por perto. #}
-  <p class="text-center small mt-3 mb-0">
+  <p class="text-center small auth-footer-link mt-3 mb-0">
     <a href="{{ url_for('auth.forgot_password') }}" class="link-chili">Esqueci a senha</a>
   </p>
 </form>
 
-<p class="text-center small mt-3 mb-0 text-muted-custom">
+<p class="text-center small auth-footer-link mt-3 mb-0 text-muted-custom">
   Ainda não tem uma conta? <a href="{{ url_for('auth.register') }}" class="link-chili">Criar minha loja</a>
 </p>
 {% endblock %}

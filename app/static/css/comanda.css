@@ -806,6 +806,17 @@ html[data-theme="light"] .toast-flash-info { color: #1A2B8F; }
 }
 .auth-shell-with-video .auth-tabs { background: color-mix(in srgb, var(--ink) 40%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
 .auth-panel { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: calc(var(--radius) + 4px); padding: 40px 30px; width: 100%; max-width: 440px; box-shadow: 0 20px 50px rgba(0,0,0,0.35); animation: authPanelIn .5s ease both; }
+/* Links de rodapé do login/cadastro/recuperar senha ("Esqueci a senha",
+   "Criar minha loja", "Voltar ao login") — no celular, o tamanho padrão
+   do Bootstrap .small (.875rem) ficava pequeno demais pra tocar com
+   confiança. Aumento discreto só no mobile (não no desktop, onde já
+   estava confortável) e uma área de toque um pouco maior — sem virar
+   um botão grande, pra não competir visualmente com a ação principal
+   (Entrar/Enviar link), só um texto secundário mais fácil de acertar. */
+@media (max-width: 575.98px) {
+  .auth-footer-link { font-size: .92rem; }
+  .auth-footer-link a { display: inline-block; padding: 4px 2px; }
+}
 .auth-back-link { display: inline-flex; align-items: center; gap: 6px; color: var(--muted-text); text-decoration: none; font-size: .85rem; }
 .auth-back-link:hover { color: var(--card-text); }
 /* As abas Entrar/Criar Loja são NAVEGAÇÃO (trocam de tela), não uma
@@ -1113,9 +1124,29 @@ html[data-theme="light"] .toast-flash-info { color: #1A2B8F; }
 .drawer-action-primary:hover, .drawer-action-primary:focus-visible { transform: translateY(-1px); box-shadow: 0 10px 26px color-mix(in srgb, var(--accent) 45%, transparent); }
 .drawer-action-danger:hover, .drawer-action-danger:focus-visible { transform: translateY(-1px); }
 @media (min-width: 576px) {
-  .drawer-actions { flex-direction: row; }
-  .drawer-action-primary { flex: 2; }
-  .drawer-action-danger { flex: 1; }
+  /* `flex: 2`/`flex: 1` (removido) tem `flex-basis: 0%` implícito —
+     isso fazia os dois botões crescerem pra preencher a largura
+     INTEIRA do drawer sempre, só proporcionalmente (2:1) em vez de
+     empilhados — ficavam enormes e desproporcionais em telas largas,
+     sobretudo no drawer mais estreito de categoria (.drawer-narrow).
+     `flex: 0 0 auto` volta ao tamanho natural do botão (baseado no
+     texto/padding), com `justify-content: space-between` recriando o
+     layout original lado a lado (ação principal à esquerda, destrutiva
+     à direita — mesma ordem em que aparecem no HTML). */
+  .drawer-actions { flex-direction: row; justify-content: space-between; }
+  /* Só os botões DENTRO de .drawer-actions (o par Salvar+Excluir) —
+     um "Salvar" sozinho fora dela (ex.: categoria em modo de criação,
+     sem botão de excluir ainda) continua largura cheia, que é o
+     desenho certo pra uma única ação primária. */
+  .drawer-actions .drawer-action-primary, .drawer-actions .drawer-action-danger { width: auto; flex: 0 0 auto; }
+  /* O padding/fonte (12px 20px, .95rem) foi calibrado pra ficar bom
+     como botão de largura CHEIA no celular — no desktop, mesmo já sem
+     esticar, esse tamanho ainda competia visualmente com a ação
+     principal da página (ex.: "Entrar"), parecendo grande demais pra
+     uma barra de ações secundária de formulário. Reduzido pra ficar no
+     mesmo porte dos outros botões secundários do painel (ver
+     .btn-outline-secondary, .btn-outline-chili acima: padding 6px 14px). */
+  .drawer-actions .drawer-action-primary, .drawer-actions .drawer-action-danger { padding: 8px 16px; font-size: .85rem; }
 }
 
 /* Drawer estreito, para formulários ainda mais simples (ex.: banner). */
