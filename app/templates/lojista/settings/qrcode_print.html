@@ -25,6 +25,13 @@
     box-shadow: 0 12px 36px rgba(0,0,0,0.22);
     border: 1px solid color-mix(in srgb, {{ text_color }} 12%, transparent);
     print-color-adjust: exact; -webkit-print-color-adjust: exact;
+    /* max-width + margin auto PRÓPRIOS do cartão (não só do
+       .qrcode-print-wrap ao redor) — na impressão o wrap vira 100% da
+       página (ver @media print abaixo), e sem um limite aqui o cartão
+       esticava pra largura inteira da folha física (bem mais larga que
+       uma tela de celular), virando uma barra baixa e esticada em vez
+       de um cartão com proporção de cartaz. */
+    max-width: 380px; margin: 0 auto;
   }
   .qrcode-print-icon {
     width: 56px; height: 56px; margin: 0 auto 14px; border-radius: 50%;
