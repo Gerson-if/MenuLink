@@ -5,12 +5,6 @@
 # Nota: os identificadores técnicos internos usados por este script
 # (nome do serviço systemd, banco de dados, usuário de sistema padrão,
 # diretório sugerido) usam "menulink", já alinhados com a marca atual.
-# Se você tem uma instalação MAIS ANTIGA rodando com os identificadores
-# do nome anterior do projeto ("comanda"), rodar este script de novo
-# NÃO renomeia nada sozinho — um `git pull` não migra serviço systemd,
-# banco de dados nem diretório já em produção. Nesse caso, ou continue
-# usando "comanda" nessa instalação (passe SERVICE_NAME=comanda para
-# deploy/update.sh, por exemplo) ou faça a migração manualmente.
 #
 # O que este script faz:
 #   - instala as dependências de sistema (Python, Nginx, PostgreSQL, ffmpeg

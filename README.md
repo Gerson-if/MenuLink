@@ -628,13 +628,7 @@ domínio, certificado SSL gratuito com renovação automática.
 > `menulink` por padrão — tudo alinhado com a marca. Única exceção de
 > propósito: **arquivos-fonte do código** (`app/static/css/comanda.css`,
 > `comanda.js`) mantêm o nome de código original — são detalhes internos
-> de implementação, invisíveis pra quem usa o sistema. Se você tem uma
-> instalação MAIS ANTIGA já em produção com os identificadores do nome
-> anterior (`comanda`), rodar os scripts de novo não renomeia nada
-> sozinho — um `git pull` não migra serviço systemd, banco de dados nem
-> diretório já existentes; continue usando `comanda` nessa instalação
-> (ex: `SERVICE_NAME=comanda sudo -E bash deploy/update.sh`) ou migre
-> manualmente.
+> de implementação, invisíveis pra quem usa o sistema.
 
 ### Requisitos
 
