@@ -501,6 +501,26 @@ def _register_template_filters(app: Flask) -> None:
 
         return sum(OrderRepository(tenant.id).counts_by_statuses(ACTIVE_STATUSES).values())
 
+    @app.template_global("lojista_pending_invoices_count")
+    def lojista_pending_invoices_count() -> int:
+        """Selo do item "Assinatura" na sidebar do lojista — quantas
+        faturas próprias ainda estão em aberto (pendente ou vencida).
+        Antes o selo só acendia por urgência do PERÍODO DE TESTE
+        (Tenant.trial_status().is_urgent), então um lojista já
+        assinante com fatura nova gerada pelo Super Admin não via
+        nenhum aviso no menu — só descobria abrindo a tela de
+        Assinatura por conta própria (o aviso no chat, via
+        AdminBillingService._send_new_invoice_message, já existia; só
+        faltava o selo do menu)."""
+        from app.utils.tenant_context import get_current_tenant
+
+        tenant = get_current_tenant()
+        if tenant is None:
+            return 0
+        from app.repositories.billing_repository import InvoiceRepository
+
+        return InvoiceRepository().count_open_for_tenant(tenant.id)
+
     @app.template_global("admin_new_feedback_count")
     def admin_new_feedback_count() -> int:
         """Selo de sugestões/reportes ainda não tratados na sidebar do

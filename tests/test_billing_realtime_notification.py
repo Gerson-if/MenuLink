@@ -174,3 +174,44 @@ class TestLojistaBillingPollingFragment:
     def test_requires_login(self, client):
         resp = client.get("/painel/configuracoes/assinatura/fragmento", follow_redirects=False)
         assert resp.status_code in (302, 401, 403)
+
+
+class TestPendingInvoiceNavBadge:
+    """Selo "!" (ou contagem) no item "Assinatura" do menu lateral —
+    antes só acendia por urgência de período de teste; agora também
+    quando o próprio lojista tem fatura em aberto (ver
+    lojista_pending_invoices_count em app/__init__.py)."""
+
+    def test_no_badge_without_open_invoices(self, client, login_as):
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        resp = client.get("/painel/dashboard")
+        html = resp.get_data(as_text=True)
+        assinatura_link = html[html.index('title="Assinatura"'):]
+        assert 'class="status-badge status-blocked ms-1"' not in assinatura_link.split("</a>")[0]
+
+    def test_badge_shows_pending_invoice_count(self, app, client, login_as):
+        with app.app_context():
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            _make_subscription_and_invoice(tenant, status=InvoiceStatus.PENDING)
+
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        resp = client.get("/painel/dashboard")
+        html = resp.get_data(as_text=True)
+        assinatura_block = html[html.index('title="Assinatura"'):]
+        assinatura_block = assinatura_block[: assinatura_block.index("</a>")]
+        assert 'class="status-badge status-blocked ms-1"' in assinatura_block
+        assert ">1<" in assinatura_block
+
+    def test_badge_counts_overdue_invoices_too(self, app, client, login_as):
+        with app.app_context():
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            _make_subscription_and_invoice(tenant, status=InvoiceStatus.OVERDUE)
+            _make_subscription_and_invoice(tenant, status=InvoiceStatus.PENDING)
+            _make_subscription_and_invoice(tenant, status=InvoiceStatus.PAID, paid_at=datetime.now(timezone.utc))
+
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        resp = client.get("/painel/dashboard")
+        html = resp.get_data(as_text=True)
+        assinatura_block = html[html.index('title="Assinatura"'):]
+        assinatura_block = assinatura_block[: assinatura_block.index("</a>")]
+        assert ">2<" in assinatura_block  # OVERDUE + PENDING, não conta a PAGA
