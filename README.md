@@ -621,21 +621,20 @@ virtual, migrations, serviço systemd, Nginx e, se você tiver um
 domínio, certificado SSL gratuito com renovação automática.
 
 > **Nota sobre nomes**: o produto se chama "Menu Link" (marca exibida
-> pro usuário final — navbar, e-mails, PWA etc.), e os identificadores
-> técnicos de infraestrutura que o instalador cria (usuário de sistema,
-> serviço systemd, site do Nginx, banco de dados, diretório sugerido)
-> usam `menulink` por padrão, já alinhados com a marca. Duas exceções
-> de propósito: o **nome do repositório no GitHub** continua
-> `Gerson-if/Comanda` (renomear um repositório é uma decisão à parte,
-> não coberta por este instalador) e **arquivos-fonte do código**
-> (`app/static/css/comanda.css`, `comanda.js`) mantêm o nome de código
-> original — são detalhes internos de implementação, invisíveis pra
-> quem usa o sistema. Se você tem uma instalação MAIS ANTIGA já em
-> produção com os identificadores do nome anterior (`comanda`), rodar
-> os scripts de novo não renomeia nada sozinho — um `git pull` não migra
-> serviço systemd, banco de dados nem diretório já existentes; continue
-> usando `comanda` nessa instalação (ex: `SERVICE_NAME=comanda sudo -E
-> bash deploy/update.sh`) ou migre manualmente.
+> pro usuário final — navbar, e-mails, PWA etc.), o repositório no
+> GitHub é `Gerson-if/MenuLink`, e os identificadores técnicos de
+> infraestrutura que o instalador cria (usuário de sistema, serviço
+> systemd, site do Nginx, banco de dados, diretório sugerido) usam
+> `menulink` por padrão — tudo alinhado com a marca. Única exceção de
+> propósito: **arquivos-fonte do código** (`app/static/css/comanda.css`,
+> `comanda.js`) mantêm o nome de código original — são detalhes internos
+> de implementação, invisíveis pra quem usa o sistema. Se você tem uma
+> instalação MAIS ANTIGA já em produção com os identificadores do nome
+> anterior (`comanda`), rodar os scripts de novo não renomeia nada
+> sozinho — um `git pull` não migra serviço systemd, banco de dados nem
+> diretório já existentes; continue usando `comanda` nessa instalação
+> (ex: `SERVICE_NAME=comanda sudo -E bash deploy/update.sh`) ou migre
+> manualmente.
 
 ### Requisitos
 
@@ -644,7 +643,7 @@ domínio, certificado SSL gratuito com renovação automática.
 - O código do projeto já clonado no servidor, por exemplo em
   `/opt/menulink`:
   ```bash
-  sudo git clone https://github.com/Gerson-if/Comanda.git /opt/menulink
+  sudo git clone https://github.com/Gerson-if/MenuLink.git /opt/menulink
   cd /opt/menulink
   ```
 - Se for usar um domínio com SSL, aponte o DNS dele (registro `A`) para
