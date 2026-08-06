@@ -330,6 +330,34 @@ class TenantSettingsService:
         db.session.commit()
         return self.tenant
 
+    def update_qr_card_settings(self, *, show_business_name: bool, bg_color: str | None, icon: str | None):
+        """Salva a personalização do cartaz de impressão do QR Code
+        (nome do negócio, cor de fundo, ícone) — bônus liberado por
+        plano (ver Plan.allow_qr_customization, checado pelo chamador
+        ANTES de vir até aqui: este método só grava, não decide se o
+        lojista pode usar o recurso).
+
+        `icon` é validado contra a mesma allowlist fechada usada no
+        formulário (QR_CARD_ICON_KEYS) — mesmo o form já validando,
+        confere de novo aqui porque este valor acaba interpolado no
+        template do cartaz (ver settings_menu_qrcode_card) como nome de
+        classe CSS do Bootstrap Icons; nunca confiar só na validação do
+        form pra um valor que vira atributo HTML.
+        """
+        from app.forms.tenant_settings_forms import QR_CARD_ICON_KEYS
+        from app.utils.colors import normalize_hex
+
+        settings = dict(self.tenant.theme_settings or {})
+        card = {
+            "show_business_name": bool(show_business_name),
+            "bg_color": normalize_hex(bg_color) or "#FFFFFF",
+            "icon": icon if icon in QR_CARD_ICON_KEYS else "none",
+        }
+        settings["qr_card"] = card
+        self.tenant.theme_settings = settings
+        db.session.commit()
+        return self.tenant
+
     def update_opening_hours(self, days: dict) -> None:
         """
         `days`: dict {chave_do_dia: {"closed": bool, "open": str, "close": str}}

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Cartaz do QR Code — {{ tenant.name }}{% endblock %}
+{% block body_class %}qrcode-print-body{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* Fora da impressão: fundo neutro e cartaz centralizado na tela,
+     pra pré-visualizar antes de mandar imprimir. Na impressão
+     (@media print), some tudo que não é o cartaz em si — sem isso o
+     header/toast/menu apareceriam na folha impressa junto com o
+     conteúdo que interessa. */
+  .qrcode-print-body { background: #ECE7DA; min-height: 100vh; }
+  .qrcode-print-wrap { max-width: 480px; margin: 40px auto; padding: 0 16px; }
+  .qrcode-print-actions { text-align: center; margin-bottom: 20px; }
+  .qrcode-print-card {
+    background: {{ bg_color }}; border-radius: 20px; padding: 40px 28px; text-align: center;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18); color: #221C16;
+  }
+  .qrcode-print-icon { font-size: 2.5rem; margin-bottom: 8px; }
+  .qrcode-print-name { font-family: 'Archivo Black'; font-size: 1.4rem; margin-bottom: 20px; word-break: break-word; }
+  .qrcode-print-img { width: 260px; max-width: 100%; height: auto; background: #fff; padding: 10px; border-radius: 8px; }
+  .qrcode-print-caption { margin-top: 18px; font-size: .9rem; font-weight: 600; }
+  @media print {
+    .qrcode-print-actions, .toast-flash-stack { display: none !important; }
+    .qrcode-print-body { background: #fff; }
+    .qrcode-print-wrap { margin: 0; max-width: 100%; padding: 0; }
+    .qrcode-print-card { box-shadow: none; border-radius: 0; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="qrcode-print-wrap">
+  <div class="qrcode-print-actions">
+    <a href="{{ url_for('lojista.settings_menu') }}" class="btn btn-sm btn-outline-secondary me-2">
+      <i class="bi bi-arrow-left"></i> Voltar
+    </a>
+    <button type="button" class="btn btn-sm btn-chili" onclick="window.print()">
+      <i class="bi bi-printer"></i> Imprimir / Salvar PDF
+    </button>
+  </div>
+
+  <div class="qrcode-print-card">
+    {% if icon != 'none' %}
+    <div class="qrcode-print-icon"><i class="bi {{ icon }}"></i></div>
+    {% endif %}
+    {% if show_business_name %}
+    <div class="qrcode-print-name">{{ tenant.name }}</div>
+    {% endif %}
+    <img src="{{ qr_code_url }}" alt="QR Code do cardápio" class="qrcode-print-img">
+    <div class="qrcode-print-caption">Aponte a câmera e confira o cardápio</div>
+  </div>
+</div>
+{% endblock %}

@@ -31,6 +31,25 @@ PUBLIC_THEME_CHOICES = [("", "Personalizado (cor livre abaixo)")] + SYSTEM_THEME
 # HH:MM, 24 horas (aceita "9:00" ou "09:00")
 _TIME_FORMAT = Regexp(r"^([01]?\d|2[0-3]):[0-5]\d$", message="Use o formato HH:MM (ex: 18:30).")
 
+# Ícones pré-listados pro cartaz personalizado do QR Code (bônus de
+# plano — ver Plan.allow_qr_customization). Lista fechada de ícones do
+# Bootstrap Icons (já vendorizado, sem custo de licença/upload de
+# arquivo pelo lojista) em vez de um campo livre — evita que o lojista
+# tente injetar HTML/classe arbitrária no cartaz (ver
+# TenantSettingsService.update_qr_card_settings, que valida contra esta
+# mesma lista no backend).
+QR_CARD_ICON_CHOICES = [
+    ("none", "Nenhum ícone"),
+    ("bi-shop", "Loja"),
+    ("bi-cup-hot-fill", "Bebida quente"),
+    ("bi-egg-fried", "Prato/comida"),
+    ("bi-basket2-fill", "Cesta"),
+    ("bi-star-fill", "Estrela"),
+    ("bi-heart-fill", "Coração"),
+    ("bi-gift-fill", "Presente"),
+]
+QR_CARD_ICON_KEYS = {key for key, _label in QR_CARD_ICON_CHOICES}
+
 
 class StoreInfoForm(FlaskForm):
     name = StringField("Nome da loja", validators=[DataRequired(), Length(max=150), not_blank])
@@ -117,6 +136,25 @@ class AppearanceSettingsForm(FlaskForm):
 
     def validate_accent_color(self, field):
         if field.data and not self.reset_to_default.data and not normalize_hex(field.data):
+            raise ValidationError("Cor inválida.")
+
+
+class QrCardSettingsForm(FlaskForm):
+    """Personalização do cartaz de impressão do QR Code — bônus
+    liberado por plano (ver Plan.allow_qr_customization)."""
+
+    show_business_name = BooleanField("Mostrar nome da loja no cartaz", default=True)
+    bg_color = StringField(
+        "Cor de fundo do cartaz",
+        validators=[Optional(), Length(max=7)],
+        default="#FFFFFF",
+        render_kw={"type": "color"},
+    )
+    icon = SelectField("Ícone", choices=QR_CARD_ICON_CHOICES, default="none")
+    submit = SubmitField("Salvar personalização")
+
+    def validate_bg_color(self, field):
+        if field.data and not normalize_hex(field.data):
             raise ValidationError("Cor inválida.")
 
 

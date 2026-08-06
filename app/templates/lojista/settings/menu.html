@@ -55,11 +55,47 @@
   <div class="col-lg-6">
     <div class="panel text-center">
       <div class="panel-title justify-content-center"><i class="bi bi-qr-code"></i> QR Code do cardápio</div>
-      <img src="{{ qr_code_url }}" alt="QR Code" class="rounded mb-3" style="background: #fff; padding: 8px;">
+      <img src="{{ qr_code_url }}" alt="QR Code" class="rounded mb-3 qr-preview-img" style="background: #fff; padding: 8px;">
       <div class="font-mono small text-muted-custom mb-3">{{ cardapio_url }}</div>
       <a href="{{ qr_code_url }}" download="qrcode-cardapio.png" class="btn btn-sm btn-outline-secondary" target="_blank">
-        <i class="bi bi-download"></i> Baixar QR Code
+        <i class="bi bi-download"></i> Baixar QR Code (puro)
       </a>
+
+      <hr class="border-secondary-subtle my-4">
+
+      {% if can_customize_qr %}
+      <div class="text-start">
+        <div class="panel-title small mb-3"><i class="bi bi-stars"></i> Personalizar cartaz de impressão</div>
+        <form method="POST" action="{{ url_for('lojista.settings_menu_qrcode_customize') }}" novalidate>
+          {{ qr_form.hidden_tag() }}
+          <label class="d-flex align-items-center gap-2 mb-3">
+            {{ qr_form.show_business_name() }} <span class="small">{{ qr_form.show_business_name.label.text }}</span>
+          </label>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              {{ qr_form.bg_color.label(class="form-label small fw-semibold") }}
+              {{ qr_form.bg_color(class="form-control form-control-color") }}
+            </div>
+            <div class="col-6">
+              {{ qr_form.icon.label(class="form-label small fw-semibold") }}
+              {{ qr_form.icon(class="form-select") }}
+            </div>
+          </div>
+          <div class="d-flex gap-2 flex-wrap">
+            {{ qr_form.submit(class="btn btn-sm btn-chili") }}
+            <a href="{{ url_for('lojista.settings_menu_qrcode_card') }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-printer"></i> Ver cartaz para imprimir
+            </a>
+          </div>
+        </form>
+      </div>
+      {% else %}
+      <div class="upload-meta text-start">
+        <i class="bi bi-lock"></i> Personalizar o cartaz do QR Code (nome da loja, cor de fundo, ícone) é um
+        bônus disponível a partir do plano Start.
+        <a href="{{ url_for('lojista.settings_subscription') }}">Ver planos</a>.
+      </div>
+      {% endif %}
     </div>
   </div>
 </div>

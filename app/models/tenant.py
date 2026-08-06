@@ -79,6 +79,13 @@ class Plan(db.Model, TimestampMixin):
     is_featured = Column(Boolean, nullable=False, default=False, server_default="0")
     display_order = Column(Integer, nullable=False, default=0, server_default="0")
 
+    # Libera a personalização do QR Code (nome do negócio, cor de fundo,
+    # ícone) pra impressão — bônus controlado por PLANO, não por slug
+    # hardcoded no código (ver TenantSettingsService.update_qr_card_settings
+    # e settings_menu_qrcode_card). O Super Admin liga/desliga por plano
+    # a qualquer momento em /admin/planos.
+    allow_qr_customization = Column(Boolean, nullable=False, default=False, server_default="0")
+
     tenants = relationship("Tenant", back_populates="plan")
 
     __table_args__ = (

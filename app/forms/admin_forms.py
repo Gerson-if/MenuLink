@@ -80,6 +80,7 @@ class PlanForm(FlaskForm):
     max_images_per_product = IntegerField("Limite de imagens por produto", default=5, validators=[DataRequired(), NumberRange(min=1, max=20)])
     is_featured = BooleanField('Destacar como "MAIS VENDIDO" na landing page')
     display_order = IntegerField("Ordem de exibição na landing (menor aparece primeiro)", default=0, validators=[Optional(), NumberRange(min=0, max=999)])
+    allow_qr_customization = BooleanField("Liberar personalização do QR Code (nome, cor, ícone) pra impressão")
     submit = SubmitField("Salvar plano")
 
 

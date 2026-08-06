@@ -3,7 +3,8 @@ from datetime import datetime, timedelta, timezone
 from flask import abort, flash, make_response, redirect, render_template, request, url_for, Response
 
 from app.forms.tenant_settings_forms import (
-    AppearanceSettingsForm, CheckoutSettingsForm, MenuSettingsForm, OpeningHoursForm, StoreInfoForm,
+    AppearanceSettingsForm, CheckoutSettingsForm, MenuSettingsForm, OpeningHoursForm, QrCardSettingsForm,
+    StoreInfoForm,
 )
 from app.models import InvoiceStatus, TenantStatus
 from app.repositories.plan_repository import PlanRepository
@@ -194,9 +195,62 @@ def settings_menu():
     cardapio_url = url_for("public.store_home", slug=tenant.slug, _external=True)
     qr_code_url = url_for("lojista.settings_menu_qrcode")
 
+    qr_card = (tenant.theme_settings or {}).get("qr_card") or {}
+    qr_form = QrCardSettingsForm(data=qr_card if qr_card else None)
+    can_customize_qr = bool(tenant.plan and tenant.plan.allow_qr_customization)
+
     return render_template(
         "lojista/settings/menu.html", form=form, tenant=tenant,
         cardapio_url=cardapio_url, qr_code_url=qr_code_url,
+        qr_form=qr_form, can_customize_qr=can_customize_qr,
+    )
+
+
+@lojista_bp.route("/configuracoes/cardapio/qrcode/personalizar", methods=["POST"])
+@lojista_required
+def settings_menu_qrcode_customize():
+    tenant = get_current_tenant()
+    if not (tenant.plan and tenant.plan.allow_qr_customization):
+        abort(403)
+
+    form = QrCardSettingsForm()
+    if form.validate_on_submit():
+        service = TenantSettingsService(tenant)
+        service.update_qr_card_settings(
+            show_business_name=form.show_business_name.data,
+            bg_color=form.bg_color.data,
+            icon=form.icon.data,
+        )
+        flash("Personalização do QR Code salva.", "success")
+    else:
+        for field_errors in form.errors.values():
+            for error in field_errors:
+                flash(error, "danger")
+
+    return redirect(url_for("lojista.settings_menu"))
+
+
+@lojista_bp.route("/configuracoes/cardapio/qrcode/cartaz")
+@lojista_required
+def settings_menu_qrcode_card():
+    """Cartaz pronto pra imprimir, com a personalização salva (nome do
+    negócio, cor de fundo, ícone) — bônus de plano, protegido aqui
+    também (não só escondendo o botão no template) porque é uma URL
+    que o lojista pode visitar direto."""
+    tenant = get_current_tenant()
+    if not (tenant.plan and tenant.plan.allow_qr_customization):
+        abort(403)
+
+    qr_card = (tenant.theme_settings or {}).get("qr_card") or {}
+    cardapio_url = url_for("public.store_home", slug=tenant.slug, _external=True)
+    qr_code_url = url_for("lojista.settings_menu_qrcode")
+
+    return render_template(
+        "lojista/settings/qrcode_print.html", tenant=tenant, cardapio_url=cardapio_url,
+        qr_code_url=qr_code_url,
+        show_business_name=qr_card.get("show_business_name", True),
+        bg_color=qr_card.get("bg_color") or "#FFFFFF",
+        icon=qr_card.get("icon") or "none",
     )
 
 

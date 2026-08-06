@@ -244,6 +244,16 @@ body {
 }
 .panel-title { font-family: 'Archivo Black'; font-size: 1rem; margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
 
+/* QR Code do cardápio (lojista/settings/menu.html): o PNG gerado pelo
+   servidor sai em resolução de impressão (box_size=12 + border, ver
+   settings_menu_qrcode) — nativamente ~500-800px de lado. Sem limite
+   de tamanho o <img> renderizava nesse tamanho bruto, estourando a
+   largura do painel e empurrando o layout inteiro pros lados no
+   mobile. Trava num tamanho de tela fixo e deixa o navegador escalar
+   pra baixo com nitidez (o arquivo em si continua em alta resolução
+   pro download/impressão). */
+.qr-preview-img { width: 220px; max-width: 100%; height: auto; }
+
 /* Variante decorativa de .panel — mancha de luz borrada no canto,
    puramente cosmética (ver "Seu plano atual" em subscription.html).
    position:relative + overflow:hidden no .panel pra recortar o blur

@@ -51,6 +51,7 @@ def plans_create():
             max_images_per_product=form.max_images_per_product.data,
             is_featured=form.is_featured.data,
             display_order=form.display_order.data,
+            allow_qr_customization=form.allow_qr_customization.data,
         )
         if is_hx:
             return _rerender_plan_fragment(plan, trigger="planSaved", toast="Plano criado com sucesso.")
@@ -89,6 +90,7 @@ def plans_edit(plan_id):
             max_images_per_product=form.max_images_per_product.data,
             is_featured=form.is_featured.data,
             display_order=form.display_order.data,
+            allow_qr_customization=form.allow_qr_customization.data,
         )
         if is_hx:
             return _rerender_plan_fragment(plan, trigger="planSaved", toast="Plano atualizado com sucesso.")
