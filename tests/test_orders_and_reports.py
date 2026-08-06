@@ -53,6 +53,41 @@ class TestOrdersManagement:
         resp = client.get("/painel/pedidos?status=completed")
         assert "Nenhum pedido" in resp.get_data(as_text=True)
 
+    def test_orders_list_shows_count_badges_per_status_and_total(self, app, client, login_as):
+        # Badges de contagem nos chips de filtro (ver counts_by_statuses
+        # em OrderRepository e status_counts/total_active_count em
+        # orders_list) — 2 pedidos "pending" e 1 "confirmed" devem
+        # aparecer como "2" e "1" nos chips certos, e "3" no "Todos".
+        product_id, tenant_id = _create_product(app)
+        _create_order_via_checkout(client, product_id, phone="67999990010")
+        data2 = _create_order_via_checkout(client, product_id, phone="67999990011")
+        _create_order_via_checkout(client, product_id, phone="67999990012")
+
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        # confirma um dos pedidos, pra ter contagem em mais de um status
+        client.post(f"/painel/pedidos/{data2['order_id']}/status", data={"new_status": "confirmed"})
+
+        resp = client.get("/painel/pedidos")
+        body = resp.get_data(as_text=True)
+        assert resp.status_code == 200
+
+        import re
+
+        chips_start = body.find('class="mb-4 d-flex gap-2 chip-scroll"')
+        chips_end = body.find("{% endfor %}", chips_start)  # não existe no HTML renderizado, só delimita um teto generoso
+        chips_html = body[chips_start: chips_start + 2500]
+
+        def count_after(label):
+            idx = chips_html.find(label)
+            assert idx != -1, f"chip '{label}' não encontrado nos chips de filtro"
+            snippet = chips_html[idx: idx + 300]
+            match = re.search(r'order-chip-count">(\d+)<', snippet)
+            return int(match.group(1)) if match else None
+
+        assert count_after("Todos") == 3
+        assert count_after("Recebido") == 2
+        assert count_after("Confirmado") == 1
+
     def test_order_detail_shows_items_and_totals(self, app, client, login_as):
         product_id, _ = _create_product(app, price_cents=2500, name="Linguiça Artesanal")
         data = _create_order_via_checkout(client, product_id, quantity=3)

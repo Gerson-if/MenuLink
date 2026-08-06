@@ -85,6 +85,11 @@ def orders_list():
     pagination = service.order_repo.paginated(
         page=page, per_page=15, status=status or None, statuses=None if status else ACTIVE_STATUSES
     )
+    # Contagem por status pros badges nos chips de filtro (ver
+    # orders/list.html) — sempre a contagem TOTAL de cada status, não só
+    # da página atual, pra o lojista ver de cara quantos pedidos estão
+    # parados em cada etapa mesmo que não esteja olhando aquela aba.
+    status_counts = service.order_repo.counts_by_statuses(ACTIVE_STATUSES)
 
     return render_template(
         "lojista/orders/list.html",
@@ -93,6 +98,8 @@ def orders_list():
         selected_status=status,
         status_labels=STATUS_LABELS,
         all_statuses=ACTIVE_STATUSES,
+        status_counts=status_counts,
+        total_active_count=sum(status_counts.values()),
     )
 
 

@@ -7,12 +7,23 @@
   Pedidos em andamento. Assim que um pedido é concluído ou cancelado, ele sai
   daqui e vai para o <a href="{{ url_for('lojista.orders_history') }}" class="link-chili" hx-boost="true" hx-swap="innerHTML show:window:top">Histórico</a>.
 </p>
+{# Contagem por status em cada chip (ver status_counts/total_active_count
+   em orders_list) — pra ver de cara quantos pedidos estão parados em
+   cada etapa sem precisar clicar aba por aba, e não deixar nenhum
+   passar despercebido. Só aparece quando há pelo menos 1 pedido
+   naquele status (badge "0" não ajuda em nada, só polui). #}
 <div class="mb-4 d-flex gap-2 chip-scroll" hx-boost="true" hx-swap="innerHTML show:window:top">
   <a href="{{ url_for('lojista.orders_list') }}"
-     class="btn btn-sm {{ 'btn-chili' if not selected_status else 'btn-outline-secondary' }}">Todos</a>
+     class="btn btn-sm order-status-chip {{ 'btn-chili' if not selected_status else 'btn-outline-secondary' }}">
+    Todos
+    {% if total_active_count %}<span class="order-chip-count">{{ total_active_count }}</span>{% endif %}
+  </a>
   {% for s in all_statuses %}
   <a href="{{ url_for('lojista.orders_list', status=s) }}"
-     class="btn btn-sm {{ 'btn-chili' if selected_status == s else 'btn-outline-secondary' }}">{{ status_labels.get(s, s) }}</a>
+     class="btn btn-sm order-status-chip {{ 'btn-chili' if selected_status == s else 'btn-outline-secondary' }}">
+    {{ status_labels.get(s, s) }}
+    {% if status_counts and status_counts.get(s) %}<span class="order-chip-count">{{ status_counts[s] }}</span>{% endif %}
+  </a>
   {% endfor %}
 </div>
 

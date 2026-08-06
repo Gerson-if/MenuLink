@@ -371,6 +371,19 @@ html[data-theme="light"] .status-ready_for_pickup { color: #1B5E20; }
 .chip-scroll::-webkit-scrollbar { display: none; }
 .chip-scroll > * { flex-shrink: 0; white-space: nowrap; }
 
+/* Badge de contagem nos chips de status de Pedidos (ver orders/list.html)
+   — "currentColor" faz o fundo do número acompanhar a cor do texto do
+   próprio chip (branco no chip ativo/sólido, --paper no chip inativo/
+   contornado), então funciona igual em qualquer tema sem precisar de
+   uma regra separada pra cada variante de cor do botão. */
+.order-status-chip { display: inline-flex; align-items: center; gap: 6px; }
+.order-chip-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px;
+  font-size: .7rem; font-weight: 700; line-height: 1;
+  background: color-mix(in srgb, currentColor 22%, transparent);
+}
+
 .status-badge { font-size: .7rem; font-weight: 700; padding: 4px 12px; border-radius: 30px; text-transform: uppercase; letter-spacing: .04em; display: inline-block; color: #fff; }
 .status-active { background: var(--sage); }
 .status-trial { background: var(--accent); }

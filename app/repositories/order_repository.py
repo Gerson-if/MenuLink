@@ -20,6 +20,25 @@ class OrderRepository(TenantScopedRepository[Order]):
     def count_by_status(self, status: str) -> int:
         return self._base_query().filter(Order.status == status).count()
 
+    def counts_by_statuses(self, statuses: list) -> dict:
+        """Quantidade de pedidos por status, numa única query agrupada —
+        usado pelos badges de contagem nos chips de filtro de Pedidos
+        (ver orders/list.html), pra o lojista ver de cara quantos
+        pedidos estão parados em cada etapa sem precisar clicar em cada
+        aba. Sempre devolve TODAS as chaves de `statuses` (com 0 pros
+        que não têm nenhum pedido no momento), pra o template nunca
+        precisar de um `.get(..., 0)` espalhado por aí."""
+        from sqlalchemy import func
+
+        rows = (
+            db.session.query(Order.status, func.count(Order.id))
+            .filter(Order.tenant_id == self.tenant_id, Order.status.in_(statuses))
+            .group_by(Order.status)
+            .all()
+        )
+        raw_counts = {(status.value if hasattr(status, "value") else status): count for status, count in rows}
+        return {s: raw_counts.get(s, 0) for s in statuses}
+
     def paginated(
         self, page: int, per_page: int = 12, status: str | None = None, statuses: list | None = None,
         date_from=None, date_to=None,
