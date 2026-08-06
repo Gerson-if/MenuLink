@@ -796,6 +796,30 @@ html[data-theme="light"] .toast-flash-info { color: #1A2B8F; }
   .register-loading-orbit span { animation: none; }
 }
 
+/* Tela de sucesso ("Tudo pronto!") que substitui o "preparando..." assim
+   que o servidor confirma que a loja foi criada — antes o overlay só
+   sumia de repente quando a nova página carregava, sem nenhum instante
+   de confirmação visual do sucesso em si. Selo verde com o "check"
+   sendo desenhado via stroke-dasharray (mesmo truque clássico de SVG),
+   igual ao efeito de referência. */
+.register-success-box { text-align: center; color: #fff; padding: 0 24px; }
+.register-success-badge {
+  width: 84px; height: 84px; margin: 0 auto 22px; border-radius: 50%;
+  background: rgba(122,160,109,.16); border: 1px solid rgba(122,160,109,.4);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 40px rgba(122,160,109,.25);
+  animation: registerSuccessPop .4s cubic-bezier(.22, .9, .32, 1);
+}
+.register-success-badge svg { width: 40px; height: 40px; color: var(--sage); }
+.register-success-check { stroke-dasharray: 24; stroke-dashoffset: 24; animation: registerSuccessDraw .5s ease-out .15s forwards; }
+.register-success-title { font-family: 'Archivo Black', sans-serif; font-size: 1.35rem; margin-bottom: 4px; }
+.register-success-subtitle { color: var(--muted-text); font-size: .85rem; margin: 0; }
+@keyframes registerSuccessDraw { to { stroke-dashoffset: 0; } }
+@keyframes registerSuccessPop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .register-success-badge, .register-success-check { animation: none; }
+}
+
 /* Assistente de cadastro em passos (auth/register.html) — um
    campo/pergunta por tela, com transição animada entre elas. Só some
    um passo por vez quando o JS roda (classe `.js-wizard` no <form>) —

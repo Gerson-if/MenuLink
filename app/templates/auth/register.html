@@ -186,11 +186,23 @@
    página mesmo (e o assistente de passos, mais abaixo, detecta em qual
    passo está o erro e já abre direto nele). #}
 <div id="register-loading-overlay" class="register-loading-overlay" aria-hidden="true">
-  <div class="register-loading-box">
+  <div class="register-loading-box" id="register-loading-box">
     <div class="register-loading-orbit" role="status" aria-hidden="true">
       <span></span><span></span><span></span>
     </div>
     <p class="register-loading-text mb-0" id="register-loading-text">Estamos preparando tudo pra você...</p>
+  </div>
+  {# Só aparece depois que o servidor CONFIRMA que a loja foi criada
+     (ver o fetch() mais abaixo) — antes disso fica escondida atrás do
+     "preparando...", pra não sugerir sucesso antes da hora. #}
+  <div class="register-success-box d-none" id="register-success-box">
+    <div class="register-success-badge">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+        <path class="register-success-check" stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+      </svg>
+    </div>
+    <p class="register-success-title mb-0">Tudo pronto!</p>
+    <p class="register-success-subtitle">Te levando pro seu painel...</p>
   </div>
 </div>
 <script>
@@ -370,6 +382,9 @@
       'Já vai ficar pronto, só mais um instante...',
     ];
 
+    var loadingBox = document.getElementById('register-loading-box');
+    var successBox = document.getElementById('register-success-box');
+
     form.addEventListener('submit', function (e) {
       // Se o assistente estiver ativo e o passo atual (o último, com o
       // botão de enviar de verdade) tiver campo vazio, barra o envio
@@ -379,7 +394,9 @@
         e.preventDefault();
         return;
       }
-      if (!overlay || !textEl) return;
+      if (!overlay || !textEl || typeof window.fetch !== 'function') return; // sem fetch, cai no envio normal do <form>
+      e.preventDefault();
+
       overlay.classList.add('is-visible');
       overlay.setAttribute('aria-hidden', 'false');
 
@@ -390,7 +407,7 @@
       // texto por baixo e reaparece, pra não parecer que a mensagem
       // "pisca" a cada 1.8s enquanto a loja é criada de verdade.
       var step = 0;
-      setInterval(function () {
+      var messageInterval = setInterval(function () {
         textEl.classList.add('is-fading');
         setTimeout(function () {
           step = (step + 1) % messages.length;
@@ -398,6 +415,52 @@
           textEl.classList.remove('is-fading');
         }, 200);
       }, 1800);
+
+      // Envia via fetch (em vez de deixar o <form> navegar direto) só
+      // pra poder mostrar um instante de "Tudo pronto!" com o check
+      // sendo desenhado ANTES de ir pro painel — sem isso, o overlay de
+      // "preparando..." só sumia de repente quando a página nova
+      // terminava de carregar, sem nenhuma confirmação visual de
+      // sucesso. `response.redirected` é o sinal de sucesso (o
+      // servidor só redireciona quando a loja é criada de verdade) —
+      // em erro de validação ele re-renderiza esta mesma página com
+      // status 200, sem redirecionar.
+      fetch(form.action || window.location.href, {
+        method: 'POST',
+        body: new FormData(form),
+        credentials: 'same-origin',
+      }).then(function (response) {
+        clearInterval(messageInterval);
+
+        if (response.redirected) {
+          if (loadingBox) loadingBox.classList.add('d-none');
+          if (successBox) successBox.classList.remove('d-none');
+          setTimeout(function () { window.location.href = response.url; }, 900);
+          return;
+        }
+
+        // Erro de validação: o servidor devolveu esta mesma página de
+        // novo, com os erros — cai pro envio nativo do formulário
+        // (reenvia os mesmos dados uma segunda vez; inofensivo, já que
+        // nada é criado enquanto a validação falhar). Chegamos a testar
+        // substituir o documento na mão com o HTML já em mãos
+        // (document.write), mas isso reexecuta comanda.js no MESMO
+        // escopo global (sem recarregar a página de verdade) e quebra
+        // com "Identifier already declared" — um script inteiro deixa
+        // de rodar (inclusive o botão de mostrar/ocultar senha). Uma
+        // navegação real evita esse problema por completo.
+        if (submitBtn) submitBtn.disabled = false;
+        overlay.classList.remove('is-visible');
+        HTMLFormElement.prototype.submit.call(form);
+      }).catch(function () {
+        // Fetch falhou (rede etc.) — cai pro envio nativo normal do
+        // formulário, sem a camada de fetch, pra nunca deixar o
+        // cadastro "travado" só por causa dessa camada extra.
+        clearInterval(messageInterval);
+        if (submitBtn) submitBtn.disabled = false;
+        overlay.classList.remove('is-visible');
+        HTMLFormElement.prototype.submit.call(form);
+      });
     });
   })();
 </script>
