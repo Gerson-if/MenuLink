@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from flask import flash, jsonify, redirect, render_template, request, url_for
 
@@ -46,8 +46,16 @@ def _history_date_range(period: str, date_from_str: str, date_to_str: str):
     """Traduz o período selecionado num par (date_from, date_to) pra
     OrderRepository.paginated — date_to já vem como "dia seguinte" (veja o
     docstring de paginated) pra incluir o dia final inteiro sem depender
-    de hora."""
-    today = date.today()
+    de hora.
+
+    `today` usa UTC, não o fuso local do servidor: `Order.created_at`
+    é salvo em UTC (ver TimestampMixin/utcnow) — se aqui usássemos
+    `date.today()` (fuso local), perto da virada da meia-noite um
+    pedido criado "hoje" no horário local podia cair fora do intervalo
+    calculado (UTC já teria virado o dia, ou ainda não) e sumir do
+    filtro "Hoje" mesmo tendo acabado de ser criado. Consistente com
+    o que é comparado, não com o relógio de parede do servidor."""
+    today = datetime.now(timezone.utc).date()
     tomorrow = today + timedelta(days=1)
 
     if period == "semana":
