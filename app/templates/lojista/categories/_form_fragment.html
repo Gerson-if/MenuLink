@@ -16,7 +16,7 @@
 </style>
 
 <div class="panel" style="max-width: 480px;" id="category-form-panel">
-  <form method="POST" action="{{ form_action }}" enctype="multipart/form-data" novalidate
+  <form method="POST" action="{{ form_action }}" enctype="multipart/form-data" novalidate id="category-form"
         hx-post="{{ form_action }}" hx-encoding="multipart/form-data" hx-target="#category-form-panel" hx-select="#category-form-panel" hx-swap="outerHTML">
     {{ form.hidden_tag() }}
 
@@ -50,14 +50,23 @@
       {{ form.is_active.label(class="small text-muted-custom") }}
     </div>
 
-    {{ form.submit(class="btn btn-chili") }}
+    {% if not category %}{{ form.submit(class="btn btn-chili drawer-action-primary") }}{% endif %}
   </form>
 </div>
 
+{# Mesmo tratamento visual de products/_form_fragment.html: Salvar e
+   Excluir do mesmo tamanho, empilhados em largura cheia no celular
+   (voltam a ficar lado a lado em telas largas) — ver .drawer-actions
+   no comanda.css. #}
 {% if category %}
-<form method="POST" action="{{ url_for('lojista.categories_delete', category_id=category.id) }}" class="mt-3"
-      hx-boost="false" data-confirm-message="Excluir esta categoria? Os produtos dela ficarão sem categoria.">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-  <button type="submit" class="btn btn-sm btn-outline-danger">Excluir categoria</button>
-</form>
+<div class="drawer-actions mt-3">
+  {{ form.submit(class="btn btn-chili drawer-action-primary", form="category-form") }}
+  <form method="POST" action="{{ url_for('lojista.categories_delete', category_id=category.id) }}"
+        hx-boost="false" data-confirm-message="Excluir esta categoria? Os produtos dela ficarão sem categoria.">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn btn-outline-danger drawer-action-danger">
+      <i class="bi bi-trash3"></i> Excluir categoria
+    </button>
+  </form>
+</div>
 {% endif %}
