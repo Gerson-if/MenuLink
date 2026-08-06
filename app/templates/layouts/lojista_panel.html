@@ -122,8 +122,12 @@
          junto (mesma entrada de menu "Cardápio"), mas as duas telas têm
          responsabilidades diferentes (organizar categorias x cadastrar
          produtos), então merecem cada uma seu próprio destino direto no
-         menu em vez de depender da aba interna pra achar Categorias. #}
-      <a href="{{ url_for('lojista.categories_list') }}" class="nav-link nav-mobile-hide {{ 'active' if request.endpoint and request.endpoint.startswith('lojista.categories') }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Categorias">
+         menu em vez de depender da aba interna pra achar Categorias.
+         SEM .nav-mobile-hide de propósito: diferente de Produtos, essa
+         seção não tem atalho na barra inferior do celular, então
+         precisa continuar aparecendo na gaveta "Mais" — senão fica
+         inacessível no mobile. #}
+      <a href="{{ url_for('lojista.categories_list') }}" class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('lojista.categories') }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Categorias">
         <i class="bi bi-tags"></i><span class="nav-label">Categorias</span>
       </a>
       <a href="{{ url_for('lojista.banners_list') }}" class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('lojista.banners') }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Banners">
