@@ -156,7 +156,14 @@ def save_category_icon(tenant_id: int, category_id: int, file_storage) -> str:
         file_storage.stream.seek(0)
         image = Image.open(file_storage.stream)
         image = image.convert("RGBA")
-    except (UnidentifiedImageError, OSError):
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
+        # DecompressionBombError: proteção do próprio Pillow contra um
+        # arquivo pequeno que decodifica pra uma imagem gigante
+        # (dezenas/centenas de milhões de pixels) só pra estourar
+        # memória do servidor ao processar — igual a um "zip bomb", mas
+        # de imagem. Sem capturar aqui, essa exceção (que NÃO é OSError)
+        # escapava como erro 500 cru em vez de virar a mensagem de erro
+        # tratada de sempre.
         raise InvalidImageError("Arquivo enviado não é uma imagem válida.")
 
     image = ImageOps.fit(image, (ICON_DIMENSION, ICON_DIMENSION), Image.LANCZOS)
@@ -423,7 +430,14 @@ def _save_validated_image(relative_subdir: str, file_storage, max_dimension: int
             image = flattened
         else:
             image = image.convert("RGB")
-    except (UnidentifiedImageError, OSError):
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
+        # DecompressionBombError: proteção do próprio Pillow contra um
+        # arquivo pequeno que decodifica pra uma imagem gigante
+        # (dezenas/centenas de milhões de pixels) só pra estourar
+        # memória do servidor ao processar — igual a um "zip bomb", mas
+        # de imagem. Sem capturar aqui, essa exceção (que NÃO é OSError)
+        # escapava como erro 500 cru em vez de virar a mensagem de erro
+        # tratada de sempre.
         raise InvalidImageError("Arquivo enviado não é uma imagem válida.")
 
     image.thumbnail((max_dimension, max_dimension))
