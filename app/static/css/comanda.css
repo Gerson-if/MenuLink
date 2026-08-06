@@ -376,6 +376,24 @@ html[data-theme="light"] .status-ready_for_pickup { color: #1B5E20; }
    próprio chip (branco no chip ativo/sólido, --paper no chip inativo/
    contornado), então funciona igual em qualquer tema sem precisar de
    uma regra separada pra cada variante de cor do botão. */
+/* Aviso animado no item "Pedidos" do menu (sidebar + barra inferior)
+   quando o total de pedidos em andamento sobe — só um pulso rápido no
+   próprio link, diferente do sino+som de "Novos Pedidos", pra não
+   confundir os dois avisos. Ver pulseActiveOrdersNav em comanda.js. */
+@keyframes navBadgePulse {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.12); }
+  60% { transform: scale(0.98); }
+  100% { transform: scale(1); }
+}
+.nav-badge-pulse { animation: navBadgePulse .5s ease-in-out 2; }
+.nav-badge-pulse .status-badge {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-badge-pulse { animation: none; }
+}
+
 .order-status-chip { display: inline-flex; align-items: center; gap: 6px; }
 .order-chip-count {
   display: inline-flex; align-items: center; justify-content: center;
@@ -391,11 +409,34 @@ html[data-theme="light"] .status-ready_for_pickup { color: #1B5E20; }
 .status-suspended { background: var(--muted-text); color: var(--ink); }
 
 /* ---------- Product / banner cards ---------- */
-.product-card { border: 1px solid var(--card-border); border-radius: var(--radius); overflow: hidden; background: var(--card-bg); height: 100%; color: var(--card-text); transition: transform .2s; }
-.product-card:hover { transform: translateY(-2px); }
-.product-card img { width: 100%; height: 140px; object-fit: cover; background: #3A3127; }
-.product-card .body { padding: 14px; }
-.product-card .price { font-family: 'Archivo Black'; color: var(--accent); font-size: 1.1rem; }
+/* Layout horizontal (foto à esquerda, infos à direita) inspirado no
+   modelo enviado pelo lojista — mapeado pras variáveis de tema do painel
+   (--card-bg/--card-border/--card-text/--accent) em vez das cores fixas
+   do mockup, pra funcionar em qualquer tema/claro-escuro sem repetir o
+   bug de contraste já corrigido nos toasts/status. */
+.product-card {
+  display: flex; gap: 14px; padding: 12px;
+  border: 1px solid var(--card-border); border-radius: var(--radius);
+  background: var(--card-bg); color: var(--card-text);
+  transition: transform .2s, border-color .2s;
+}
+.product-card:hover { transform: translateY(-2px); border-color: var(--accent); }
+.product-card .thumb {
+  width: 96px; height: 96px; flex-shrink: 0; border-radius: 12px; overflow: hidden;
+  background: #3A3127; border: 1px solid var(--card-border);
+}
+.product-card .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.product-card .body { padding: 0; flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.product-card .title-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.product-card .title-row strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.product-card .price { font-family: 'Archivo Black'; color: var(--accent); font-size: 1.05rem; }
+.product-card .actions { margin-top: auto; display: flex; gap: 8px; }
+.product-card .actions .btn-edit-product { flex: 1; }
+.product-card .actions .btn-delete-product { flex: 0 0 auto; width: 40px; }
+
+@media (max-width: 575.98px) {
+  .product-card .thumb { width: 84px; height: 84px; }
+}
 
 /* .banner-row-main (imagem + título/subtítulo) e .banner-row-actions
    (badge + botões) são dois grupos flex dentro de .banner-row — no

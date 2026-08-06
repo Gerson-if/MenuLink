@@ -1,13 +1,11 @@
 {% extends "layouts/lojista_panel.html" %}
 {% block title %}Categorias — Menu Link{% endblock %}
-{% block page_title %}Cardápio{% endblock %}
+{% block page_title %}Categorias{% endblock %}
 
 {% block panel_content %}
-<ul class="nav nav-pills mb-4 gap-2" hx-boost="true" hx-swap="innerHTML show:window:top">
-  <li class="nav-item"><a class="btn btn-sm btn-chili" href="{{ url_for('lojista.categories_list') }}">Categorias</a></li>
-  <li class="nav-item"><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('lojista.products_list') }}">Produtos</a></li>
-</ul>
-
+{# Mesmo ajuste de products/list.html: a aba "Produtos" que ficava aqui
+   em cima virou duplicidade agora que Produtos tem seção própria no
+   menu lateral. #}
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
   <h2 class="font-display h6 m-0">Categorias</h2>
   <button type="button" class="btn btn-chili btn-sm"

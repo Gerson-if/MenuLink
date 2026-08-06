@@ -51,7 +51,7 @@ class TestPendingOrdersCountEndpoint:
         login_as(client, "lojista@braseiroecia.com.br", "lojista123")
         resp = client.get("/painel/pedidos/novos/contagem")
         assert resp.status_code == 200
-        assert resp.get_json() == {"count": 2}
+        assert resp.get_json() == {"count": 2, "active_count": 2}
 
     def test_requires_login(self, client):
         resp = client.get("/painel/pedidos/novos/contagem", follow_redirects=False)

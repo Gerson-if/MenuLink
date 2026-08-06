@@ -110,13 +110,17 @@ def orders_pending_count():
     layouts/lojista_panel.html) pra tocar um som e atualizar o badge da
     sidebar assim que um pedido novo chega — sem precisar HTMX/recarregar
     a tela inteira a cada poll, já que isso roda em TODA página, não só
-    em /pedidos. Só a contagem, de propósito: o JS decide se toca som
-    comparando com o valor anterior, então o servidor não precisa saber
-    "o que já foi visto"."""
+    em /pedidos. "count" é só pendentes (toca o som/bell de "Novos
+    Pedidos"); "active_count" é todos os status em andamento (badge do
+    item "Pedidos", sem som — só sinaliza visualmente que ainda há coisa
+    parada esperando ação). O JS decide o que fazer comparando com o
+    valor anterior, então o servidor não precisa saber "o que já foi
+    visto"."""
     tenant = get_current_tenant()
     service = OrderService(tenant)
     count = service.order_repo.count_by_status("pending")
-    return jsonify({"count": count})
+    active_count = sum(service.order_repo.counts_by_statuses(ACTIVE_STATUSES).values())
+    return jsonify({"count": count, "active_count": active_count})
 
 
 @lojista_bp.route("/pedidos/historico")

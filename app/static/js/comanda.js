@@ -623,12 +623,28 @@ function playNewOrderChime() {
   }
 }
 
-function updateNewOrdersBadges(count) {
-  ['new-orders-badge', 'new-orders-badge-mobile'].forEach(function (id) {
+function updateBadgeEls(ids, count) {
+  ids.forEach(function (id) {
     var el = document.getElementById(id);
     if (!el) return;
     el.textContent = count;
     el.style.display = count > 0 ? '' : 'none';
+  });
+}
+
+// Pisca uma vez o ícone do item "Pedidos" (sidebar + barra inferior)
+// quando o total "em andamento" sobe — sinal só visual (sem som, o sino
+// de "Novos Pedidos" já cobre isso), pra diferenciar do alerta de
+// pedido novo sem duplicar o mesmo efeito.
+function pulseActiveOrdersNav() {
+  ['nav-active-orders-link', 'bottom-tab-new-orders-link'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove('nav-badge-pulse');
+    // força reflow pra reiniciar a animação caso já esteja rodando
+    void el.offsetWidth;
+    el.classList.add('nav-badge-pulse');
+    setTimeout(function () { el.classList.remove('nav-badge-pulse'); }, 1400);
   });
 }
 
@@ -639,17 +655,24 @@ function initNewOrdersAlert() {
   window.__comandaNewOrdersAlertStarted = true;
 
   var countUrl = link.getAttribute('data-new-orders-count-url');
-  var badge = document.getElementById('new-orders-badge');
-  var lastCount = badge ? parseInt(badge.textContent, 10) || 0 : 0;
+  var pendingBadge = document.getElementById('new-orders-badge');
+  var activeBadge = document.getElementById('active-orders-badge');
+  var lastPending = pendingBadge ? parseInt(pendingBadge.textContent, 10) || 0 : 0;
+  var lastActive = activeBadge ? parseInt(activeBadge.textContent, 10) || 0 : 0;
 
   setInterval(function () {
     fetch(countUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
       .then(function (resp) { return resp.ok ? resp.json() : null; })
       .then(function (data) {
         if (!data) return;
-        updateNewOrdersBadges(data.count);
-        if (data.count > lastCount) playNewOrderChime();
-        lastCount = data.count;
+        updateBadgeEls(['new-orders-badge'], data.count);
+        // "new-orders-badge-mobile" reaproveita a única aba de Pedidos
+        // do celular pra mostrar o total em andamento, não só pendentes.
+        updateBadgeEls(['active-orders-badge', 'new-orders-badge-mobile'], data.active_count);
+        if (data.count > lastPending) playNewOrderChime();
+        if (data.active_count > lastActive) pulseActiveOrdersNav();
+        lastPending = data.count;
+        lastActive = data.active_count;
       })
       .catch(function () {});
   }, 15000);

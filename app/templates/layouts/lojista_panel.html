@@ -97,8 +97,17 @@
         <span id="new-orders-badge" class="status-badge status-blocked ms-1" {% if not pending_orders %}style="display: none;"{% endif %}>{{ pending_orders }}</span>
       </a>
       {% set order_is_history = request.endpoint == 'lojista.orders_detail' and order is defined and order and order.status.value in ('completed', 'canceled') %}
-      <a href="{{ url_for('lojista.orders_list') }}" class="nav-link nav-mobile-hide {{ 'active' if (request.endpoint == 'lojista.orders_list' and request.args.get('status') != 'pending') or (request.endpoint == 'lojista.orders_detail' and not order_is_history) }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Pedidos">
+      {% set active_orders = lojista_active_orders_count() %}
+      {# Badge com o total de pedidos "em andamento" (qualquer etapa
+         entre recebido e pronto/saiu pra entrega), não só os pendentes —
+         complementa o sino de "Novos Pedidos" acima, que só avisa de
+         pedido NOVO; este aqui garante que nada fica esquecido parado no
+         meio do fluxo. Sem som (o sino já cobre o alerta sonoro); quando
+         o número sobe, o JS acrescenta .nav-badge-pulse por um instante
+         pra chamar atenção sem repetir o mesmo efeito do sino. #}
+      <a href="{{ url_for('lojista.orders_list') }}" id="nav-active-orders-link" class="nav-link nav-mobile-hide {{ 'active' if (request.endpoint == 'lojista.orders_list' and request.args.get('status') != 'pending') or (request.endpoint == 'lojista.orders_detail' and not order_is_history) }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Pedidos">
         <i class="bi bi-receipt"></i><span class="nav-label">Pedidos</span>
+        <span id="active-orders-badge" class="status-badge status-trial ms-1" {% if not active_orders %}style="display: none;"{% endif %}>{{ active_orders }}</span>
       </a>
       <a href="{{ url_for('lojista.orders_history') }}" class="nav-link {{ 'active' if request.endpoint == 'lojista.orders_history' or order_is_history }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Histórico de Pedidos">
         <i class="bi bi-clock-history"></i><span class="nav-label">Histórico</span>
@@ -106,8 +115,16 @@
       <a href="{{ url_for('lojista.customers_list') }}" class="nav-link {{ 'active' if request.endpoint == 'lojista.customers_list' }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Clientes">
         <i class="bi bi-people"></i><span class="nav-label">Clientes</span>
       </a>
-      <a href="{{ url_for('lojista.products_list') }}" class="nav-link nav-mobile-hide {{ 'active' if request.endpoint and (request.endpoint.startswith('lojista.products') or request.endpoint.startswith('lojista.categories') or request.endpoint.startswith('lojista.images') or request.endpoint.startswith('lojista.complement')) }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Cardápio">
-        <i class="bi bi-egg-fried"></i><span class="nav-label">Cardápio</span>
+      <a href="{{ url_for('lojista.products_list') }}" class="nav-link nav-mobile-hide {{ 'active' if request.endpoint and (request.endpoint.startswith('lojista.products') or request.endpoint.startswith('lojista.images') or request.endpoint.startswith('lojista.complement')) }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Produtos">
+        <i class="bi bi-egg-fried"></i><span class="nav-label">Produtos</span>
+      </a>
+      {# Item próprio pra Categorias, separado de Produtos — antes vivia
+         junto (mesma entrada de menu "Cardápio"), mas as duas telas têm
+         responsabilidades diferentes (organizar categorias x cadastrar
+         produtos), então merecem cada uma seu próprio destino direto no
+         menu em vez de depender da aba interna pra achar Categorias. #}
+      <a href="{{ url_for('lojista.categories_list') }}" class="nav-link nav-mobile-hide {{ 'active' if request.endpoint and request.endpoint.startswith('lojista.categories') }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Categorias">
+        <i class="bi bi-tags"></i><span class="nav-label">Categorias</span>
       </a>
       <a href="{{ url_for('lojista.banners_list') }}" class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('lojista.banners') }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Banners">
         <i class="bi bi-images"></i><span class="nav-label">Banners</span>
@@ -240,9 +257,12 @@
     <a href="{{ url_for('lojista.dashboard') }}" class="bottom-tab-bar-item {{ 'active' if request.endpoint == 'lojista.dashboard' }}">
       <i class="bi bi-speedometer2"></i>Início
     </a>
+    {# Badge do total "em andamento" (não só pendentes) — no celular só
+       há uma aba de Pedidos (sem "Novos Pedidos" separado), então ela
+       precisa cobrir os dois avisos sozinha. #}
     <a href="{{ url_for('lojista.orders_list') }}" id="bottom-tab-new-orders-link" class="bottom-tab-bar-item {{ 'active' if request.endpoint and request.endpoint.startswith('lojista.orders') }}">
       <i class="bi bi-receipt"></i>Pedidos
-      <span id="new-orders-badge-mobile" class="status-badge status-blocked" {% if not pending_orders %}style="display: none;"{% endif %}>{{ pending_orders }}</span>
+      <span id="new-orders-badge-mobile" class="status-badge status-trial" {% if not active_orders %}style="display: none;"{% endif %}>{{ active_orders }}</span>
     </a>
     <a href="{{ url_for('lojista.products_list') }}" class="bottom-tab-bar-item {{ 'active' if request.endpoint and (request.endpoint.startswith('lojista.products') or request.endpoint.startswith('lojista.categories') or request.endpoint.startswith('lojista.images') or request.endpoint.startswith('lojista.complement')) }}">
       <i class="bi bi-egg-fried"></i>Cardápio

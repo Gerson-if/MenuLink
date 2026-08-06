@@ -483,6 +483,24 @@ def _register_template_filters(app: Flask) -> None:
 
         return OrderRepository(tenant.id).count_by_status("pending")
 
+    @app.template_global("lojista_active_orders_count")
+    def lojista_active_orders_count() -> int:
+        """Selo do item "Pedidos" na sidebar/tab bar do lojista — quantos
+        pedidos ainda estão "em processo de transição" (qualquer status
+        ativo, não só "pending"), pra não deixar nenhum pedido parado
+        passar despercebido mesmo fora da aba de Novos Pedidos. Mesmo
+        padrão de lojista_pending_orders_count acima; import tardio de
+        ACTIVE_STATUSES pra evitar import circular com o blueprint."""
+        from app.utils.tenant_context import get_current_tenant
+
+        tenant = get_current_tenant()
+        if tenant is None:
+            return 0
+        from app.controllers.lojista.orders import ACTIVE_STATUSES
+        from app.repositories.order_repository import OrderRepository
+
+        return sum(OrderRepository(tenant.id).counts_by_statuses(ACTIVE_STATUSES).values())
+
     @app.template_global("admin_new_feedback_count")
     def admin_new_feedback_count() -> int:
         """Selo de sugestões/reportes ainda não tratados na sidebar do
