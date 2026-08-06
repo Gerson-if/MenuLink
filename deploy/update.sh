@@ -54,9 +54,10 @@
 #       um rollback sem backup não consegue restaurar os dados).
 #
 # Pré-requisito: a máquina já configurada por deploy/install.sh (existe
-# deploy/.deploy.conf) e o git remoto já com acesso configurado (SSH ou
-# um token de acesso na URL do remote), já que este script só dá
-# `git fetch` / `git pull` — não lida com autenticação.
+# deploy/.deploy.conf) e o git remoto já com acesso configurado para o
+# usuário de serviço (SSH, token via credential.helper, ou token na URL
+# do remote — ver "Autenticação do Git" no menu do install.sh), já que
+# este script só dá `git fetch` / `git pull` — não lida com autenticação.
 
 set -Eeuo pipefail  # -E (errtrace): sem isso, o "trap ... ERR" abaixo só dispara
                     # para erros no corpo principal do script — erros dentro de

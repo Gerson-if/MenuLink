@@ -18,6 +18,10 @@
 #     DATABASE_URL externa já existente. SQLite NÃO é aceito aqui — é uma
 #     opção só para desenvolvimento local (veja o README), pois trava sob
 #     concorrência e não tem controle de acesso por usuário/senha;
+#   - configura o git do usuário de serviço (safe.directory e, se você
+#     quiser, usuário/token do GitHub) para "Atualizar sistema" funcionar
+#     sem travar pedindo senha — também disponível depois, a qualquer
+#     momento, pelo menu principal ("Autenticação do Git");
 #   - roda as migrations e, opcionalmente, cria o super admin;
 #   - configura o Gunicorn como serviço systemd, já com um sandboxing básico
 #     (reinicia sozinho se cair);
@@ -179,6 +183,74 @@ run_as_app_user() {
     # "git rev-parse", quebrando a leitura do commit atual. -H já garante
     # $HOME correto para git/pip sem precisar de shell de login.
     sudo -u "${SERVICE_USER}" -H bash -c "$*"
+}
+
+configure_git_auth() {
+    # Corrige as duas causas mais comuns de "a atualização trava pedindo
+    # usuário/senha do GitHub", quando os comandos git rodam como
+    # SERVICE_USER (ver deploy/update.sh, run_as_app_user):
+    #   1. "dubious ownership" — o git recusa operar num diretório cujo
+    #      dono não bate com quem está rodando o comando (pode acontecer
+    #      mesmo após o chown desta instalação, se algum arquivo do .git
+    #      for tocado por root depois, ex: numa depuração manual).
+    #      safe.directory resolve isso, sempre seguro de repetir.
+    #   2. Sem token/chave configurados para o SERVICE_USER (que tem seu
+    #      próprio $HOME, separado de quem clonou o repositório), o git
+    #      tenta pedir usuário/senha interativamente — mas como
+    #      update.sh roda sem terminal de verdade (cron, ou uma sessão
+    #      onde ninguém vai digitar nada), ele trava esperando uma
+    #      entrada que nunca chega.
+    section "Autenticação do Git (evita a atualização travar pedindo senha)"
+
+    run_as_app_user "git config --global --add safe.directory '${APP_DIR}'"
+    ok "safe.directory configurado para '${SERVICE_USER}'."
+
+    local remote_url
+    remote_url="$(run_as_app_user "cd '${APP_DIR}' && git remote get-url origin" 2>/dev/null || true)"
+    if [[ "$remote_url" == git@* || "$remote_url" == ssh://* ]]; then
+        info "O repositório remoto está configurado por SSH (${remote_url})."
+        confirm "Ainda assim configurar usuário/token do GitHub (HTTPS) para '${SERVICE_USER}'?" "n" || return 0
+    else
+        confirm "Configurar agora usuário/token do GitHub para '${SERVICE_USER}' atualizar sozinho?" "S" || {
+            info "Pulado. Sem isso, a opção 'Atualizar sistema' (ou o cron) vai travar pedindo senha se o"
+            info "repositório for privado — configure manualmente depois ou rode esta mesma opção de novo."
+            return 0
+        }
+    fi
+
+    echo
+    info "Gere um token em https://github.com/settings/tokens — um 'fine-grained token' com acesso"
+    info "só a este repositório e permissão 'Contents: Read' já é suficiente pra atualizar."
+    ask "Usuário do GitHub" ""
+    local git_user="$REPLY_VALUE"
+    if [ -z "$git_user" ]; then
+        warn "Usuário vazio — pulando configuração de token."
+        return 0
+    fi
+    ask_secret "Token de acesso (não aparece na tela)"
+    local git_token="$REPLY_VALUE"
+    if [ -z "$git_token" ]; then
+        warn "Token vazio — pulando configuração de token."
+        return 0
+    fi
+
+    run_as_app_user "git config --global credential.helper store"
+    # Via stdin (não interpolado num "bash -c ...") — o token nunca passa
+    # pela linha de comando nem aparece em `ps`/histórico do bash.
+    printf 'protocol=https\nhost=github.com\nusername=%s\npassword=%s\n\n' "$git_user" "$git_token" \
+        | sudo -u "${SERVICE_USER}" -H git credential approve
+    unset git_token
+
+    local creds_home
+    creds_home="$(getent passwd "${SERVICE_USER}" | cut -d: -f6)"
+    [ -f "${creds_home}/.git-credentials" ] && chmod 600 "${creds_home}/.git-credentials"
+
+    log "Testando o acesso..."
+    if run_as_app_user "cd '${APP_DIR}' && git ls-remote --exit-code origin HEAD" >/dev/null 2>&1; then
+        ok "Token salvo e funcionando — a atualização não vai mais pedir senha."
+    else
+        warn "Não consegui confirmar o acesso com o usuário/token informados. Confira e tente de novo por esta mesma opção."
+    fi
 }
 
 # --------------------------------------------------------------------------
@@ -559,8 +631,9 @@ main_menu() {
             item 4 "Gerenciar Super Admin" "criar, redefinir, trocar e-mail, remover"
             item 5 "Backup e restauração" "migração entre servidores, backup e restore"
             item 6 "Reconfigurar esta instalação" "domínio, SSL, banco, systemd, Nginx..."
-            item 7 "Sair"
-            ask "Escolha uma opção [1-7]" "7"
+            item 7 "Autenticação do Git" "usuário/token para 'Atualizar sistema' não travar pedindo senha"
+            item 8 "Sair"
+            ask "Escolha uma opção [1-8]" "8"
             case "$REPLY_VALUE" in
                 1) run_update_script ;;
                 2) run_verificacoes ;;
@@ -568,7 +641,8 @@ main_menu() {
                 4) manage_super_admin_menu ;;
                 5) backup_restore_menu ;;
                 6) return 0 ;;
-                7) echo "Até mais!"; exit 0 ;;
+                7) configure_git_auth; pause_menu ;;
+                8) echo "Até mais!"; exit 0 ;;
                 *) warn "Opção inválida." ;;
             esac
         else
@@ -898,6 +972,9 @@ SERVICE_GROUP="$(id -gn "${SERVICE_USER}")"
 chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "${APP_DIR}"
 mkdir -p "${APP_DIR}/instance" "${APP_DIR}/app/static/uploads" "${APP_DIR}/deploy/backups"
 chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "${APP_DIR}/instance" "${APP_DIR}/app/static/uploads" "${APP_DIR}/deploy/backups"
+
+STEP="Autenticação do Git"
+configure_git_auth
 
 # --------------------------------------------------------------------------
 # 4. Ambiente virtual e dependências Python
