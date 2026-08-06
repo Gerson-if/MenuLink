@@ -97,11 +97,13 @@
        no DOM — o hx-post ligado ao <form> intercepta esse submit
        normalmente, como qualquer outro. #}
     <div class="drawer-actions">
-      {{ form.submit(class="btn btn-chili", form="product-form") }}
+      {{ form.submit(class="btn btn-chili drawer-action-primary", form="product-form") }}
       <form method="POST" action="{{ url_for('lojista.products_delete', product_id=product.id) }}"
             hx-boost="false" data-confirm-message="Excluir este produto e todas as suas fotos? Essa ação não pode ser desfeita.">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="btn btn-sm btn-outline-danger">Excluir produto</button>
+        <button type="submit" class="btn btn-outline-danger drawer-action-danger">
+          <i class="bi bi-trash3"></i> Excluir produto
+        </button>
       </form>
     </div>
     {% else %}

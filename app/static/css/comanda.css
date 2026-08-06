@@ -1040,8 +1040,29 @@ html[data-theme="light"] .toast-flash-info { color: #1A2B8F; }
    aparecer só quando o lojista rolar até o fim (ver
    products/_form_fragment.html). Fica no fluxo normal do documento
    (não é sticky/fixa) — a linha acima já deixa claro que é uma barra
-   de ação, sem sobrepor os painéis anteriores. */
-.drawer-actions { border-top: 1px solid var(--card-border); padding-top: 16px; margin-top: 24px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+   de ação, sem sobrepor os painéis anteriores.
+   Empilhados (largura cheia) por padrão — no celular, dois botões
+   pequenos lado a lado (o antigo "Excluir produto" usava btn-sm, bem
+   menor que "Salvar produto") ficavam apertados e com toque impreciso.
+   Um botão embaixo do outro, do mesmo tamanho, é o padrão mais comum
+   em apps mobile pra "ação principal + ação destrutiva" — só volta a
+   ficar lado a lado (economia de espaço) em telas largas o bastante
+   pra sobrar espaço confortável. */
+.drawer-actions { border-top: 1px solid var(--card-border); padding-top: 16px; margin-top: 24px; display: flex; flex-direction: column; gap: 10px; }
+.drawer-actions form { display: contents; } /* o <form> em si não deve virar uma "caixa" no layout — só o botão dentro dele participa do flex acima */
+.drawer-action-primary, .drawer-action-danger {
+  width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 12px 20px; font-size: .95rem; border-radius: 10px;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.drawer-action-primary { box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 35%, transparent); }
+.drawer-action-primary:hover, .drawer-action-primary:focus-visible { transform: translateY(-1px); box-shadow: 0 10px 26px color-mix(in srgb, var(--accent) 45%, transparent); }
+.drawer-action-danger:hover, .drawer-action-danger:focus-visible { transform: translateY(-1px); }
+@media (min-width: 576px) {
+  .drawer-actions { flex-direction: row; }
+  .drawer-action-primary { flex: 2; }
+  .drawer-action-danger { flex: 1; }
+}
 
 /* Drawer estreito, para formulários ainda mais simples (ex.: banner). */
 .drawer-narrow { --bs-offcanvas-width: min(560px, 95vw); background: var(--charcoal); color: var(--paper); }
