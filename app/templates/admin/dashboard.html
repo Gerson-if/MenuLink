@@ -4,7 +4,7 @@
 
 {% block panel_content %}
 <div class="row g-3 mb-4">
-  <div class="col-6 col-md-4">
+  <div class="col-6 col-lg-4">
     <a href="{{ url_for('admin.tenants_list') }}" class="text-decoration-none">
       <div class="kpi-card">
         <div><div class="kpi-label">Lojistas cadastrados</div><div class="kpi-value">{{ total_tenants }}</div></div>
@@ -12,7 +12,7 @@
       </div>
     </a>
   </div>
-  <div class="col-6 col-md-4">
+  <div class="col-6 col-lg-4">
     <a href="{{ url_for('admin.tenants_list', status='active') }}" class="text-decoration-none">
       <div class="kpi-card">
         <div><div class="kpi-label">Contas ativas</div><div class="kpi-value">{{ active_tenants }}</div></div>
@@ -20,7 +20,7 @@
       </div>
     </a>
   </div>
-  <div class="col-6 col-md-4">
+  <div class="col-6 col-lg-4">
     <a href="{{ url_for('admin.tenants_list', status='blocked_payment') }}" class="text-decoration-none">
       <div class="kpi-card">
         <div><div class="kpi-label">Bloqueadas (inadimplência)</div><div class="kpi-value">{{ blocked_tenants }}</div></div>
@@ -28,10 +28,205 @@
       </div>
     </a>
   </div>
+  <div class="col-6 col-lg-4">
+    <div class="kpi-card">
+      <div><div class="kpi-label">MRR (receita recorrente/mês)</div><div class="kpi-value">R$ {{ "%.2f"|format(mrr_cents / 100) }}</div></div>
+      <div class="kpi-icon" style="background: var(--turmeric);"><i class="bi bi-graph-up-arrow"></i></div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-4">
+    <div class="kpi-card">
+      <div><div class="kpi-label">Novos lojistas este mês</div><div class="kpi-value">{{ new_this_month }}</div></div>
+      <div class="kpi-icon" style="background: var(--ink);"><i class="bi bi-person-plus"></i></div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-4">
+    <a href="{{ url_for('admin.tenants_list') }}" class="text-decoration-none">
+      <div class="kpi-card">
+        <div><div class="kpi-label">Faturas em aberto</div><div class="kpi-value">R$ {{ "%.2f"|format(open_invoices_cents / 100) }}</div></div>
+        <div class="kpi-icon" style="background: #6B7280;"><i class="bi bi-receipt-cutoff"></i></div>
+      </div>
+    </a>
+  </div>
 </div>
 
-<div class="d-flex gap-3 flex-wrap">
+<div class="row g-4 mb-4">
+  <div class="col-lg-7">
+    <div class="panel h-100">
+      <div class="panel-title"><i class="bi bi-graph-up"></i> Crescimento de lojistas — últimos 12 meses</div>
+      <div class="chart-container"><canvas id="tenantGrowthChart"></canvas></div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="panel h-100">
+      <div class="panel-title"><i class="bi bi-cash-stack"></i> Receita cobrada por mês</div>
+      <div class="chart-container"><canvas id="revenueChart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="panel h-100">
+      <div class="panel-title"><i class="bi bi-bar-chart-steps"></i> Lojistas por status</div>
+      <div class="chart-container" style="height: 220px;"><canvas id="statusChart"></canvas></div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="panel h-100">
+      <div class="panel-title"><i class="bi bi-pie-chart"></i> Lojistas ativos por plano</div>
+      {% if tenants_by_plan %}
+      <div class="chart-container" style="height: 220px;"><canvas id="planChart"></canvas></div>
+      {% else %}
+      <p class="text-muted-custom small mb-0">Nenhum lojista ativo em um plano ainda.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="d-flex gap-3 flex-wrap mt-4">
   <a href="{{ url_for('admin.tenants_create') }}" class="btn btn-chili">+ Novo lojista</a>
   <a href="{{ url_for('admin.plans_list') }}" class="btn btn-outline-secondary">Gerenciar planos</a>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  {# IIFE + carregamento sob demanda do Chart.js: mesmo padrão (e mesmo
+     motivo) de lojista/reports/dashboard.html — esta página é alcançada
+     via navegação "boosted" (hx-boost, ver sidebar do admin), que
+     reexecuta este <script> do zero a cada visita. Sem a IIFE, um
+     `const`/`let` solto colidiria com a declaração da visita anterior
+     ("Identifier already been declared") e travava a troca do htmx no
+     meio do caminho — inclusive pra OUTRAS páginas depois. Sem o
+     carregamento sob demanda (só busca o <script src> se `Chart` ainda
+     não existir), a segunda visita chamava `new Chart(...)` antes do
+     fetch assíncrono do <script src> reinserido terminar. #}
+  (function () {
+    var growthData = {{ tenant_growth_series | tojson }};
+    var revenueData = {{ revenue_series | tojson }};
+    var statusData = {{ tenants_by_status | tojson }};
+    var planData = {{ tenants_by_plan | tojson }};
+
+    // Mesmas cores já usadas em .status-badge (comanda.css) pra cada
+    // status de tenant — consistência com o badge que já aparece em
+    // admin/tenants/list.html, em vez de inventar uma paleta nova só
+    // pro gráfico.
+    var STATUS_COLORS = {
+      "Em teste": '#E54A36',
+      "Ativa": '#7AA06D',
+      "Bloqueada": '#C93522',
+      "Suspensa": '#8A7B64',
+      "Cancelada": '#4E4338',
+    };
+    var PLAN_COLORS = ['#E54A36', '#F0AD4E', '#7AA06D', '#8B5CF6', '#2E86AB'];
+
+    function renderCharts() {
+      var growthCanvas = document.getElementById('tenantGrowthChart');
+      if (growthCanvas && typeof Chart !== 'undefined') {
+        new Chart(growthCanvas, {
+          type: 'line',
+          data: {
+            labels: growthData.map(function (d) { return d.month; }),
+            datasets: [{
+              label: 'Novos lojistas',
+              data: growthData.map(function (d) { return d.count; }),
+              borderColor: '#E54A36',
+              backgroundColor: 'rgba(229,74,54,0.12)',
+              tension: 0.3, fill: true,
+            }],
+          },
+          options: {
+            plugins: { legend: { display: false } },
+            scales: {
+              y: { beginAtZero: true, ticks: { precision: 0, color: '#AFA491' }, grid: { color: 'rgba(255,255,255,.06)' } },
+              x: { ticks: { color: '#AFA491' }, grid: { display: false } },
+            },
+            maintainAspectRatio: false,
+          },
+        });
+      }
+
+      var revenueCanvas = document.getElementById('revenueChart');
+      if (revenueCanvas && typeof Chart !== 'undefined') {
+        new Chart(revenueCanvas, {
+          type: 'bar',
+          data: {
+            labels: revenueData.map(function (d) { return d.month; }),
+            datasets: [{
+              label: 'Receita (R$)',
+              data: revenueData.map(function (d) { return d.revenue_cents / 100; }),
+              backgroundColor: '#E54A36',
+              borderRadius: 4,
+            }],
+          },
+          options: {
+            plugins: { legend: { display: false } },
+            scales: {
+              y: { beginAtZero: true, ticks: { color: '#AFA491' }, grid: { color: 'rgba(255,255,255,.06)' } },
+              x: { ticks: { color: '#AFA491' }, grid: { display: false } },
+            },
+            maintainAspectRatio: false,
+          },
+        });
+      }
+
+      var statusCanvas = document.getElementById('statusChart');
+      if (statusCanvas && typeof Chart !== 'undefined') {
+        new Chart(statusCanvas, {
+          type: 'bar',
+          data: {
+            labels: statusData.map(function (d) { return d.status; }),
+            datasets: [{
+              data: statusData.map(function (d) { return d.count; }),
+              backgroundColor: statusData.map(function (d) { return STATUS_COLORS[d.status] || '#AFA491'; }),
+              borderRadius: 4,
+            }],
+          },
+          options: {
+            indexAxis: 'y',
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { beginAtZero: true, ticks: { precision: 0, color: '#AFA491' }, grid: { color: 'rgba(255,255,255,.06)' } },
+              y: { ticks: { color: '#AFA491' }, grid: { display: false } },
+            },
+            maintainAspectRatio: false,
+          },
+        });
+      }
+
+      var planCanvas = document.getElementById('planChart');
+      if (planCanvas && typeof Chart !== 'undefined' && planData.length) {
+        new Chart(planCanvas, {
+          type: 'bar',
+          data: {
+            labels: planData.map(function (d) { return d.plan; }),
+            datasets: [{
+              data: planData.map(function (d) { return d.count; }),
+              backgroundColor: planData.map(function (_d, i) { return PLAN_COLORS[i % PLAN_COLORS.length]; }),
+              borderRadius: 4,
+            }],
+          },
+          options: {
+            plugins: { legend: { display: false } },
+            scales: {
+              y: { beginAtZero: true, ticks: { precision: 0, color: '#AFA491' }, grid: { color: 'rgba(255,255,255,.06)' } },
+              x: { ticks: { color: '#AFA491' }, grid: { display: false } },
+            },
+            maintainAspectRatio: false,
+          },
+        });
+      }
+    }
+
+    if (typeof Chart !== 'undefined') {
+      renderCharts();
+    } else {
+      var script = document.createElement('script');
+      script.src = "{{ static_versioned('vendor/chartjs/chart.umd.js') }}";
+      script.onload = renderCharts;
+      document.head.appendChild(script);
+    }
+  })();
+</script>
 {% endblock %}
