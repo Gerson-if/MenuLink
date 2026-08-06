@@ -35,7 +35,9 @@
 <div class="row g-3">
   {% for product in products %}
   <div class="col-12 col-lg-6" id="product-card-{{ product.id }}">
-    <div class="product-card">
+    <div class="product-card product-card-clickable"
+         hx-get="{{ url_for('lojista.products_edit', product_id=product.id) }}" hx-target="#drawer-body" hx-swap="innerHTML"
+         data-bs-toggle="offcanvas" data-bs-target="#editDrawer">
       <div class="thumb">
         {% if product.primary_image %}
         <img src="{{ url_for('static', filename=product.primary_image.file_path) }}" alt="{{ product.name }}">
@@ -58,11 +60,17 @@
         {% else %}
         <div class="price">R$ {{ "%.2f"|format(product.price_cents / 100) }}</div>
         {% endif %}
+        {# stopPropagation nos dois botões: sem isso, o clique borbulharia
+           até o .product-card (que agora também abre a edição ao ser
+           clicado, ver acima) — no "Excluir" isso disparava DUAS ações
+           de uma vez (excluir E abrir o drawer de edição do produto que
+           acabou de sumir); no "Editar" seria só redundante, mas
+           evitamos disparar a mesma requisição duas vezes. #}
         <div class="actions">
-          <button type="button" class="btn btn-sm btn-outline-secondary btn-edit-product"
+          <button type="button" class="btn btn-sm btn-outline-secondary btn-edit-product" onclick="event.stopPropagation()"
                   hx-get="{{ url_for('lojista.products_edit', product_id=product.id) }}" hx-target="#drawer-body" hx-swap="innerHTML"
                   data-bs-toggle="offcanvas" data-bs-target="#editDrawer">Editar</button>
-          <button type="button" class="btn btn-sm btn-outline-danger btn-delete-product"
+          <button type="button" class="btn btn-sm btn-outline-danger btn-delete-product" onclick="event.stopPropagation()"
                   hx-post="{{ url_for('lojista.products_delete', product_id=product.id) }}"
                   hx-target="#product-card-{{ product.id }}" hx-swap="outerHTML swap:0.15s"
                   hx-confirm="Excluir este produto e todas as suas fotos?">

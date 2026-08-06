@@ -288,7 +288,7 @@ body {
   border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
 }
 .empty-state-icon i { position: relative; font-size: 2.5rem; color: var(--accent); }
-.empty-state-title { color: #fff; font-size: 1.2rem; margin-bottom: 8px; }
+.empty-state-title { color: var(--card-text); font-size: 1.2rem; margin-bottom: 8px; }
 .empty-state-text { color: var(--muted-text); font-size: .88rem; max-width: 380px; margin: 0 auto 20px; }
 @media (max-width: 575.98px) {
   .empty-state-hero { padding: 40px 16px; }
@@ -421,6 +421,7 @@ html[data-theme="light"] .status-ready_for_pickup { color: #1B5E20; }
   transition: transform .2s, border-color .2s;
 }
 .product-card:hover { transform: translateY(-2px); border-color: var(--accent); }
+.product-card-clickable { cursor: pointer; }
 .product-card .thumb {
   width: 96px; height: 96px; flex-shrink: 0; border-radius: 12px; overflow: hidden;
   background: #3A3127; border: 1px solid var(--card-border);
@@ -1117,8 +1118,8 @@ html[data-theme="light"] .toast-flash-info { color: #1A2B8F; }
 .drawer-actions form { display: contents; } /* o <form> em si não deve virar uma "caixa" no layout — só o botão dentro dele participa do flex acima */
 .drawer-action-primary, .drawer-action-danger {
   width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;
-  padding: 12px 20px; font-size: .95rem; border-radius: 10px;
-  transition: transform .15s ease, box-shadow .15s ease;
+  padding: 12px 20px; font-size: .95rem; font-weight: 600; border-radius: 10px;
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease, border-color .15s ease;
 }
 .drawer-action-primary { box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 35%, transparent); }
 .drawer-action-primary:hover, .drawer-action-primary:focus-visible { transform: translateY(-1px); box-shadow: 0 10px 26px color-mix(in srgb, var(--accent) 45%, transparent); }
@@ -1130,10 +1131,13 @@ html[data-theme="light"] .toast-flash-info { color: #1A2B8F; }
      empilhados — ficavam enormes e desproporcionais em telas largas,
      sobretudo no drawer mais estreito de categoria (.drawer-narrow).
      `flex: 0 0 auto` volta ao tamanho natural do botão (baseado no
-     texto/padding), com `justify-content: space-between` recriando o
-     layout original lado a lado (ação principal à esquerda, destrutiva
-     à direita — mesma ordem em que aparecem no HTML). */
-  .drawer-actions { flex-direction: row; justify-content: space-between; }
+     texto/padding). `justify-content: space-between` (removido de
+     novo) jogava os dois botões pras pontas OPOSTAS do drawer — em
+     telas largas isso virava uma distância grande demais entre
+     "Salvar" e "Excluir" pro dedo/mouse percorrer. `flex-start` +
+     `gap` fixo mantém os dois próximos um do outro (nem colados, nem
+     nas pontas), lado a lado logo no início da barra. */
+  .drawer-actions { flex-direction: row; justify-content: flex-start; gap: 14px; }
   /* Só os botões DENTRO de .drawer-actions (o par Salvar+Excluir) —
      um "Salvar" sozinho fora dela (ex.: categoria em modo de criação,
      sem botão de excluir ainda) continua largura cheia, que é o
