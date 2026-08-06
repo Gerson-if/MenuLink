@@ -75,6 +75,21 @@
     border-left: 1px solid color-mix(in srgb, var(--card-text) 12%, transparent);
     transition: transform .4s cubic-bezier(0.22, 1, 0.36, 1);
   }
+  /* No celular, 86vw sobrava uma tira feia da página de trás visível à
+     esquerda da gaveta (ela é ancorada na direita, "offcanvas-end") —
+     não parecia uma tela nova abrindo, e sim um painel estreito
+     flutuando por cima, o que fazia gente confundir o que o ícone do
+     menu fazia. Ocupando a tela inteira e quase opaca só nesta largura,
+     a abertura passa a se comportar como a troca de tela de um app de
+     verdade — o efeito "vidro fosco" (pedido do Super Admin, ver acima)
+     continua como estava em telas maiores, onde a tira ao lado é
+     intencional, não sobra feia. */
+  @media (max-width: 575.98px) {
+    .landing-drawer {
+      --bs-offcanvas-width: 100vw;
+      background: color-mix(in srgb, var(--charcoal) 97%, transparent);
+    }
+  }
   #landingDrawer .offcanvas-header { border-bottom: 1px solid var(--card-border); padding: 16px 18px; }
   #landingDrawer .offcanvas-body { padding: 18px; }
   #landingDrawer .btn-close { filter: invert(1) brightness(2); }
@@ -136,6 +151,36 @@
     border: 1px solid color-mix(in srgb, var(--card-text) 16%, transparent);
     color: var(--card-text); font-size: .8rem; font-weight: 600; margin-bottom: 20px;
   }
+
+  /* Com vídeo de fundo (.hero-section-media), o `.hero-video-overlay`
+     logo abaixo é um gradiente ESCURO FIXO (rgba hardcoded, igual em
+     qualquer tema/modo — precisa ser assim pra continuar legível em
+     cima de um vídeo qualquer que o Super Admin suba, que não dá pra
+     prever a cor). O badge, o título, o subtítulo e o link "Ver
+     planos" usavam var(--card-text)/var(--paper) — variáveis que
+     INVERTEM em modo claro — resultado: em modo claro, texto escuro
+     nascendo em cima desse fundo que continua escuro, praticamente
+     invisível (mesma causa raiz já corrigida na navbar, ver
+     .navbar-custom acima). var(--sidebar-text)/var(--sidebar-muted)
+     são o par certo aqui: nunca mudam com o modo claro, iguais ao
+     próprio overlay (ver .hero-video-overlay lá em cima). */
+  .hero-section-media h1,
+  .hero-section-media .hero-badge,
+  .hero-section-media .hero-link-secondary { color: var(--sidebar-text); }
+  .hero-section-media .lead.text-muted-custom { color: var(--sidebar-muted) !important; }
+  .hero-section-media .hero-badge {
+    background: color-mix(in srgb, var(--sidebar-text) 8%, transparent);
+    border-color: color-mix(in srgb, var(--sidebar-text) 16%, transparent);
+  }
+  .hero-section-media .hero-link-secondary {
+    background: color-mix(in srgb, var(--sidebar-text) 10%, transparent);
+    border-color: color-mix(in srgb, var(--sidebar-text) 18%, transparent);
+  }
+  .hero-section-media .hero-link-secondary:hover {
+    color: var(--sidebar-text);
+    background: color-mix(in srgb, var(--sidebar-text) 18%, transparent);
+    border-color: color-mix(in srgb, var(--sidebar-text) 32%, transparent);
+  }
 </style>
 {% endblock %}
 
@@ -192,7 +237,7 @@
   </div>
 </div>
 
-<section class="hero-section">
+<section class="hero-section{{ ' hero-section-media' if landing.hero_video }}">
   {% if landing.hero_video %}
   <video class="hero-video-bg" src="{{ url_for('static', filename=landing.hero_video) }}" autoplay muted loop playsinline preload="auto"></video>
   <div class="hero-video-overlay"></div>

@@ -209,6 +209,11 @@ body {
 }
 .form-control::placeholder { color: var(--muted-text); }
 .form-label { color: var(--muted-text); }
+/* Bootstrap usa --bs-secondary-color aqui (cinza escuro fixo, pensado
+   pra fundo claro) — sem essa sobrescrita ficava ilegível em qualquer
+   tema escuro (ex: o texto de ajuda abaixo do campo "Selo" na edição
+   de produto/categoria, ou dos grupos de complemento). */
+.form-text { color: var(--muted-text); }
 .form-check-input { background-color: var(--charcoal); border-color: var(--card-border); }
 .form-check-input:checked { background-color: var(--accent); border-color: var(--accent); }
 
@@ -253,6 +258,31 @@ body {
    pra baixo com nitidez (o arquivo em si continua em alta resolução
    pro download/impressão). */
 .qr-preview-img { width: 220px; max-width: 100%; height: auto; }
+
+/* Temas prontos do cartaz do QR Code (swatches desenhados em <canvas>,
+   ver menu.html) e pré-visualização ao vivo do cartaz. */
+.qr-theme-swatches { display: flex; flex-wrap: wrap; gap: 10px; }
+.qr-theme-swatch {
+  border: 2px solid transparent; border-radius: 10px; padding: 3px; background: none;
+  cursor: pointer; line-height: 0; transition: border-color .15s ease, transform .15s ease;
+}
+.qr-theme-swatch:hover { transform: translateY(-2px); }
+.qr-theme-swatch.is-selected { border-color: var(--accent); }
+.qr-theme-swatch canvas { display: block; border-radius: 7px; }
+
+.qr-card-preview {
+  background: var(--charcoal); border: 1px solid var(--card-border); border-radius: 14px;
+  padding: 20px 16px; text-align: center; transition: background .15s ease, color .15s ease;
+}
+.qr-card-preview-icon {
+  width: 40px; height: 40px; margin: 0 auto 10px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+.qr-card-preview-name { font-family: 'Archivo Black'; font-size: 1rem; margin-bottom: 12px; word-break: break-word; }
+.qr-card-preview-qr { display: inline-block; background: #fff; padding: 8px; border-radius: 8px; }
+.qr-card-preview-img { display: block; width: 100px; height: 100px; }
+.qr-card-preview-caption { margin-top: 12px; font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; opacity: .85; }
 
 /* Variante decorativa de .panel — mancha de luz borrada no canto,
    puramente cosmética (ver "Seu plano atual" em subscription.html).
@@ -610,6 +640,23 @@ html[data-theme="light"] .status-ready_for_pickup { color: #1B5E20; }
 .chat-attachment-file-name { font-size: .78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
 .chat-attachment-file-open { font-size: .8rem; opacity: .6; flex-shrink: 0; }
 
+/* Visualizador de imagem do chat (ver data-chat-lightbox) — em vez de
+   `target="_blank"` levando pra outra aba, abre a imagem em tela cheia
+   aqui mesmo. z-index acima do modal genérico (.modal do Bootstrap
+   fica em 1055/backdrop 1050) por segurança. */
+.chat-lightbox-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.92); z-index: 1080;
+  display: none; align-items: center; justify-content: center; padding: 32px;
+}
+.chat-lightbox-overlay.is-open { display: flex; }
+.chat-lightbox-img { max-width: 100%; max-height: 100%; border-radius: 10px; }
+.chat-lightbox-close {
+  position: absolute; top: 18px; right: 18px; width: 40px; height: 40px; border-radius: 50%;
+  background: rgba(255,255,255,.12); border: none; color: #fff; font-size: 1.1rem;
+  display: flex; align-items: center; justify-content: center;
+}
+.chat-lightbox-close:hover { background: rgba(255,255,255,.22); }
+
 .chat-input-bar {
   display: flex; align-items: flex-end; gap: 10px; padding: 12px 14px;
   border-top: 1px solid var(--card-border); background: rgba(0,0,0,.1); flex-shrink: 0;
@@ -936,7 +983,15 @@ html[data-theme="light"] .toast-flash-info { color: #1A2B8F; }
 .reg-progress-label { font-size: .75rem; color: var(--muted-text); margin: 6px 0 0; text-align: right; }
 
 #register-form.js-wizard .reg-step { display: none; }
-#register-form.js-wizard .reg-step.is-active { display: block; }
+/* min-height + flex-column: passos curtos (ex: só "Qual é o seu nome?"
+   + 1 campo + botão) deixavam o cartão de cadastro (480px de largura)
+   bem mais baixo que largo — "achatado" — mudando de proporção a cada
+   passo. Reserva uma altura mínima parecida com a de um passo "cheio"
+   (ex: o de senha, com 2 campos) e ancora os botões no rodapé do
+   passo (margin-top: auto), pra manter o cartão com uma proporção
+   consistente do primeiro ao último passo. */
+#register-form.js-wizard .reg-step.is-active { display: flex; flex-direction: column; min-height: 260px; }
+#register-form.js-wizard .reg-step.is-active .reg-step-nav { margin-top: auto; }
 
 .reg-step-question { font-family: 'Archivo Black', sans-serif; font-size: 1.15rem; line-height: 1.3; margin: 0 0 4px; }
 .reg-step-hint { font-size: .8rem; color: var(--muted-text); margin: 0 0 14px; }
@@ -1116,7 +1171,12 @@ html[data-theme="light"] .toast-flash-info { color: #1A2B8F; }
 .sidebar.is-collapsed .user-avatar { margin: 0 auto; }
 .user-chip-text { flex: 1; min-width: 0; overflow: hidden; }
 .sidebar.is-collapsed .user-chip-text { display: none; }
-.user-chip-name { color: var(--paper); font-weight: 600; font-size: .85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* --paper INVERTE entre claro/escuro (ver bloco de temas no topo do
+   arquivo) — mas a sidebar continua sempre escura nos dois modos (usa
+   os tokens fixos --sidebar-*, nunca --paper/--charcoal). Em modo
+   claro, --paper virava uma cor escura sobre o fundo escuro da
+   sidebar, apagando o nome do usuário logado. */
+.user-chip-name { color: var(--sidebar-text); font-weight: 600; font-size: .85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .user-chip-role { color: var(--sidebar-muted); font-size: .7rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .user-logout-btn {
   width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;

@@ -50,6 +50,23 @@ QR_CARD_ICON_CHOICES = [
 ]
 QR_CARD_ICON_KEYS = {key for key, _label in QR_CARD_ICON_CHOICES}
 
+# Temas prontos (cor de fundo + ícone já combinados) pro cartaz do QR
+# Code — atalhos visuais pra quem não quer escolher cor à mão (ver
+# swatches em lojista/settings/menu.html, desenhados em <canvas>). Cada
+# um só PREENCHE bg_color/icon no formulário abaixo — o lojista pode
+# ajustar livremente depois de escolher um. Cores pensadas pra
+# contraste bom com texto preto OU branco (ver readable_text_color, que
+# decide automaticamente qual dos dois usar em cima da cor escolhida —
+# tanto faz aqui se veio de um tema pronto ou de uma cor livre).
+QR_CARD_THEME_PRESETS = [
+    {"id": "classico", "label": "Clássico", "bg": "#FFFFFF", "icon": "none"},
+    {"id": "carvao", "label": "Carvão", "bg": "#221C16", "icon": "bi-shop"},
+    {"id": "terracota", "label": "Terracota", "bg": "#C9552E", "icon": "bi-egg-fried"},
+    {"id": "floresta", "label": "Floresta", "bg": "#2C6B41", "icon": "bi-basket2-fill"},
+    {"id": "oceano", "label": "Oceano", "bg": "#1F3A5F", "icon": "bi-cup-hot-fill"},
+    {"id": "ameixa", "label": "Ameixa", "bg": "#4B2E52", "icon": "bi-gift-fill"},
+]
+
 
 class StoreInfoForm(FlaskForm):
     name = StringField("Nome da loja", validators=[DataRequired(), Length(max=150), not_blank])

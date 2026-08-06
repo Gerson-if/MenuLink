@@ -12,19 +12,41 @@
   .qrcode-print-body { background: #ECE7DA; min-height: 100vh; }
   .qrcode-print-wrap { max-width: 480px; margin: 40px auto; padding: 0 16px; }
   .qrcode-print-actions { text-align: center; margin-bottom: 20px; }
+
+  /* print-color-adjust/-webkit-print-color-adjust: por padrão, o
+     navegador OMITE cor de fundo ao imprimir (economia de tinta) — sem
+     isso, a cor escolhida pelo lojista simplesmente não saía na folha
+     impressa/PDF, só o texto e a imagem. `exact` força a impressão a
+     respeitar a cor de verdade, que é o objetivo aqui (é um cartaz de
+     marca, não um documento de texto comum). */
   .qrcode-print-card {
-    background: {{ bg_color }}; border-radius: 20px; padding: 40px 28px; text-align: center;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.18); color: #221C16;
+    background: {{ bg_color }}; color: {{ text_color }};
+    border-radius: 20px; padding: 44px 30px; text-align: center;
+    box-shadow: 0 12px 36px rgba(0,0,0,0.22);
+    border: 1px solid color-mix(in srgb, {{ text_color }} 12%, transparent);
+    print-color-adjust: exact; -webkit-print-color-adjust: exact;
   }
-  .qrcode-print-icon { font-size: 2.5rem; margin-bottom: 8px; }
-  .qrcode-print-name { font-family: 'Archivo Black'; font-size: 1.4rem; margin-bottom: 20px; word-break: break-word; }
-  .qrcode-print-img { width: 260px; max-width: 100%; height: auto; background: #fff; padding: 10px; border-radius: 8px; }
-  .qrcode-print-caption { margin-top: 18px; font-size: .9rem; font-weight: 600; }
+  .qrcode-print-icon {
+    width: 56px; height: 56px; margin: 0 auto 14px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; font-size: 1.6rem;
+    background: color-mix(in srgb, {{ text_color }} 12%, transparent);
+  }
+  .qrcode-print-name { font-family: 'Archivo Black'; font-size: 1.4rem; margin-bottom: 4px; word-break: break-word; }
+  .qrcode-print-tagline { font-size: .82rem; opacity: .75; margin-bottom: 22px; }
+  .qrcode-print-qr-frame {
+    display: inline-block; background: #fff; padding: 14px; border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.08); print-color-adjust: exact; -webkit-print-color-adjust: exact;
+  }
+  .qrcode-print-img { display: block; width: 240px; max-width: 100%; height: auto; }
+  .qrcode-print-caption {
+    margin-top: 20px; font-size: .85rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
   @media print {
     .qrcode-print-actions, .toast-flash-stack { display: none !important; }
     .qrcode-print-body { background: #fff; }
     .qrcode-print-wrap { margin: 0; max-width: 100%; padding: 0; }
-    .qrcode-print-card { box-shadow: none; border-radius: 0; }
+    .qrcode-print-card { box-shadow: none; border-radius: 0; border: none; }
   }
 </style>
 {% endblock %}
@@ -47,8 +69,13 @@
     {% if show_business_name %}
     <div class="qrcode-print-name">{{ tenant.name }}</div>
     {% endif %}
-    <img src="{{ qr_code_url }}" alt="QR Code do cardápio" class="qrcode-print-img">
-    <div class="qrcode-print-caption">Aponte a câmera e confira o cardápio</div>
+    {% if tenant.menu_tagline %}
+    <div class="qrcode-print-tagline">{{ tenant.menu_tagline }}</div>
+    {% endif %}
+    <div class="qrcode-print-qr-frame">
+      <img src="{{ qr_code_url }}" alt="QR Code do cardápio" class="qrcode-print-img">
+    </div>
+    <div class="qrcode-print-caption"><i class="bi bi-phone"></i> Aponte a câmera e confira o cardápio</div>
   </div>
 </div>
 {% endblock %}

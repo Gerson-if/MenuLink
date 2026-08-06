@@ -66,28 +66,45 @@
       {% if can_customize_qr %}
       <div class="text-start">
         <div class="panel-title small mb-3"><i class="bi bi-stars"></i> Personalizar cartaz de impressão</div>
-        <form method="POST" action="{{ url_for('lojista.settings_menu_qrcode_customize') }}" novalidate>
-          {{ qr_form.hidden_tag() }}
-          <label class="d-flex align-items-center gap-2 mb-3">
-            {{ qr_form.show_business_name() }} <span class="small">{{ qr_form.show_business_name.label.text }}</span>
-          </label>
-          <div class="row g-2 mb-3">
-            <div class="col-6">
-              {{ qr_form.bg_color.label(class="form-label small fw-semibold") }}
-              {{ qr_form.bg_color(class="form-control form-control-color") }}
-            </div>
-            <div class="col-6">
-              {{ qr_form.icon.label(class="form-label small fw-semibold") }}
-              {{ qr_form.icon(class="form-select") }}
+
+        <div class="mb-3">
+          <div class="form-label small fw-semibold mb-2">Temas prontos</div>
+          <div id="qr-theme-swatches" class="qr-theme-swatches"></div>
+        </div>
+
+        <div class="row g-4">
+          <div class="col-sm-6">
+            <form method="POST" action="{{ url_for('lojista.settings_menu_qrcode_customize') }}" novalidate id="qr-card-form">
+              {{ qr_form.hidden_tag() }}
+              <label class="d-flex align-items-center gap-2 mb-3">
+                {{ qr_form.show_business_name(id="qr-field-show-name") }} <span class="small">{{ qr_form.show_business_name.label.text }}</span>
+              </label>
+              <div class="mb-3">
+                {{ qr_form.bg_color.label(class="form-label small fw-semibold") }}
+                {{ qr_form.bg_color(class="form-control form-control-color", id="qr-field-bg-color") }}
+              </div>
+              <div class="mb-3">
+                {{ qr_form.icon.label(class="form-label small fw-semibold") }}
+                {{ qr_form.icon(class="form-select", id="qr-field-icon") }}
+              </div>
+              <div class="d-flex gap-2 flex-wrap">
+                {{ qr_form.submit(class="btn btn-sm btn-chili") }}
+                <a href="{{ url_for('lojista.settings_menu_qrcode_card') }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                  <i class="bi bi-printer"></i> Abrir cartaz p/ imprimir
+                </a>
+              </div>
+            </form>
+          </div>
+          <div class="col-sm-6">
+            <div class="form-label small fw-semibold mb-2">Pré-visualização</div>
+            <div id="qr-card-preview" class="qr-card-preview" style="background: {{ qr_form.bg_color.data or '#FFFFFF' }};">
+              <div class="qr-card-preview-icon {{ 'd-none' if (qr_form.icon.data or 'none') == 'none' }}" id="qr-preview-icon"><i class="bi {{ qr_form.icon.data if qr_form.icon.data and qr_form.icon.data != 'none' else '' }}"></i></div>
+              <div class="qr-card-preview-name {{ 'd-none' if not qr_form.show_business_name.data }}" id="qr-preview-name">{{ tenant.name }}</div>
+              <div class="qr-card-preview-qr"><img src="{{ qr_code_url }}" alt="" class="qr-card-preview-img"></div>
+              <div class="qr-card-preview-caption"><i class="bi bi-phone"></i> Aponte a câmera</div>
             </div>
           </div>
-          <div class="d-flex gap-2 flex-wrap">
-            {{ qr_form.submit(class="btn btn-sm btn-chili") }}
-            <a href="{{ url_for('lojista.settings_menu_qrcode_card') }}" target="_blank" class="btn btn-sm btn-outline-secondary">
-              <i class="bi bi-printer"></i> Ver cartaz para imprimir
-            </a>
-          </div>
-        </form>
+        </div>
       </div>
       {% else %}
       <div class="upload-meta text-start">
@@ -99,4 +116,124 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+{% if can_customize_qr %}
+<script>
+  (function () {
+    var PRESETS = {{ qr_theme_presets | tojson }};
+
+    // Mesma fórmula (luminância relativa, WCAG) do lado do servidor —
+    // ver readable_text_color em app/utils/colors.py. Duplicada aqui de
+    // propósito: a pré-visualização precisa reagir na hora, sem ida e
+    // volta ao servidor a cada tecla/clique.
+    function readableTextColor(hex) {
+      var r = parseInt(hex.substr(1, 2), 16) / 255;
+      var g = parseInt(hex.substr(3, 2), 16) / 255;
+      var b = parseInt(hex.substr(5, 2), 16) / 255;
+      function ch(c) { return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }
+      var luminance = 0.2126 * ch(r) + 0.7152 * ch(g) + 0.0722 * ch(b);
+      return luminance > 0.5 ? '#000000' : '#FFFFFF';
+    }
+
+    // Desenha um mockup abstrato do cartaz (retângulo arredondado na cor
+    // do tema + um círculo de "ícone" + duas barras representando
+    // texto) — não tenta reproduzir o nome da loja de verdade nem o
+    // ícone exato (custaria carregar a fonte de ícones dentro do
+    // canvas): é só uma prévia visual rápida pra escolher o tema, a
+    // pré-visualização de verdade é a `.qr-card-preview` ao lado (HTML
+    // real, mesma estrutura do cartaz de impressão).
+    function drawSwatch(canvas, bg) {
+      var ctx = canvas.getContext('2d');
+      var w = canvas.width, h = canvas.height;
+      var text = readableTextColor(bg);
+      var r = 10;
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = bg;
+      ctx.beginPath();
+      ctx.moveTo(r, 0);
+      ctx.arcTo(w, 0, w, h, r);
+      ctx.arcTo(w, h, 0, h, r);
+      ctx.arcTo(0, h, 0, 0, r);
+      ctx.arcTo(0, 0, w, 0, r);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = text;
+      ctx.globalAlpha = .9;
+      ctx.beginPath();
+      ctx.arc(w / 2, 14, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = .75;
+      ctx.fillRect(w / 2 - 16, 28, 32, 3);
+      ctx.globalAlpha = .5;
+      ctx.fillRect(w / 2 - 10, 35, 20, 3);
+      ctx.globalAlpha = 1;
+    }
+
+    var swatchWrap = document.getElementById('qr-theme-swatches');
+    var bgField = document.getElementById('qr-field-bg-color');
+    var iconField = document.getElementById('qr-field-icon');
+    var nameField = document.getElementById('qr-field-show-name');
+    var previewCard = document.getElementById('qr-card-preview');
+    var previewIcon = document.getElementById('qr-preview-icon');
+    var previewIconI = previewIcon ? previewIcon.querySelector('i') : null;
+    var previewName = document.getElementById('qr-preview-name');
+
+    function updatePreview() {
+      if (!previewCard || !bgField) return;
+      var bg = bgField.value || '#FFFFFF';
+      var text = readableTextColor(bg);
+      previewCard.style.background = bg;
+      previewCard.style.color = text;
+
+      var icon = iconField ? iconField.value : 'none';
+      if (previewIcon) previewIcon.classList.toggle('d-none', !icon || icon === 'none');
+      if (previewIconI) previewIconI.className = 'bi' + (icon && icon !== 'none' ? ' ' + icon : '');
+
+      if (previewName) previewName.classList.toggle('d-none', !(nameField && nameField.checked));
+
+      updateSelectedSwatch(bg, icon);
+    }
+
+    function updateSelectedSwatch(bg, icon) {
+      if (!swatchWrap) return;
+      swatchWrap.querySelectorAll('.qr-theme-swatch').forEach(function (btn) {
+        var match = btn.dataset.bg.toUpperCase() === (bg || '').toUpperCase() && btn.dataset.icon === icon;
+        btn.classList.toggle('is-selected', match);
+      });
+    }
+
+    if (swatchWrap) {
+      PRESETS.forEach(function (preset) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'qr-theme-swatch';
+        btn.title = preset.label;
+        btn.dataset.bg = preset.bg;
+        btn.dataset.icon = preset.icon;
+
+        var canvas = document.createElement('canvas');
+        canvas.width = 64; canvas.height = 48;
+        drawSwatch(canvas, preset.bg);
+        btn.appendChild(canvas);
+
+        btn.addEventListener('click', function () {
+          if (bgField) bgField.value = preset.bg;
+          if (iconField) iconField.value = preset.icon;
+          updatePreview();
+        });
+
+        swatchWrap.appendChild(btn);
+      });
+    }
+
+    if (bgField) bgField.addEventListener('input', updatePreview);
+    if (iconField) iconField.addEventListener('change', updatePreview);
+    if (nameField) nameField.addEventListener('change', updatePreview);
+    updatePreview();
+  })();
+</script>
+{% endif %}
 {% endblock %}

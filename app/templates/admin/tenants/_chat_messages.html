@@ -16,7 +16,13 @@
         {% if message.has_attachment %}
         <div class="chat-bubble-attachment">
           {% if message.attachment_is_image %}
-          <a href="{{ url_for('static', filename=message.attachment_path) }}" target="_blank" rel="noopener">
+          {# target="_blank" fica só como fallback sem JS — com JS, o
+             listener delegado abaixo intercepta o clique e abre a
+             imagem num visualizador dentro do próprio app (ver
+             data-chat-lightbox), em vez de levar pra uma aba nova. #}
+          <a href="{{ url_for('static', filename=message.attachment_path) }}" target="_blank" rel="noopener"
+             data-chat-lightbox data-full-src="{{ url_for('static', filename=message.attachment_path) }}"
+             data-alt="{{ message.attachment_original_name }}">
             <img src="{{ url_for('static', filename=message.attachment_path) }}" alt="{{ message.attachment_original_name }}" class="chat-attachment-thumb">
           </a>
           {% else %}
@@ -181,6 +187,40 @@
         requestAnimationFrame(restore);
       }
       bindScrollTracking(fresh);
+    });
+
+    // Lightbox de imagem do chat (ver data-chat-lightbox nos anexos
+    // acima) — listener delegado no body pelo mesmo motivo do scroll:
+    // sobrevive à troca do #chat-messages a cada poll de 5s ou envio.
+    function openChatLightbox(src, alt) {
+      var overlay = document.getElementById('chat-lightbox-overlay');
+      if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'chat-lightbox-overlay';
+        overlay.className = 'chat-lightbox-overlay';
+        overlay.innerHTML =
+          '<button type="button" class="chat-lightbox-close" aria-label="Fechar"><i class="bi bi-x-lg"></i></button>' +
+          '<img class="chat-lightbox-img" alt="">';
+        document.body.appendChild(overlay);
+        overlay.addEventListener('click', function (e) {
+          if (e.target === overlay || e.target.closest('.chat-lightbox-close')) {
+            overlay.classList.remove('is-open');
+          }
+        });
+        document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape') overlay.classList.remove('is-open');
+        });
+      }
+      overlay.querySelector('.chat-lightbox-img').src = src;
+      overlay.querySelector('.chat-lightbox-img').alt = alt || '';
+      overlay.classList.add('is-open');
+    }
+
+    document.body.addEventListener('click', function (e) {
+      var link = e.target.closest('[data-chat-lightbox]');
+      if (!link) return;
+      e.preventDefault();
+      openChatLightbox(link.getAttribute('data-full-src'), link.getAttribute('data-alt'));
     });
   })();
 </script>

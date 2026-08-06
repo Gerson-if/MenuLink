@@ -3,13 +3,14 @@ from datetime import datetime, timedelta, timezone
 from flask import abort, flash, make_response, redirect, render_template, request, url_for, Response
 
 from app.forms.tenant_settings_forms import (
-    AppearanceSettingsForm, CheckoutSettingsForm, MenuSettingsForm, OpeningHoursForm, QrCardSettingsForm,
-    StoreInfoForm,
+    AppearanceSettingsForm, CheckoutSettingsForm, MenuSettingsForm, OpeningHoursForm, QR_CARD_THEME_PRESETS,
+    QrCardSettingsForm, StoreInfoForm,
 )
 from app.models import InvoiceStatus, TenantStatus
 from app.repositories.plan_repository import PlanRepository
 from app.services.admin_billing_service import AdminBillingService
 from app.services.tenant_settings_service import TenantSettingsError, TenantSettingsService
+from app.utils.colors import readable_text_color
 from app.utils.decorators import lojista_login_required, lojista_required
 from app.utils.tenant_context import get_current_tenant
 from app.utils.uploads import InvalidImageError
@@ -203,6 +204,7 @@ def settings_menu():
         "lojista/settings/menu.html", form=form, tenant=tenant,
         cardapio_url=cardapio_url, qr_code_url=qr_code_url,
         qr_form=qr_form, can_customize_qr=can_customize_qr,
+        qr_theme_presets=QR_CARD_THEME_PRESETS,
     )
 
 
@@ -244,12 +246,14 @@ def settings_menu_qrcode_card():
     qr_card = (tenant.theme_settings or {}).get("qr_card") or {}
     cardapio_url = url_for("public.store_home", slug=tenant.slug, _external=True)
     qr_code_url = url_for("lojista.settings_menu_qrcode")
+    bg_color = qr_card.get("bg_color") or "#FFFFFF"
 
     return render_template(
         "lojista/settings/qrcode_print.html", tenant=tenant, cardapio_url=cardapio_url,
         qr_code_url=qr_code_url,
         show_business_name=qr_card.get("show_business_name", True),
-        bg_color=qr_card.get("bg_color") or "#FFFFFF",
+        bg_color=bg_color,
+        text_color=readable_text_color(bg_color),
         icon=qr_card.get("icon") or "none",
     )
 

@@ -39,3 +39,20 @@ def hex_to_rgba_css(hex_color: str, alpha: float) -> str:
     """Usado para gerar a variante "-soft" (fundo suave) a partir da cor escolhida."""
     r, g, b = hex_to_rgb(hex_color)
     return f"rgba({r},{g},{b},{alpha})"
+
+
+def readable_text_color(hex_color: str) -> str:
+    """Preto ou branco — o que tiver mais contraste sobre `hex_color`
+    (luminância relativa, fórmula do WCAG). Usado no cartaz de impressão
+    do QR Code (ver settings_menu_qrcode_card): antes o texto tinha uma
+    cor fixa, então uma cor de fundo escura escolhida pelo lojista virava
+    texto ilegível — aqui o texto sempre se adapta, qualquer que seja o
+    fundo escolhido."""
+    r, g, b = hex_to_rgb(hex_color)
+
+    def _channel(value: int) -> float:
+        c = value / 255
+        return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+
+    luminance = 0.2126 * _channel(r) + 0.7152 * _channel(g) + 0.0722 * _channel(b)
+    return "#000000" if luminance > 0.5 else "#FFFFFF"
