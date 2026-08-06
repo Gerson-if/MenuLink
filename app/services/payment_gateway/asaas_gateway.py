@@ -86,6 +86,23 @@ class AsaasGateway(PaymentGateway):
 
     def ensure_customer(self, tenant) -> str:
         if tenant.asaas_customer_id:
+            # Se o lojista já tinha um cliente criado no Asaas (às vezes
+            # sem CPF/CNPJ, quando esse campo ainda estava vazio) e só
+            # depois preencheu/corrigiu o documento em Configurações →
+            # Loja, o cliente já existente no Asaas ficava desatualizado
+            # pra sempre — a criação só acontece uma vez, então a
+            # correção nunca chegava lá, e a geração de cobrança
+            # continuava falhando com "CPF/CNPJ inválido" mesmo com o
+            # documento certo salvo aqui. Sincroniza o documento atual
+            # (já normalizado, só dígitos) no cliente existente sempre
+            # que houver um pra sincronizar; sem documento, mantém o
+            # comportamento antigo (reaproveita o ID sem chamar a API).
+            if tenant.document:
+                self._request(
+                    "PUT",
+                    f"/customers/{tenant.asaas_customer_id}",
+                    json={"cpfCnpj": only_digits(tenant.document)},
+                )
             return tenant.asaas_customer_id
 
         payload = {

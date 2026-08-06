@@ -145,19 +145,47 @@ class TestAsaasGatewayRequests:
             assert "/customers" in captured["url"]
             assert captured["json"]["externalReference"] == str(tenant.id)
 
-    def test_ensure_customer_reuses_existing_id_without_calling_api(self, app, monkeypatch):
+    def test_ensure_customer_reuses_existing_id_without_calling_api_when_no_document(self, app, monkeypatch):
         def fake_request(*args, **kwargs):
-            raise AssertionError("não deveria chamar a API se já existe asaas_customer_id")
+            raise AssertionError("não deveria chamar a API se já existe asaas_customer_id e não há documento pra sincronizar")
 
         monkeypatch.setattr("app.services.payment_gateway.asaas_gateway.requests.request", fake_request)
 
         with app.app_context():
             tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
             tenant.asaas_customer_id = "cus_ja_existe"
+            tenant.document = None
 
             gateway = AsaasGateway(api_key="fake", environment="sandbox")
             customer_id = gateway.ensure_customer(tenant)
             assert customer_id == "cus_ja_existe"
+
+    def test_ensure_customer_syncs_document_when_id_already_exists(self, app, monkeypatch):
+        """Cobre o bug real: cliente já criado no Asaas (às vezes sem
+        CPF/CNPJ) e o lojista só preenche/corrige o documento depois —
+        sem essa sincronização, a cobrança seguia falhando pra sempre
+        com "CPF/CNPJ inválido" mesmo com o documento certo salvo aqui."""
+        calls = []
+
+        def fake_request(method, url, headers=None, timeout=None, **kwargs):
+            calls.append({"method": method, "url": url, "json": kwargs.get("json")})
+            return _FakeResponse(200, {})
+
+        monkeypatch.setattr("app.services.payment_gateway.asaas_gateway.requests.request", fake_request)
+
+        with app.app_context():
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            tenant.asaas_customer_id = "cus_ja_existe"
+            tenant.document = "529.982.247-25"
+
+            gateway = AsaasGateway(api_key="fake", environment="sandbox")
+            customer_id = gateway.ensure_customer(tenant)
+
+            assert customer_id == "cus_ja_existe"
+            assert len(calls) == 1
+            assert calls[0]["method"] == "PUT"
+            assert calls[0]["url"].endswith("/customers/cus_ja_existe")
+            assert calls[0]["json"] == {"cpfCnpj": "52998224725"}
 
     def test_create_charge_builds_correct_payload(self, app, monkeypatch):
         calls = []
