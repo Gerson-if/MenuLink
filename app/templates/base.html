@@ -28,6 +28,19 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Menu Link">
 <script>
+  /* window.__comandaUserScope: identifica de QUEM é a preferência
+     salva no localStorage (modo claro/escuro, sidebar recolhida) —
+     localStorage é por DOMÍNIO, não por pessoa logada nem por aba. Sem
+     isso, um Super Admin testando várias contas de lojista no mesmo
+     navegador (ou um computador compartilhado por mais de um lojista)
+     via cada troca de tema "vazar" pra próxima conta que logasse ali —
+     bug real reportado: "muda pro lojista/super admin muda o tema e
+     isso afeta os outros lojistas". Cada id de usuário vira sua própria
+     chave (comandaColorMode_42, não só comandaColorMode) — visitante
+     sem login (landing, telas de auth) cai em "anon", que também fica
+     isolado de qualquer conta logada. */
+  window.__comandaUserScope = "{{ (current_user.id|string) if current_user.is_authenticated else 'anon' }}";
+
   /* Aplica o modo claro/escuro salvo ANTES do CSS/primeiro paint —
      evita o "flash" de um tema errado ao carregar a página (mesma ideia
      usada para o estado da sidebar recolhida). Só entra em ação se a
@@ -41,7 +54,7 @@
   (function () {
     try {
       if (!document.documentElement.getAttribute('data-theme')) {
-        var saved = localStorage.getItem('comandaColorMode');
+        var saved = localStorage.getItem('comandaColorMode_' + window.__comandaUserScope);
         if (saved === 'light' || saved === 'dark') {
           document.documentElement.setAttribute('data-theme', saved);
         }

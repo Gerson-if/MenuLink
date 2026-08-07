@@ -50,7 +50,7 @@
          "pisca" reportado ao trocar de seção com o menu recolhido. */
       (function () {
         try {
-          if (localStorage.getItem('comandaSidebarCollapsed') === '1') {
+          if (localStorage.getItem('comandaSidebarCollapsed_' + (window.__comandaUserScope || 'anon')) === '1') {
             var sb = document.currentScript.parentElement;
             sb.classList.add('is-collapsed');
             var ic = sb.querySelector('.hamburger-icon');

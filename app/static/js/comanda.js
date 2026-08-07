@@ -9,14 +9,24 @@
  * layouts/admin_panel.html. `collapsed` persiste em localStorage — sem
  * isso, cada navegação (app multi-página, sem hx-boost) recriava o
  * x-data do zero e o recolhimento da sidebar nunca "durava".
+ *
+ * Ambas as chaves (`collapsed`, `colorMode`) são isoladas por usuário
+ * logado (ver window.__comandaUserScope, definido em base.html) — sem
+ * isso, localStorage é por DOMÍNIO, não por pessoa: um Super Admin
+ * testando contas de lojista no mesmo navegador (ou um computador
+ * compartilhado) via cada troca de tema afetar a conta seguinte que
+ * logasse ali.
  */
 function sidebarShell() {
+  var userScope = window.__comandaUserScope || 'anon';
+  var collapsedKey = 'comandaSidebarCollapsed_' + userScope;
+  var colorModeKey = 'comandaColorMode_' + userScope;
   return {
     sidebarOpen: false,
-    collapsed: localStorage.getItem('comandaSidebarCollapsed') === '1',
+    collapsed: localStorage.getItem(collapsedKey) === '1',
     toggleCollapsed() {
       this.collapsed = !this.collapsed;
-      localStorage.setItem('comandaSidebarCollapsed', this.collapsed ? '1' : '0');
+      localStorage.setItem(collapsedKey, this.collapsed ? '1' : '0');
     },
     // O valor inicial já foi aplicado no <html> pelo script anti-flash em
     // base.html (roda antes do Alpine) — aqui só refletimos o mesmo
@@ -25,7 +35,7 @@ function sidebarShell() {
     toggleColorMode() {
       this.colorMode = this.colorMode === 'light' ? 'dark' : 'light';
       document.documentElement.setAttribute('data-theme', this.colorMode);
-      localStorage.setItem('comandaColorMode', this.colorMode);
+      localStorage.setItem(colorModeKey, this.colorMode);
       // Mantém a cor da barra de status do celular (meta theme-color, ver
       // base.html) em sincronia com o tema — sem isso, ela só era
       // corrigida no carregamento da página, não ao clicar no sol/lua.
