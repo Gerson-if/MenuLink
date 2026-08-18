@@ -36,10 +36,14 @@
 #   STATUS=ERRO_VALIDACAO     abortou antes de tocar em qualquer coisa
 #                             (pré-requisito faltando, config inválida
 #                             etc.) — nada foi alterado
+#   STATUS=REVERTIDO_MANUAL   reversão manual (--rollback) concluída, a
+#                             pedido do usuário — aplicação de volta à
+#                             versão anterior
 #
-# Códigos de saída: 0 = sem atualizações ou atualizado com sucesso;
-# 1 = erro de validação (nada alterado); 3 = falhou mas reverteu bem;
-# 4 = falhou e o rollback também não garantiu a aplicação de pé.
+# Códigos de saída: 0 = sem atualizações, atualizado com sucesso, ou
+# reversão manual concluída; 1 = erro de validação (nada alterado);
+# 3 = falhou mas reverteu bem; 4 = falhou e o rollback também não
+# garantiu a aplicação de pé.
 #
 # Uso:
 #   sudo bash deploy/update.sh
@@ -48,6 +52,18 @@
 #   sudo bash deploy/update.sh --check
 #       Só verifica se há uma versão nova no remoto, sem alterar nada —
 #       útil num cron de monitoramento separado da atualização em si.
+#
+#   sudo bash deploy/update.sh --rollback
+#       Desfaz a ÚLTIMA atualização (a mais recente que chegou a mexer
+#       em código/banco, tenha ela dado certo ou não) — volta o código
+#       (git reset --hard) E o banco de dados (restaura o backup feito
+#       ANTES daquela atualização, perdendo qualquer dado criado
+#       depois dela) para o estado anterior. Pede confirmação explícita
+#       antes de mexer em qualquer coisa. Só funciona depois de pelo
+#       menos uma atualização real ter rodado (usa o registro que ela
+#       mesma grava em deploy/.last_update_previous_commit) — não dá
+#       pra "voltar mais uma versão" repetindo o comando, cada
+#       atualização nova sobrescreve esse registro.
 #
 #   ALLOW_UPDATE_WITHOUT_BACKUP=1 sudo -E bash deploy/update.sh
 #       Prossegue mesmo se o backup do banco falhar (não recomendado —
@@ -68,6 +84,7 @@ umask 077
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONF_FILE="${SCRIPT_DIR}/.deploy.conf"
 LOCK_FILE="${SCRIPT_DIR}/.update.lock"
+LAST_UPDATE_PREV_FILE="${SCRIPT_DIR}/.last_update_previous_commit"
 
 C_RESET="\033[0m"; C_BOLD="\033[1m"; C_GREEN="\033[32m"; C_YELLOW="\033[33m"; C_RED="\033[31m"; C_CYAN="\033[36m"
 log()   { echo -e "${C_GREEN}==>${C_RESET} ${C_BOLD}$*${C_RESET}"; }
@@ -79,18 +96,21 @@ banner(){ echo -e "${C_CYAN}$*${C_RESET}"; }
 
 START_TS="$SECONDS"
 DRY_RUN=0
+ROLLBACK_MODE=0
+MANUAL_ROLLBACK=0  # 1 dentro de rollback()/finish() quando disparado por --rollback (a pedido do usuário), não por uma falha
 UPDATE_STARTED=0   # vira 1 assim que o script começa a mexer em código/banco — usado pelo trap de erro pra saber se ainda dá pra tentar rollback
 PREVIOUS_COMMIT=""
 REMOTE_COMMIT=""
 
 case "${1:-}" in
     --check|--dry-run) DRY_RUN=1 ;;
+    --rollback) ROLLBACK_MODE=1 ;;
     "") : ;;
     -h|--help)
-        sed -n '2,60p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+        sed -n '2,76p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
         exit 0
         ;;
-    *) echo "Opção desconhecida: $1 (use --check ou nenhum argumento)." >&2; exit 1 ;;
+    *) echo "Opção desconhecida: $1 (use --check, --rollback ou nenhum argumento)." >&2; exit 1 ;;
 esac
 
 # Resumo final: sempre roda, mesmo em caminhos de erro, pra deixar claro
@@ -106,9 +126,14 @@ finish() {
         FALHOU_REVERTIDO)  banner "RESUMO: a atualização falhou, mas o rollback funcionou — aplicação de volta à versão anterior." ;;
         FALHOU_CRITICO)    banner "RESUMO: a atualização falhou e o rollback NÃO garantiu a aplicação de pé — intervenção manual necessária." ;;
         ERRO_VALIDACAO)    banner "RESUMO: abortado antes de alterar qualquer coisa (erro de validação)." ;;
+        REVERTIDO_MANUAL)  banner "RESUMO: reversão manual concluída — código e banco de volta ao estado de antes da última atualização." ;;
     esac
-    [ -n "$PREVIOUS_COMMIT" ] && info "Versão anterior : ${PREVIOUS_COMMIT:0:7}"
-    [ -n "$REMOTE_COMMIT" ] && [ "$REMOTE_COMMIT" != "$PREVIOUS_COMMIT" ] && info "Versão nova     : ${REMOTE_COMMIT:0:7}"
+    if [ "$MANUAL_ROLLBACK" = "1" ]; then
+        [ -n "$PREVIOUS_COMMIT" ] && info "Revertido para  : ${PREVIOUS_COMMIT:0:7}"
+    else
+        [ -n "$PREVIOUS_COMMIT" ] && info "Versão anterior : ${PREVIOUS_COMMIT:0:7}"
+        [ -n "$REMOTE_COMMIT" ] && [ "$REMOTE_COMMIT" != "$PREVIOUS_COMMIT" ] && info "Versão nova     : ${REMOTE_COMMIT:0:7}"
+    fi
     info "Tempo total     : ${elapsed}s"
     echo "STATUS=${status}"
     exit "$code"
@@ -349,7 +374,11 @@ health_check() {
 rollback() {
     local previous_commit="$1"
     local ok=1
-    err "Algo deu errado durante a atualização — revertendo para o estado anterior (${previous_commit:0:7})."
+    if [ "$MANUAL_ROLLBACK" = "1" ]; then
+        log "Revertendo para ${previous_commit:0:7}, a pedido do usuário..."
+    else
+        err "Algo deu errado durante a atualização — revertendo para o estado anterior (${previous_commit:0:7})."
+    fi
 
     # Cada passo do rollback é best-effort: uma falha aqui não pode
     # derrubar o próprio rollback no meio do caminho (senão o script
@@ -380,6 +409,10 @@ rollback() {
     fi
 
     if health_check; then
+        if [ "$MANUAL_ROLLBACK" = "1" ]; then
+            log "Reversão concluída: a aplicação está de volta na versão anterior (${previous_commit:0:7})."
+            finish "REVERTIDO_MANUAL" 0
+        fi
         warn "Rollback concluído: a aplicação voltou a responder na versão anterior."
         [ "$ok" = "1" ] && finish "FALHOU_REVERTIDO" 3
         finish "FALHOU_REVERTIDO" 3   # app respondeu mesmo com algum passo do rollback incompleto — ainda assim é melhor que nada
@@ -396,6 +429,47 @@ rollback() {
 cd "$APP_DIR"
 
 check_disk_space
+
+if [ "$ROLLBACK_MODE" = "1" ]; then
+    MANUAL_ROLLBACK=1
+
+    [ -f "$LAST_UPDATE_PREV_FILE" ] \
+        || die "Nenhuma atualização registrada pra desfazer (${LAST_UPDATE_PREV_FILE} não existe) — isso só funciona depois de rodar 'Atualizar sistema' pelo menos uma vez."
+    PREVIOUS_COMMIT="$(cat "$LAST_UPDATE_PREV_FILE")"
+    [ -n "$PREVIOUS_COMMIT" ] || die "${LAST_UPDATE_PREV_FILE} está vazio ou corrompido."
+
+    CURRENT_COMMIT="$(run_as_app_user "cd '${APP_DIR}' && git rev-parse HEAD" 2>/dev/null || true)"
+    [ -n "$CURRENT_COMMIT" ] || die "Não consegui identificar o commit atual em ${APP_DIR} (git rev-parse HEAD falhou). O repositório está corrompido?"
+
+    if [ "$CURRENT_COMMIT" = "$PREVIOUS_COMMIT" ]; then
+        log "Já está na versão registrada como anterior à última atualização (${PREVIOUS_COMMIT:0:7}) — nada a reverter."
+        finish "SEM_ATUALIZACOES" 0
+    fi
+
+    CURRENT_MSG="$(run_as_app_user "cd '${APP_DIR}' && git log -1 --format='%s' '${CURRENT_COMMIT}'" 2>/dev/null || echo "?")"
+    PREVIOUS_MSG="$(run_as_app_user "cd '${APP_DIR}' && git log -1 --format='%s' '${PREVIOUS_COMMIT}'" 2>/dev/null || echo "?")"
+
+    banner "Reverter última atualização"
+    echo "  Versão atual (será abandonada): ${CURRENT_COMMIT:0:7} — ${CURRENT_MSG}"
+    echo "  Voltar para                   : ${PREVIOUS_COMMIT:0:7} — ${PREVIOUS_MSG}"
+    echo
+    warn "O banco de dados TAMBÉM será restaurado, a partir do backup feito ANTES daquela"
+    warn "atualização — qualquer pedido/dado criado DEPOIS dela será perdido."
+    echo
+    read -rp "Digite 'sim' para confirmar a reversão (qualquer outra coisa cancela): " CONFIRM_ROLLBACK
+    if [ "$CONFIRM_ROLLBACK" != "sim" ]; then
+        log "Cancelado — nada foi alterado."
+        finish "ERRO_VALIDACAO" 1
+    fi
+
+    # Sem check_local_changes aqui de propósito: --rollback já vai forçar
+    # `git reset --hard` (é o próprio objetivo do comando) — qualquer
+    # edição manual perdida nesse processo é esperada, não um erro a
+    # barrar antes.
+    UPDATE_STARTED=1
+    rollback "$PREVIOUS_COMMIT"
+    # rollback() sempre termina o script (finish) — nunca chega aqui.
+fi
 
 log "Verificando atualizações..."
 if ! run_as_app_user "cd '${APP_DIR}' && git fetch --quiet origin"; then
@@ -432,6 +506,11 @@ backup_database
 # algo falhar de agora em diante (inclusive um erro inesperado pego pelo
 # trap), a rede de segurança do rollback entra em ação.
 UPDATE_STARTED=1
+# Registro pra permitir desfazer esta atualização depois, mesmo numa
+# execução futura separada (ver "sudo bash deploy/update.sh --rollback"
+# no topo do arquivo) — sobrescreve o registro da atualização anterior
+# de propósito: só a mais recente pode ser desfeita de cada vez.
+echo "$PREVIOUS_COMMIT" > "$LAST_UPDATE_PREV_FILE"
 
 log "Baixando a nova versão (fast-forward)..."
 if ! run_as_app_user "cd '${APP_DIR}' && git merge --ff-only '@{u}'"; then

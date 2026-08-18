@@ -420,6 +420,24 @@ run_update_script() {
     pause_menu
 }
 
+run_rollback_script() {
+    # Só funciona depois de pelo menos uma atualização já ter rodado —
+    # deploy/update.sh --rollback usa o registro que ele mesmo grava
+    # (.last_update_previous_commit) toda vez que uma atualização de
+    # verdade começa a mexer em código/banco. Volta código E banco de
+    # dados (a partir do backup feito ANTES daquela atualização) —
+    # confirmação e todos os detalhes ficam dentro do próprio script.
+    section "Reverter última atualização"
+    log "Rodando deploy/update.sh --rollback..."
+    if bash "${SCRIPT_DIR}/update.sh" --rollback; then
+        info "deploy/update.sh terminou (veja o resumo/STATUS acima para o resultado exato)."
+    else
+        rollback_rc=$?
+        warn "deploy/update.sh terminou com código de saída ${rollback_rc} — veja as mensagens acima (linha STATUS=...) para entender o que aconteceu."
+    fi
+    pause_menu
+}
+
 restart_service() {
     section "Reiniciar o serviço da aplicação"
     if confirm "Reiniciar '${SERVICE_NAME}' agora? A aplicação fica indisponível por alguns segundos." "n"; then
@@ -626,23 +644,25 @@ main_menu() {
             [ -n "${DOMAIN:-}" ] && echo "  Endereço  : ${SERVER_NAME:-$DOMAIN} $([ "${SSL_ENABLED:-n}" = "s" ] && echo "(HTTPS)" || echo "(HTTP)")"
             echo
             item 1 "Atualizar sistema" "busca e aplica a versão mais nova"
-            item 2 "Verificações do sistema" "serviço, Nginx, banco, SSL..."
-            item 3 "Comandos do sistema" "reiniciar, logs, status, renovar SSL..."
-            item 4 "Gerenciar Super Admin" "criar, redefinir, trocar e-mail, remover"
-            item 5 "Backup e restauração" "migração entre servidores, backup e restore"
-            item 6 "Reconfigurar esta instalação" "domínio, SSL, banco, systemd, Nginx..."
-            item 7 "Autenticação do Git" "usuário/token para 'Atualizar sistema' não travar pedindo senha"
-            item 8 "Sair"
-            ask "Escolha uma opção [1-8]" "8"
+            item 2 "Reverter última atualização" "volta código E banco pro estado de antes dela"
+            item 3 "Verificações do sistema" "serviço, Nginx, banco, SSL..."
+            item 4 "Comandos do sistema" "reiniciar, logs, status, renovar SSL..."
+            item 5 "Gerenciar Super Admin" "criar, redefinir, trocar e-mail, remover"
+            item 6 "Backup e restauração" "migração entre servidores, backup e restore"
+            item 7 "Reconfigurar esta instalação" "domínio, SSL, banco, systemd, Nginx..."
+            item 8 "Autenticação do Git" "usuário/token para 'Atualizar sistema' não travar pedindo senha"
+            item 9 "Sair"
+            ask "Escolha uma opção [1-9]" "9"
             case "$REPLY_VALUE" in
                 1) run_update_script ;;
-                2) run_verificacoes ;;
-                3) system_commands_menu ;;
-                4) manage_super_admin_menu ;;
-                5) backup_restore_menu ;;
-                6) return 0 ;;
-                7) configure_git_auth; pause_menu ;;
-                8) echo "Até mais!"; exit 0 ;;
+                2) run_rollback_script ;;
+                3) run_verificacoes ;;
+                4) system_commands_menu ;;
+                5) manage_super_admin_menu ;;
+                6) backup_restore_menu ;;
+                7) return 0 ;;
+                8) configure_git_auth; pause_menu ;;
+                9) echo "Até mais!"; exit 0 ;;
                 *) warn "Opção inválida." ;;
             esac
         else
