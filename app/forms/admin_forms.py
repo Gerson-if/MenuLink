@@ -155,18 +155,42 @@ class AsaasSettingsForm(FlaskForm):
             raise ValidationError("Não dá pra definir um novo token e marcar \"remover\" ao mesmo tempo.")
 
 
-# (status, rótulo pro campo de template) — só os status que fazem
-# sentido avisar o cliente (ver NOTIFIABLE_STATUSES em
-# app/services/whatsapp_notification_service.py). Cada nome de template
-# aqui precisa já existir aprovado no Meta Business Manager — este
-# formulário só guarda o nome, não cria nem submete template nenhum.
+# (status, rótulo pro campo, nome sugerido do template, texto sugerido
+# do corpo) — só os status que fazem sentido avisar o cliente (ver
+# NOTIFIABLE_STATUSES em app/services/whatsapp_notification_service.py).
+# `{{1}}` no corpo é sempre o nome da loja (única variável que o
+# sistema preenche). O nome/corpo sugeridos são só um PONTO DE PARTIDA
+# pronto pra copiar e colar direto na hora de criar o template no Meta
+# Business Manager — o Super Admin pode usar exatamente como está, ou
+# editar à vontade (nome e texto lá na Meta, campo aqui só precisa
+# bater com o NOME escolhido). Aprovar o template continua sendo um
+# passo manual na própria Meta — não tem como automatizar isso por
+# aqui (ver whatsapp_gateway.py).
 WHATSAPP_TEMPLATE_STATUS_FIELDS = [
-    ("confirmed", "Pedido confirmado"),
-    ("preparing", "Pedido em preparo"),
-    ("out_for_delivery", "Saiu para entrega"),
-    ("ready_for_pickup", "Pronto para retirada"),
-    ("completed", "Pedido concluído"),
-    ("canceled", "Pedido cancelado"),
+    (
+        "confirmed", "Pedido confirmado", "pedido_confirmado",
+        "🎉 {{1}}: seu pedido foi confirmado e já está sendo preparado!",
+    ),
+    (
+        "preparing", "Pedido em preparo", "pedido_em_preparo",
+        "👨‍🍳 {{1}}: seu pedido está em preparo!",
+    ),
+    (
+        "out_for_delivery", "Saiu para entrega", "pedido_saiu_entrega",
+        "🏍️ {{1}}: seu pedido saiu para entrega! O motoboy já está a caminho.",
+    ),
+    (
+        "ready_for_pickup", "Pronto para retirada", "pedido_pronto_retirada",
+        "✅ {{1}}: seu pedido está pronto para retirada!",
+    ),
+    (
+        "completed", "Pedido concluído", "pedido_concluido",
+        "🙌 {{1}}: pedido concluído. Bom apetite!",
+    ),
+    (
+        "canceled", "Pedido cancelado", "pedido_cancelado",
+        "❌ {{1}}: seu pedido foi cancelado. Qualquer dúvida, fale com a loja.",
+    ),
 ]
 
 

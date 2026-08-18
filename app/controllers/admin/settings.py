@@ -99,12 +99,19 @@ def settings_whatsapp():
         form.access_token.data = settings.whatsapp_access_token
         form.phone_number_id.data = settings.whatsapp_phone_number_id
         templates = settings.whatsapp_status_templates_or_default
-        for status, _label in WHATSAPP_TEMPLATE_STATUS_FIELDS:
-            getattr(form, f"template_{status}").data = templates.get(status, "")
+        # Sem nada salvo ainda, cai no NOME SUGERIDO (ver
+        # WHATSAPP_TEMPLATE_STATUS_FIELDS) em vez de ficar em branco —
+        # criando o template no Meta Business Manager com esse mesmo
+        # nome (o texto sugerido já aparece pronto pra copiar logo
+        # abaixo do campo), a integração funciona sem precisar editar
+        # nada aqui, só configurar token + Phone Number ID acima.
+        for status, _label, suggested_name, _body in WHATSAPP_TEMPLATE_STATUS_FIELDS:
+            getattr(form, f"template_{status}").data = templates.get(status) or suggested_name
 
     if form.validate_on_submit():
         status_templates = {
-            status: getattr(form, f"template_{status}").data for status, _label in WHATSAPP_TEMPLATE_STATUS_FIELDS
+            status: getattr(form, f"template_{status}").data
+            for status, _label, _suggested_name, _body in WHATSAPP_TEMPLATE_STATUS_FIELDS
         }
         service.update_whatsapp(
             access_token=form.access_token.data,
