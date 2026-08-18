@@ -86,6 +86,14 @@ class Plan(db.Model, TimestampMixin):
     # a qualquer momento em /admin/planos.
     allow_qr_customization = Column(Boolean, nullable=False, default=False, server_default="0")
 
+    # Libera o envio automático de notificação por WhatsApp ao cliente
+    # quando o pedido muda de status (ex: "saiu para entrega") — bônus
+    # por plano, mesmo padrão de allow_qr_customization acima. Só tem
+    # efeito prático se o Super Admin também tiver configurado a
+    # integração com a Meta (ver PlatformSettings.whatsapp_configured) —
+    # sem isso, não dispara nada mesmo com o plano liberando.
+    allow_whatsapp_notifications = Column(Boolean, nullable=False, default=False, server_default="0")
+
     tenants = relationship("Tenant", back_populates="plan")
 
     __table_args__ = (

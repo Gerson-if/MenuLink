@@ -78,6 +78,9 @@
       <a href="{{ url_for('admin.settings_email') }}" class="nav-link {{ 'active' if request.endpoint == 'admin.settings_email' }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Integração de E-mail">
         <i class="bi bi-envelope-at"></i><span class="nav-label">Integração de E-mail</span>
       </a>
+      <a href="{{ url_for('admin.settings_whatsapp') }}" class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.settings_whatsapp') }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Notificação por WhatsApp">
+        <i class="bi bi-whatsapp"></i><span class="nav-label">Notificação por WhatsApp</span>
+      </a>
       <a href="{{ url_for('admin.settings_legal') }}" class="nav-link {{ 'active' if request.endpoint == 'admin.settings_legal' }}" data-bs-toggle="tooltip" data-bs-placement="right" title="Termos &amp; Privacidade">
         <i class="bi bi-file-earmark-text"></i><span class="nav-label">Termos &amp; Privacidade</span>
       </a>

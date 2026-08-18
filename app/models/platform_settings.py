@@ -371,6 +371,31 @@ class PlatformSettings(db.Model, TimestampMixin):
     smtp_from_email = Column(String(255), nullable=True)
     smtp_from_name = Column(String(150), nullable=True)
 
+    # --- Integração com WhatsApp (notificação automática de mudança de
+    # status do pedido pro CLIENTE final — diferente de support_whatsapp
+    # acima, que é só um link estático de contato com a plataforma) ---
+    # API oficial da Meta (WhatsApp Cloud API), com UM número da
+    # plataforma inteira, não um número por loja — cadastrar um número
+    # oficial verificado na Meta por lojista exigiria cada um passar
+    # pela verificação de conta empresarial da própria Meta, inviável
+    # pra quem só quer vender comida. O nome da loja entra como
+    # variável na mensagem, pra identificar de qual pedido se trata.
+    whatsapp_access_token = Column(EncryptedString(512), nullable=True)
+    whatsapp_phone_number_id = Column(String(50), nullable=True)
+    # {"confirmed": "nome_do_template", "out_for_delivery": "...", ...}.
+    # A Meta só libera mensagem de texto livre dentro de uma janela de
+    # 24h desde a ÚLTIMA mensagem do cliente pro número — janela que
+    # aqui NUNCA existe (o cliente fez o pedido pelo site, não iniciou
+    # conversa nenhuma no WhatsApp), então toda notificação precisa
+    # passar por um "template" pré-aprovado pela Meta, criado e
+    # submetido pelo Super Admin direto no Meta Business Manager (fora
+    # deste sistema — não tem como automatizar essa aprovação por
+    # aqui). Guardamos só o NOME de cada template configurado, um por
+    # status do pedido que deve gerar aviso; um status sem template
+    # mapeado aqui simplesmente não dispara nada (ver
+    # app/services/whatsapp_gateway.py).
+    whatsapp_status_templates = Column(JSON, nullable=True)
+
     # --- Termos de Uso / Política de Privacidade ---
     # Texto em HTML simples (h2/p/ul/li/strong — mesmas tags já usadas nos
     # templates padrão) que SUBSTITUI o conteúdo hardcoded de
@@ -436,6 +461,14 @@ class PlatformSettings(db.Model, TimestampMixin):
     @property
     def email_configured(self) -> bool:
         return bool(self.smtp_host and self.smtp_from_email)
+
+    @property
+    def whatsapp_configured(self) -> bool:
+        return bool(self.whatsapp_access_token and self.whatsapp_phone_number_id)
+
+    @property
+    def whatsapp_status_templates_or_default(self) -> dict:
+        return self.whatsapp_status_templates or {}
 
     @property
     def system_theme_or_default(self) -> str:

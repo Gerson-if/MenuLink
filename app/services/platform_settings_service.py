@@ -103,6 +103,42 @@ class PlatformSettingsService:
             ),
         )
 
+    def update_whatsapp(
+        self, *, access_token: str | None = None, clear_access_token: bool = False,
+        phone_number_id: str | None = None, status_templates: dict,
+    ) -> PlatformSettings:
+        if clear_access_token:
+            self.settings.whatsapp_access_token = None
+        elif access_token:
+            self.settings.whatsapp_access_token = access_token.strip()
+
+        self.settings.whatsapp_phone_number_id = (phone_number_id or "").strip() or None
+
+        # Só guarda entradas com valor de verdade — um campo de template
+        # deixado em branco significa "esse status não notifica ninguém",
+        # não uma string vazia salva à toa (ver
+        # whatsapp_status_templates_or_default.get(status), que já trata
+        # ausência da chave como "não configurado").
+        self.settings.whatsapp_status_templates = {
+            status: name.strip() for status, name in status_templates.items() if (name or "").strip()
+        } or None
+
+        db.session.commit()
+        return self.settings
+
+    def test_whatsapp_connection(self) -> None:
+        """Chama a Graph API da Meta com o token salvo atualmente, só
+        pra leitura (metadados do próprio número), e levanta
+        WhatsAppGatewayError com uma mensagem exibível se o token ou o
+        Phone Number ID forem inválidos. Usado pelo botão "Testar
+        conexão" da tela de configurações de WhatsApp."""
+        from app.services.whatsapp_gateway import WhatsAppGatewayError, get_gateway
+
+        gateway = get_gateway()
+        if gateway is None:
+            raise WhatsAppGatewayError("Token de acesso e/ou Phone Number ID ainda não configurados.")
+        gateway.ping()
+
     def update_trial_settings(
         self, *, trial_days: int, trial_grace_days: int,
         trial_reminder_days_before: int, trial_reminder_cycle_days: int,

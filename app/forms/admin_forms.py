@@ -81,6 +81,7 @@ class PlanForm(FlaskForm):
     is_featured = BooleanField('Destacar como "MAIS VENDIDO" na landing page')
     display_order = IntegerField("Ordem de exibição na landing (menor aparece primeiro)", default=0, validators=[Optional(), NumberRange(min=0, max=999)])
     allow_qr_customization = BooleanField("Liberar personalização do QR Code (nome, cor, ícone) pra impressão")
+    allow_whatsapp_notifications = BooleanField("Liberar notificação automática por WhatsApp quando o pedido muda de status")
     submit = SubmitField("Salvar plano")
 
 
@@ -151,6 +152,49 @@ class AsaasSettingsForm(FlaskForm):
 
     def validate_webhook_token(self, field):
         if field.data and self.clear_webhook_token.data:
+            raise ValidationError("Não dá pra definir um novo token e marcar \"remover\" ao mesmo tempo.")
+
+
+# (status, rótulo pro campo de template) — só os status que fazem
+# sentido avisar o cliente (ver NOTIFIABLE_STATUSES em
+# app/services/whatsapp_notification_service.py). Cada nome de template
+# aqui precisa já existir aprovado no Meta Business Manager — este
+# formulário só guarda o nome, não cria nem submete template nenhum.
+WHATSAPP_TEMPLATE_STATUS_FIELDS = [
+    ("confirmed", "Pedido confirmado"),
+    ("preparing", "Pedido em preparo"),
+    ("out_for_delivery", "Saiu para entrega"),
+    ("ready_for_pickup", "Pronto para retirada"),
+    ("completed", "Pedido concluído"),
+    ("canceled", "Pedido cancelado"),
+]
+
+
+class WhatsAppSettingsForm(FlaskForm):
+    """Notificação automática ao CLIENTE quando o pedido muda de status
+    (WhatsApp Cloud API da Meta) — mesmo padrão de AsaasSettingsForm
+    pro token (pré-preenchido/mascarado, editável, com opção de
+    remover)."""
+
+    access_token = PasswordField(
+        "Token de acesso permanente (Meta)", widget=PasswordInput(hide_value=False),
+        validators=[Optional(), Length(max=512)],
+    )
+    clear_access_token = BooleanField("Remover token de acesso (desativa a integração)")
+
+    phone_number_id = StringField("Phone Number ID", validators=[Optional(), Length(max=50)])
+
+    template_confirmed = StringField("Template — Pedido confirmado", validators=[Optional(), Length(max=100)])
+    template_preparing = StringField("Template — Pedido em preparo", validators=[Optional(), Length(max=100)])
+    template_out_for_delivery = StringField("Template — Saiu para entrega", validators=[Optional(), Length(max=100)])
+    template_ready_for_pickup = StringField("Template — Pronto para retirada", validators=[Optional(), Length(max=100)])
+    template_completed = StringField("Template — Pedido concluído", validators=[Optional(), Length(max=100)])
+    template_canceled = StringField("Template — Pedido cancelado", validators=[Optional(), Length(max=100)])
+
+    submit = SubmitField("Salvar configurações do WhatsApp")
+
+    def validate_access_token(self, field):
+        if field.data and self.clear_access_token.data:
             raise ValidationError("Não dá pra definir um novo token e marcar \"remover\" ao mesmo tempo.")
 
 

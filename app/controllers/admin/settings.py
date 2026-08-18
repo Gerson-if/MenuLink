@@ -1,11 +1,12 @@
 from flask import abort, flash, make_response, redirect, render_template, request, url_for
 from flask_login import current_user
 
-from app.forms.admin_forms import AdminAppearanceForm, AsaasSettingsForm, EmailSettingsForm, EmailTestForm, LandingContentForm, LegalContentForm, TrialSettingsForm
+from app.forms.admin_forms import AdminAppearanceForm, AsaasSettingsForm, EmailSettingsForm, EmailTestForm, LandingContentForm, LegalContentForm, TrialSettingsForm, WHATSAPP_TEMPLATE_STATUS_FIELDS, WhatsAppSettingsForm
 from app.models.platform_settings import SYSTEM_THEME_ACCENTS, SYSTEM_THEME_SWATCHES
 from app.services.email_service import EmailError
 from app.services.payment_gateway.base import PaymentGatewayError
 from app.services.platform_settings_service import PlatformSettingsService
+from app.services.whatsapp_gateway import WhatsAppGatewayError
 from app.utils.decorators import super_admin_required
 from app.utils.uploads import InvalidImageError, InvalidVideoError
 
@@ -83,6 +84,54 @@ def settings_asaas_test():
     else:
         flash("Conexão com o Asaas funcionando — a chave de API é válida.", "success")
     return redirect(url_for("admin.settings_asaas"))
+
+
+@admin_bp.route("/configuracoes/whatsapp", methods=["GET", "POST"])
+@super_admin_required
+def settings_whatsapp():
+    service = PlatformSettingsService()
+    settings = service.settings
+    form = WhatsAppSettingsForm()
+
+    if not form.is_submitted():
+        # Pré-preenche com o valor atual (já descriptografado pelo tipo
+        # EncryptedString ao ler do banco) — mesmo padrão de settings_asaas.
+        form.access_token.data = settings.whatsapp_access_token
+        form.phone_number_id.data = settings.whatsapp_phone_number_id
+        templates = settings.whatsapp_status_templates_or_default
+        for status, _label in WHATSAPP_TEMPLATE_STATUS_FIELDS:
+            getattr(form, f"template_{status}").data = templates.get(status, "")
+
+    if form.validate_on_submit():
+        status_templates = {
+            status: getattr(form, f"template_{status}").data for status, _label in WHATSAPP_TEMPLATE_STATUS_FIELDS
+        }
+        service.update_whatsapp(
+            access_token=form.access_token.data,
+            clear_access_token=form.clear_access_token.data,
+            phone_number_id=form.phone_number_id.data,
+            status_templates=status_templates,
+        )
+        flash("Configurações do WhatsApp atualizadas.", "success")
+        return redirect(url_for("admin.settings_whatsapp"))
+
+    return render_template(
+        "admin/settings/whatsapp.html", form=form, settings=settings,
+        template_status_fields=WHATSAPP_TEMPLATE_STATUS_FIELDS,
+    )
+
+
+@admin_bp.route("/configuracoes/whatsapp/testar", methods=["POST"])
+@super_admin_required
+def settings_whatsapp_test():
+    service = PlatformSettingsService()
+    try:
+        service.test_whatsapp_connection()
+    except WhatsAppGatewayError as exc:
+        flash(f"Falha ao conectar com o WhatsApp (Meta): {exc}", "danger")
+    else:
+        flash("Conexão com o WhatsApp (Meta) funcionando — o token é válido.", "success")
+    return redirect(url_for("admin.settings_whatsapp"))
 
 
 @admin_bp.route("/configuracoes/email", methods=["GET", "POST"])

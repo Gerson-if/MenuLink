@@ -26,7 +26,7 @@ class AdminPlanService:
     def create(self, *, name: str, description: str, price_reais: float, billing_cycle: str,
                max_categories: int | None, max_products: int | None, max_images_per_product: int,
                is_featured: bool = False, display_order: int | None = 0,
-               allow_qr_customization: bool = False) -> Plan:
+               allow_qr_customization: bool = False, allow_whatsapp_notifications: bool = False) -> Plan:
         slug = generate_unique_slug(name, self.repo.get_by_slug)
         plan = Plan(
             name=name.strip(),
@@ -40,6 +40,7 @@ class AdminPlanService:
             is_featured=is_featured,
             display_order=display_order or 0,
             allow_qr_customization=allow_qr_customization,
+            allow_whatsapp_notifications=allow_whatsapp_notifications,
         )
         db.session.add(plan)
         db.session.commit()
@@ -48,7 +49,7 @@ class AdminPlanService:
     def update(self, plan: Plan, *, name: str, description: str, price_reais: float, billing_cycle: str,
                max_categories: int | None, max_products: int | None, max_images_per_product: int,
                is_featured: bool = False, display_order: int | None = 0,
-               allow_qr_customization: bool = False) -> Plan:
+               allow_qr_customization: bool = False, allow_whatsapp_notifications: bool = False) -> Plan:
         if name.strip() != plan.name:
             plan.slug = generate_unique_slug(name, self.repo.get_by_slug, current_id=plan.id)
         plan.name = name.strip()
@@ -61,6 +62,7 @@ class AdminPlanService:
         plan.is_featured = is_featured
         plan.display_order = display_order or 0
         plan.allow_qr_customization = allow_qr_customization
+        plan.allow_whatsapp_notifications = allow_whatsapp_notifications
         db.session.commit()
         return plan
 

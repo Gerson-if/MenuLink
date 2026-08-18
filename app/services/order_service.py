@@ -389,4 +389,15 @@ class OrderService:
 
         order.status = new_status
         db.session.commit()
+
+        # Ponto único por onde toda mudança de status do painel passa
+        # (aceitar, rejeitar, avançar pra "saiu para entrega" etc.) —
+        # notificar aqui garante que nenhum caminho esqueça de avisar o
+        # cliente. Nunca levanta: uma falha de WhatsApp não pode desfazer
+        # nem travar a mudança de status já commitada acima (ver
+        # whatsapp_notification_service.py).
+        from app.services.whatsapp_notification_service import notify_order_status_change
+
+        notify_order_status_change(order, new_status)
+
         return order

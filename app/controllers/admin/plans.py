@@ -52,6 +52,7 @@ def plans_create():
             is_featured=form.is_featured.data,
             display_order=form.display_order.data,
             allow_qr_customization=form.allow_qr_customization.data,
+            allow_whatsapp_notifications=form.allow_whatsapp_notifications.data,
         )
         if is_hx:
             return _rerender_plan_fragment(plan, trigger="planSaved", toast="Plano criado com sucesso.")
@@ -91,6 +92,7 @@ def plans_edit(plan_id):
             is_featured=form.is_featured.data,
             display_order=form.display_order.data,
             allow_qr_customization=form.allow_qr_customization.data,
+            allow_whatsapp_notifications=form.allow_whatsapp_notifications.data,
         )
         if is_hx:
             return _rerender_plan_fragment(plan, trigger="planSaved", toast="Plano atualizado com sucesso.")

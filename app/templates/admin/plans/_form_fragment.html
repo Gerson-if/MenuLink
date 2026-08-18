@@ -35,9 +35,13 @@
       </div>
     </div>
 
-    <div class="form-check mb-3">
+    <div class="form-check mb-2">
       {{ form.allow_qr_customization(class="form-check-input") }}
       {{ form.allow_qr_customization.label(class="form-check-label small") }}
+    </div>
+    <div class="form-check mb-3">
+      {{ form.allow_whatsapp_notifications(class="form-check-input") }}
+      {{ form.allow_whatsapp_notifications.label(class="form-check-label small") }}
     </div>
 
     {{ form.submit(class="btn btn-chili") }}

@@ -1,0 +1,109 @@
+{% extends "layouts/admin_panel.html" %}
+{% block title %}WhatsApp — Menu Link Admin{% endblock %}
+{% block page_title %}Notificação por WhatsApp{% endblock %}
+
+{% block panel_content %}
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="panel mb-4">
+      <div class="panel-title"><i class="bi bi-key"></i> Credenciais (WhatsApp Cloud API)</div>
+
+      <div class="d-flex gap-2 mb-3">
+        {% if settings.whatsapp_configured %}
+        <span class="status-badge status-active">Configurado</span>
+        {% else %}
+        <span class="status-badge status-blocked">Sem configuração ainda</span>
+        {% endif %}
+      </div>
+
+      <form method="POST" novalidate>
+        {{ form.hidden_tag() }}
+
+        <div class="mb-3">
+          {{ form.access_token.label(class="form-label small fw-semibold") }}
+          <div class="password-field-wrap">
+            {{ form.access_token(class="form-control", placeholder="EAAG...", id="whatsapp-access-token") }}
+            <button type="button" class="password-toggle-btn" data-target="whatsapp-access-token" aria-label="Mostrar token" title="Mostrar/ocultar token">
+              <i class="bi bi-eye"></i>
+            </button>
+          </div>
+          {% for error in form.access_token.errors %}<p class="upload-error mt-1">{{ error }}</p>{% endfor %}
+          <div class="form-check mt-2">
+            {{ form.clear_access_token(class="form-check-input") }}
+            {{ form.clear_access_token.label(class="form-check-label small") }}
+          </div>
+        </div>
+
+        <div class="mb-3">
+          {{ form.phone_number_id.label(class="form-label small fw-semibold") }}
+          {{ form.phone_number_id(class="form-control font-mono", placeholder="123456789012345") }}
+          <p class="text-muted-custom small mt-1 mb-0">Encontrado no Meta Business Manager, em WhatsApp → Configuração da API.</p>
+        </div>
+
+        <hr style="border-color: var(--card-border);">
+
+        <p class="text-muted-custom small mb-3">
+          <i class="bi bi-info-circle"></i>
+          Cada campo abaixo é o <strong>nome</strong> de um template de mensagem que você já criou e
+          submeteu pra aprovação direto no Meta Business Manager (a aprovação da Meta não passa por
+          aqui). Deixe em branco qualquer status que não deve gerar aviso pro cliente. O template
+          recebe o nome da loja como única variável ({{ '{{1}}' }}).
+        </p>
+
+        {% for status, label in template_status_fields %}
+        <div class="mb-3">
+          {{ (form["template_" ~ status]).label(class="form-label small fw-semibold") }}
+          {{ (form["template_" ~ status])(class="form-control font-mono", placeholder="nome_do_template") }}
+        </div>
+        {% endfor %}
+
+        {{ form.submit(class="btn btn-chili") }}
+      </form>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title"><i class="bi bi-arrow-repeat"></i> Ações rápidas</div>
+      <div class="d-flex flex-wrap gap-2">
+        <form method="POST" action="{{ url_for('admin.settings_whatsapp_test') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-sm btn-outline-secondary" {{ "disabled" if not settings.whatsapp_configured }}>Testar conexão</button>
+        </form>
+      </div>
+      <p class="text-muted-custom small mt-3 mb-0">
+        "Testar conexão" confirma que o token e o Phone Number ID são aceitos pela Meta, sem enviar
+        nenhuma mensagem — use antes de contar com a integração em produção.
+      </p>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="panel mb-4">
+      <div class="panel-title"><i class="bi bi-toggle-on"></i> Quem recebe</div>
+      <p class="text-muted-custom small mb-0">
+        A notificação só é enviada para lojas cujo <strong>plano</strong> libera este bônus (ver
+        <a href="{{ url_for('admin.plans_list') }}" class="link-chili">Planos</a>) — mesmo com tudo
+        configurado aqui, uma loja num plano sem o bônus liberado não recebe nada.
+      </p>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title"><i class="bi bi-info-circle"></i> Como funciona</div>
+      <p class="text-muted-custom small mb-2">
+        Um único número de WhatsApp da plataforma envia por todas as lojas — cadastrar um número
+        verificado por lojista exigiria cada um passar pela verificação de conta empresarial da
+        própria Meta, inviável pra quem só quer vender comida.
+      </p>
+      <p class="text-muted-custom small mb-2">
+        Toda mensagem é um <strong>template pré-aprovado</strong>, nunca texto livre — é regra da
+        Meta para qualquer mensagem iniciada pela empresa fora de uma janela de 24h desde a última
+        mensagem do cliente, janela que aqui nunca existe (o cliente pediu pelo site, não pelo
+        WhatsApp).
+      </p>
+      <p class="text-muted-custom small mb-0">
+        A notificação dispara automaticamente quando o lojista muda o status de um pedido no
+        painel — não exige nenhuma ação extra da loja além de ter o plano com o bônus liberado.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
