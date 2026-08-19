@@ -191,6 +191,20 @@ def orders_detail(order_id):
     )
 
 
+@lojista_bp.route("/pedidos/<int:order_id>/comanda")
+@lojista_required
+def orders_print_ticket(order_id):
+    """Comanda formatada pra impressão térmica (80mm) — usa o diálogo
+    de impressão do próprio navegador (ver comentário no topo do
+    template), então funciona com qualquer impressora já instalada no
+    computador da loja, sem precisar de nenhum agente/driver especial."""
+    tenant = get_current_tenant()
+    service = OrderService(tenant)
+    order = service.get_or_404(order_id)
+
+    return render_template("lojista/orders/print_ticket.html", order=order, tenant=tenant)
+
+
 @lojista_bp.route("/pedidos/<int:order_id>/voltar", methods=["POST"])
 @lojista_required
 def orders_revert_status(order_id):

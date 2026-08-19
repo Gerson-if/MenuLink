@@ -18,7 +18,12 @@
     </span>
     {% endif %}
   </div>
-  <span class="text-muted-custom small">{{ order.created_at.strftime("%d/%m/%Y às %H:%M") }}</span>
+  <div class="d-flex align-items-center gap-2">
+    <span class="text-muted-custom small">{{ order.created_at.strftime("%d/%m/%Y às %H:%M") }}</span>
+    <a href="{{ url_for('lojista.orders_print_ticket', order_id=order.id) }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-printer"></i> Imprimir comanda
+    </a>
+  </div>
 </div>
 
 <div class="row g-4">

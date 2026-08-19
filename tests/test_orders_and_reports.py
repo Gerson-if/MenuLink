@@ -347,3 +347,52 @@ class TestReports:
             summary = ReportService(tenant).summary()
             assert summary["revenue_total_cents"] == 0
             assert summary["orders_total"] == 0
+
+
+class TestOrderPrintTicket:
+    def test_print_ticket_shows_order_details(self, app, client, login_as):
+        product_id, _ = _create_product(app)
+        data = _create_order_via_checkout(client, product_id, quantity=2)
+
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        resp = client.get(f"/painel/pedidos/{data['order_id']}/comanda")
+        body = resp.get_data(as_text=True)
+
+        assert resp.status_code == 200
+        assert f"PEDIDO #{data['order_number']}" in body
+        assert "Cliente Teste" in body
+        assert "Costela na Brasa" in body
+        assert "Braseiro" in body  # nome da loja no cabeçalho
+
+    def test_print_ticket_requires_login(self, app, client):
+        product_id, _ = _create_product(app)
+        data = _create_order_via_checkout(client, product_id)
+
+        resp = client.get(f"/painel/pedidos/{data['order_id']}/comanda", follow_redirects=True)
+        assert "Entrar" in resp.get_data(as_text=True) or "login" in resp.request.path
+
+    def test_print_ticket_shows_delivery_address(self, app, client, login_as):
+        product_id, tenant_id = _create_product(app)
+        with app.app_context():
+            tenant = db.session.get(Tenant, tenant_id)
+            tenant.delivery_enabled = True
+            db.session.commit()
+
+        payload = {
+            "customer_name": "Cliente Entrega",
+            "customer_phone": "67999990002",
+            "delivery_type": "delivery",
+            "payment_method": "pix",
+            "address_street": "Rua das Flores", "address_number": "123",
+            "address_neighborhood": "Centro", "address_city": "Campo Grande",
+            "items": [{"product_id": product_id, "quantity": 1}],
+        }
+        resp = client.post("/loja/braseiro-cia/pedido", data=json.dumps(payload), content_type="application/json")
+        assert resp.status_code == 201
+        order_data = resp.get_json()
+
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        resp = client.get(f"/painel/pedidos/{order_data['order_id']}/comanda")
+        body = resp.get_data(as_text=True)
+        assert "Rua das Flores" in body
+        assert "Centro" in body

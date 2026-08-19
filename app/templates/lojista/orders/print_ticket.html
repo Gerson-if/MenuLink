@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Comanda #{{ order.order_number }} — {{ tenant.name }}{% endblock %}
+{% block body_class %}ticket-print-body{% endblock %}
+
+{# Comanda formatada pra impressão térmica (padrão 80mm), usando o
+   diálogo de impressão do próprio navegador — não fala ESC/POS nativo
+   de impressora térmica dedicada (isso exigiria um agente instalado no
+   computador da loja, escopo bem maior), mas funciona hoje com
+   QUALQUER impressora já configurada no Windows/Mac da loja, inclusive
+   térmicas que já aparecem como impressora do sistema (a grande
+   maioria das USB/rede vendidas no Brasil, tipo Epson TM-T20/Bematech
+   MP-4200, instala assim). Um clique em vez de 100% automático — ver
+   conversa que definiu este escopo como ponto de partida. #}
+{% block extra_head %}
+<style>
+  /* @page controla o tamanho do PAPEL na hora de imprimir — 80mm é o
+     padrão de bobina térmica mais comum no Brasil. "auto" na altura
+     deixa o navegador cortar do tamanho exato do conteúdo (impressora
+     térmica imprime em bobina contínua, não em folha de tamanho fixo
+     como A4) em vez de sobrar/faltar papel. Fora da impressão, a tela
+     mostra uma pré-visualização centralizada num fundo neutro. */
+  @page { size: 80mm auto; margin: 2mm; }
+  .ticket-print-body { background: #ECE7DA; min-height: 100vh; }
+  .ticket-print-wrap { max-width: 340px; margin: 40px auto; padding: 0 16px; }
+  .ticket-print-actions { text-align: center; margin-bottom: 20px; }
+  .ticket-print-paper {
+    background: #fff; color: #111; font-family: 'JetBrains Mono', monospace;
+    font-size: .78rem; line-height: 1.45; padding: 14px 12px;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.2); border-radius: 4px;
+  }
+  .ticket-print-center { text-align: center; }
+  .ticket-print-store { font-weight: 700; font-size: 1rem; text-transform: uppercase; }
+  .ticket-print-order-num { font-weight: 700; font-size: 1.3rem; margin: 6px 0; }
+  .ticket-print-divider { border: none; border-top: 1px dashed #111; margin: 8px 0; }
+  .ticket-print-row { display: flex; justify-content: space-between; gap: 8px; }
+  .ticket-print-label { font-weight: 700; text-transform: uppercase; font-size: .68rem; margin-bottom: 2px; }
+  .ticket-print-item { margin-bottom: 6px; }
+  .ticket-print-item-choices { padding-left: 10px; font-size: .72rem; }
+  .ticket-print-total { font-weight: 700; font-size: .95rem; }
+  @media print {
+    .ticket-print-actions, .toast-flash-stack { display: none !important; }
+    .ticket-print-body { background: #fff; }
+    .ticket-print-wrap { margin: 0; max-width: 100%; padding: 0; }
+    .ticket-print-paper { box-shadow: none; border-radius: 0; padding: 0; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ticket-print-wrap">
+  <div class="ticket-print-actions">
+    <a href="{{ url_for('lojista.orders_detail', order_id=order.id) }}" class="btn btn-sm btn-outline-secondary me-2">
+      <i class="bi bi-arrow-left"></i> Voltar
+    </a>
+    <button type="button" class="btn btn-sm btn-chili" onclick="window.print()">
+      <i class="bi bi-printer"></i> Imprimir comanda
+    </button>
+  </div>
+
+  <div class="ticket-print-paper">
+    <div class="ticket-print-center">
+      <div class="ticket-print-store">{{ tenant.name }}</div>
+      <div class="ticket-print-order-num">PEDIDO #{{ order.order_number }}</div>
+      <div>{{ order.created_at.strftime("%d/%m/%Y %H:%M") }}</div>
+    </div>
+
+    <hr class="ticket-print-divider">
+
+    <div class="ticket-print-label">{{ "Entrega" if order.delivery_type.value == "delivery" else "Retirada no local" }}</div>
+    {% if order.delivery_type.value == "delivery" %}
+    <div>
+      {{ order.address_street }}, {{ order.address_number }}{% if order.address_complement %} ({{ order.address_complement }}){% endif %}<br>
+      {{ order.address_neighborhood }}{% if order.address_city %}, {{ order.address_city }}{% endif %}
+      {% if order.address_reference %}<br>Ref.: {{ order.address_reference }}{% endif %}
+    </div>
+    {% endif %}
+    <div class="mt-1">{{ order.customer_name }}{% if order.customer_phone %} — {{ order.customer_phone }}{% endif %}</div>
+
+    <hr class="ticket-print-divider">
+
+    <div class="ticket-print-label">Itens</div>
+    {% for item in order.items %}
+    <div class="ticket-print-item">
+      <div class="ticket-print-row">
+        <span>{{ item.quantity }}x {{ item.product_name }}</span>
+        <span>R$ {{ "%.2f"|format(item.subtotal_cents / 100) }}</span>
+      </div>
+      {% for choice in item.choices %}
+      <div class="ticket-print-item-choices">
+        - {{ choice.group_name }}: {% if choice.quantity > 1 %}{{ choice.quantity }}x {% endif %}{{ choice.option_name }}
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+
+    {% if order.notes %}
+    <hr class="ticket-print-divider">
+    <div class="ticket-print-label">Observações</div>
+    <div>{{ order.notes }}</div>
+    {% endif %}
+
+    <hr class="ticket-print-divider">
+
+    <div class="ticket-print-row">
+      <span>Subtotal</span>
+      <span>R$ {{ "%.2f"|format(order.subtotal_cents / 100) }}</span>
+    </div>
+    {% if order.delivery_fee_cents > 0 %}
+    <div class="ticket-print-row">
+      <span>Taxa de entrega</span>
+      <span>R$ {{ "%.2f"|format(order.delivery_fee_cents / 100) }}</span>
+    </div>
+    {% endif %}
+    <div class="ticket-print-row ticket-print-total">
+      <span>TOTAL</span>
+      <span>R$ {{ "%.2f"|format(order.total_cents / 100) }}</span>
+    </div>
+
+    <hr class="ticket-print-divider">
+
+    <div class="ticket-print-row">
+      <span class="ticket-print-label">Pagamento</span>
+      <span>
+        {% if order.payment_method.value == 'cash' %}Dinheiro
+        {%- elif order.payment_method.value == 'card' %}Cartão
+        {%- elif order.payment_method.value == 'pix' %}Pix
+        {%- else %}Outro{% endif %}
+      </span>
+    </div>
+  </div>
+</div>
+{% endblock %}
