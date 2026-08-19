@@ -94,6 +94,12 @@ class Plan(db.Model, TimestampMixin):
     # sem isso, não dispara nada mesmo com o plano liberando.
     allow_whatsapp_notifications = Column(Boolean, nullable=False, default=False, server_default="0")
 
+    # Libera a comanda de impressão do pedido (bobina térmica 80mm, ver
+    # lojista/orders/print_ticket.html) — mesmo padrão por plano das
+    # duas acima. Sem o bônus, o botão "Imprimir comanda" some da tela
+    # de detalhe do pedido e a URL direta responde 403.
+    allow_order_print_ticket = Column(Boolean, nullable=False, default=False, server_default="0")
+
     tenants = relationship("Tenant", back_populates="plan")
 
     __table_args__ = (

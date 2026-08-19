@@ -1,6 +1,6 @@
 from datetime import date, datetime, timedelta, timezone
 
-from flask import flash, jsonify, redirect, render_template, request, url_for
+from flask import abort, flash, jsonify, redirect, render_template, request, url_for
 
 from app.services.order_service import OrderService, OrderValidationError
 from app.utils.decorators import lojista_required
@@ -188,6 +188,7 @@ def orders_detail(order_id):
         status_labels=STATUS_LABELS,
         available_transitions=service.available_transitions(order),
         can_revert=service.can_revert(order),
+        can_print_ticket=bool(tenant.plan and tenant.plan.allow_order_print_ticket),
     )
 
 
@@ -197,8 +198,15 @@ def orders_print_ticket(order_id):
     """Comanda formatada pra impressão térmica (80mm) — usa o diálogo
     de impressão do próprio navegador (ver comentário no topo do
     template), então funciona com qualquer impressora já instalada no
-    computador da loja, sem precisar de nenhum agente/driver especial."""
+    computador da loja, sem precisar de nenhum agente/driver especial.
+
+    Bônus de plano (ver Plan.allow_order_print_ticket) — protegido
+    aqui também (não só escondendo o botão no template), porque é uma
+    URL que o lojista pode visitar direto."""
     tenant = get_current_tenant()
+    if not (tenant.plan and tenant.plan.allow_order_print_ticket):
+        abort(403)
+
     service = OrderService(tenant)
     order = service.get_or_404(order_id)
 

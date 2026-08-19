@@ -82,6 +82,7 @@ class PlanForm(FlaskForm):
     display_order = IntegerField("Ordem de exibição na landing (menor aparece primeiro)", default=0, validators=[Optional(), NumberRange(min=0, max=999)])
     allow_qr_customization = BooleanField("Liberar personalização do QR Code (nome, cor, ícone) pra impressão")
     allow_whatsapp_notifications = BooleanField("Liberar notificação automática por WhatsApp quando o pedido muda de status")
+    allow_order_print_ticket = BooleanField("Liberar comanda de impressão do pedido (bobina térmica)")
     submit = SubmitField("Salvar plano")
 
 

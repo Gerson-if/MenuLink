@@ -349,10 +349,36 @@ class TestReports:
             assert summary["orders_total"] == 0
 
 
+def _allow_print_ticket(app):
+    with app.app_context():
+        tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+        tenant.plan.allow_order_print_ticket = True
+        db.session.commit()
+
+
 class TestOrderPrintTicket:
+    def test_print_ticket_forbidden_when_plan_does_not_allow(self, app, client, login_as):
+        product_id, _ = _create_product(app)
+        data = _create_order_via_checkout(client, product_id)
+
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        resp = client.get(f"/painel/pedidos/{data['order_id']}/comanda")
+        assert resp.status_code == 403
+
+    def test_detail_page_shows_locked_button_when_plan_does_not_allow(self, app, client, login_as):
+        product_id, _ = _create_product(app)
+        data = _create_order_via_checkout(client, product_id)
+
+        login_as(client, "lojista@braseiroecia.com.br", "lojista123")
+        resp = client.get(f"/painel/pedidos/{data['order_id']}")
+        body = resp.get_data(as_text=True)
+        assert "plano Start" in body
+        assert f'/painel/pedidos/{data["order_id"]}/comanda"' not in body
+
     def test_print_ticket_shows_order_details(self, app, client, login_as):
         product_id, _ = _create_product(app)
         data = _create_order_via_checkout(client, product_id, quantity=2)
+        _allow_print_ticket(app)
 
         login_as(client, "lojista@braseiroecia.com.br", "lojista123")
         resp = client.get(f"/painel/pedidos/{data['order_id']}/comanda")
@@ -373,6 +399,7 @@ class TestOrderPrintTicket:
 
     def test_print_ticket_shows_delivery_address(self, app, client, login_as):
         product_id, tenant_id = _create_product(app)
+        _allow_print_ticket(app)
         with app.app_context():
             tenant = db.session.get(Tenant, tenant_id)
             tenant.delivery_enabled = True

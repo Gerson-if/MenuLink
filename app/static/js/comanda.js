@@ -125,6 +125,25 @@ document.addEventListener('submit', (evt) => {
   evt.preventDefault();
   __confirmAsk(message, () => {
     form.dataset.confirmBypass = '1';
+    // Feedback visual imediato pra ações destrutivas/críticas (excluir
+    // loja, excluir produto etc.) — sem isso, entre o clique em
+    // "Confirmar" e a página seguinte carregar (rede lenta, servidor
+    // ocupado) a tela ficava parada sem nenhum sinal, dando a
+    // impressão de "nada aconteceu" mesmo quando a ação já tinha sido
+    // enviada (relato real: exclusão de loja "não mostra nada", mas a
+    // loja É excluída de verdade). Não previne resubmissão dupla via
+    // disabled (formulários com botão desabilitado não enviam o valor
+    // dele, irrelevante aqui pois nenhum desses forms depende do nome
+    // do botão) nem impede a navegação em si, só avisa que já está
+    // processando.
+    const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      if (submitBtn.tagName === 'BUTTON') {
+        submitBtn.dataset.originalHtml = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processando...';
+      }
+    }
     form.requestSubmit();
   });
 });

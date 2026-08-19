@@ -751,6 +751,19 @@ html[data-theme="light"] .status-ready_for_pickup { color: #1B5E20; }
 .product-gallery-replace:focus-within .product-gallery-replace-hint { opacity: 1; }
 
 .upload-meta { font-size: .75rem; color: var(--muted-text); margin-top: 4px; }
+
+/* Toggle de recurso extra por plano (ver admin/plans/_form_fragment.html)
+   — checkbox + título + descrição curta numa linha selecionável, em vez
+   de checkboxes soltos sem contexto sobre o que cada bônus realmente
+   libera. */
+.plan-feature-toggle {
+  display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px;
+  border: 1px solid var(--card-border); border-radius: 10px; cursor: pointer;
+  transition: border-color .15s ease, background .15s ease; margin: 0;
+}
+.plan-feature-toggle:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 5%, transparent); }
+.plan-feature-toggle-title { display: block; font-size: .85rem; font-weight: 600; color: var(--card-text); }
+.plan-feature-toggle-desc { display: block; font-size: .74rem; color: var(--muted-text); margin-top: 1px; }
 .upload-error { font-size: .8rem; color: #FF8A7A; background: rgba(229,74,54,0.1); border: 1px solid rgba(229,74,54,0.2); border-radius: 8px; padding: 8px 12px; margin-top: 8px; }
 /* Mesmo problema do bloco .alert-*/.toast-flash-* acima: essa cor
    pastel (pensada pro fundo escuro) fica "fantasma" no tema claro. */

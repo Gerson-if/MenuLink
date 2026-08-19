@@ -403,6 +403,102 @@ class TestPlanManagement:
 
             assert db.session.get(PlanModel, plan_id) is not None  # não foi excluído
 
+    def test_cannot_delete_plan_that_is_a_pending_downgrade_target(self, app, client, login_as):
+        # Um plano pode não ter NENHUM tenant/assinatura apontando pra
+        # ele diretamente e ainda assim ser o destino de um downgrade
+        # agendado de outra loja — sem essa checagem, excluir esse
+        # plano "aparentemente sem uso" quebrava com IntegrityError na
+        # próxima renovação daquela assinatura.
+        login_as(client, "admin@cardapio.saas", "admin123")
+        from app.models import BillingCycle, Plan as PlanModel, Subscription, SubscriptionStatus
+
+        with app.app_context():
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            target_plan = PlanModel(name="Alvo do Downgrade", slug="alvo-downgrade", price_cents=1000, billing_cycle="monthly")
+            db.session.add(target_plan)
+            db.session.flush()
+            subscription = Subscription(
+                tenant_id=tenant.id, plan_id=tenant.plan_id, status=SubscriptionStatus.ACTIVE,
+                billing_cycle=BillingCycle.MONTHLY,
+                current_period_start=date.today(), current_period_end=date.today() + timedelta(days=30),
+                pending_plan_id=target_plan.id,
+            )
+            db.session.add(subscription)
+            db.session.commit()
+            target_plan_id = target_plan.id
+
+        resp = client.post(f"/admin/planos/{target_plan_id}/excluir", follow_redirects=True)
+        assert "Não é possível excluir" in resp.get_data(as_text=True)
+        with app.app_context():
+            assert db.session.get(PlanModel, target_plan_id) is not None  # não foi excluído
+
+    def test_editing_plan_warns_when_tenants_exceed_new_limits(self, app, client, login_as):
+        login_as(client, "admin@cardapio.saas", "admin123")
+        from app.models import Category, Plan as PlanModel, Product
+
+        with app.app_context():
+            tenant = Tenant.query.filter_by(slug="braseiro-cia").first()
+            plan = PlanModel(name="Plano Cheio", slug="plano-cheio", price_cents=1000, billing_cycle="monthly", max_products=None)
+            db.session.add(plan)
+            db.session.flush()
+            tenant.plan_id = plan.id
+            category = Category(tenant_id=tenant.id, name="Cat", slug="cat-limite", is_active=True)
+            db.session.add(category)
+            db.session.flush()
+            for i in range(3):
+                db.session.add(Product(
+                    tenant_id=tenant.id, category_id=category.id, name=f"Produto {i}",
+                    slug=f"produto-{i}", price_cents=1000, is_active=True,
+                ))
+            db.session.commit()
+            plan_id = plan.id
+
+        resp = client.get(f"/admin/planos/{plan_id}/editar")
+        csrf = _get_csrf(resp.get_data(as_text=True))
+        resp = client.post(
+            f"/admin/planos/{plan_id}/editar",
+            data={
+                "name": "Plano Cheio", "description": "", "price": "10.00",
+                "billing_cycle": "monthly", "max_categories": "", "max_products": "1",
+                "max_images_per_product": "5", "csrf_token": csrf,
+            },
+            follow_redirects=True,
+        )
+        body = resp.get_data(as_text=True)
+        assert "já ultrapassam os novos limites" in body
+        assert "Braseiro" in body
+
+    def test_marking_plan_as_featured_unfeatures_the_others(self, app, client, login_as):
+        # is_featured é exclusivo (só um selo "MAIS VENDIDO" por vez na
+        # landing page) — marcar um segundo plano precisa desmarcar
+        # automaticamente qualquer outro que já estivesse marcado.
+        login_as(client, "admin@cardapio.saas", "admin123")
+        from app.models import Plan as PlanModel
+
+        with app.app_context():
+            plan_a = PlanModel(name="Plano A", slug="plano-a-feat", price_cents=1000, billing_cycle="monthly", is_featured=True)
+            plan_b = PlanModel(name="Plano B", slug="plano-b-feat", price_cents=2000, billing_cycle="monthly")
+            db.session.add_all([plan_a, plan_b])
+            db.session.commit()
+            plan_a_id, plan_b_id = plan_a.id, plan_b.id
+
+        resp = client.get(f"/admin/planos/{plan_b_id}/editar")
+        csrf = _get_csrf(resp.get_data(as_text=True))
+        resp = client.post(
+            f"/admin/planos/{plan_b_id}/editar",
+            data={
+                "name": "Plano B", "description": "", "price": "20.00",
+                "billing_cycle": "monthly", "max_categories": "", "max_products": "",
+                "max_images_per_product": "5", "is_featured": "y", "csrf_token": csrf,
+            },
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+
+        with app.app_context():
+            assert db.session.get(PlanModel, plan_b_id).is_featured is True
+            assert db.session.get(PlanModel, plan_a_id).is_featured is False
+
 
 class TestBilling:
     def test_create_invoice_and_mark_paid_unblocks_tenant(self, app, client, login_as):

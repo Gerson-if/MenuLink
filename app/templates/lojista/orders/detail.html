@@ -20,9 +20,15 @@
   </div>
   <div class="d-flex align-items-center gap-2">
     <span class="text-muted-custom small">{{ order.created_at.strftime("%d/%m/%Y às %H:%M") }}</span>
+    {% if can_print_ticket %}
     <a href="{{ url_for('lojista.orders_print_ticket', order_id=order.id) }}" target="_blank" class="btn btn-sm btn-outline-secondary">
       <i class="bi bi-printer"></i> Imprimir comanda
     </a>
+    {% else %}
+    <a href="{{ url_for('lojista.settings_subscription') }}" class="btn btn-sm btn-outline-secondary" title="Disponível a partir do plano Start">
+      <i class="bi bi-lock"></i> Imprimir comanda
+    </a>
+    {% endif %}
   </div>
 </div>
 

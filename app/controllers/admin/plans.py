@@ -16,7 +16,7 @@ def plans_list():
     return render_template("admin/plans/list.html", plans=plans)
 
 
-def _rerender_plan_fragment(plan, *, trigger=None, toast=None):
+def _rerender_plan_fragment(plan, *, trigger=None, toast=None, toast_category="success"):
     """Ver _rerender_banner_fragment em lojista/banners.py — mesmo padrão
     pro drawer de planos: devolve só o fragmento, com HX-Trigger opcional
     pra avisar a listagem de fundo (ver plans/list.html,
@@ -30,7 +30,7 @@ def _rerender_plan_fragment(plan, *, trigger=None, toast=None):
         "admin/plans/_form_fragment.html", form=form, plan=plan,
         form_action=url_for("admin.plans_edit", plan_id=plan.id), hide_back_link=True,
     )
-    return hx_fragment_response(html, trigger=trigger, toast=toast)
+    return hx_fragment_response(html, trigger=trigger, toast=toast, toast_category=toast_category)
 
 
 @admin_bp.route("/planos/novo", methods=["GET", "POST"])
@@ -53,6 +53,7 @@ def plans_create():
             display_order=form.display_order.data,
             allow_qr_customization=form.allow_qr_customization.data,
             allow_whatsapp_notifications=form.allow_whatsapp_notifications.data,
+            allow_order_print_ticket=form.allow_order_print_ticket.data,
         )
         if is_hx:
             return _rerender_plan_fragment(plan, trigger="planSaved", toast="Plano criado com sucesso.")
@@ -93,10 +94,28 @@ def plans_edit(plan_id):
             display_order=form.display_order.data,
             allow_qr_customization=form.allow_qr_customization.data,
             allow_whatsapp_notifications=form.allow_whatsapp_notifications.data,
+            allow_order_print_ticket=form.allow_order_print_ticket.data,
         )
+        # Apertar max_products/max_categories de um plano JÁ EM USO não é
+        # bloqueado (pode ser uma decisão deliberada do Super Admin), mas
+        # não deve pegar ninguém de surpresa — avisa quais lojas, neste
+        # exato momento, já ultrapassam os novos limites.
+        affected = service.tenants_exceeding_limits(plan)
+        warn_message = None
+        if affected:
+            names = ", ".join(affected[:5]) + ("..." if len(affected) > 5 else "")
+            warn_message = (
+                f"Atenção: {len(affected)} loja(s) neste plano já ultrapassam os novos limites "
+                f"({names}). Elas não são bloqueadas automaticamente, mas não conseguem cadastrar "
+                "mais até se ajustarem."
+            )
         if is_hx:
+            if warn_message:
+                return _rerender_plan_fragment(plan, trigger="planSaved", toast=warn_message, toast_category="warning")
             return _rerender_plan_fragment(plan, trigger="planSaved", toast="Plano atualizado com sucesso.")
         flash("Plano atualizado com sucesso.", "success")
+        if warn_message:
+            flash(warn_message, "warning")
         return redirect(url_for("admin.plans_list"))
 
     if is_hx:

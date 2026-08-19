@@ -4,6 +4,14 @@
 {% endif %}
 
 <div class="panel" style="max-width: 480px;" id="plan-form-panel">
+  {% if plan and plan.tenants|length %}
+  <div class="alert alert-warning py-2 small mb-3">
+    <i class="bi bi-exclamation-triangle"></i>
+    {{ plan.tenants|length }} loja(s) est{{ "ão" if plan.tenants|length != 1 else "á" }} neste plano agora. Mudar
+    preço ou limites aqui vale JÁ pra elas — preço novo entra na próxima fatura de cada uma, sem
+    aviso prévio; limite menor não bloqueia quem já está acima, só impede cadastrar mais.
+  </div>
+  {% endif %}
   <form method="POST" action="{{ form_action }}" novalidate
         hx-post="{{ form_action }}" hx-target="#plan-form-panel" hx-select="#plan-form-panel" hx-swap="outerHTML">
     {{ form.hidden_tag() }}
@@ -35,13 +43,30 @@
       </div>
     </div>
 
-    <div class="form-check mb-2">
-      {{ form.allow_qr_customization(class="form-check-input") }}
-      {{ form.allow_qr_customization.label(class="form-check-label small") }}
-    </div>
-    <div class="form-check mb-3">
-      {{ form.allow_whatsapp_notifications(class="form-check-input") }}
-      {{ form.allow_whatsapp_notifications.label(class="form-check-label small") }}
+    <hr class="border-secondary-subtle mb-3">
+    <p class="upload-meta mb-2">Recursos extras (bônus liberado só pra quem estiver neste plano):</p>
+    <div class="d-flex flex-column gap-2 mb-3">
+      <label class="plan-feature-toggle">
+        {{ form.allow_qr_customization(class="form-check-input mt-1") }}
+        <span>
+          <span class="plan-feature-toggle-title">Personalização do QR Code</span>
+          <span class="plan-feature-toggle-desc">Nome do negócio, cor de fundo e ícone no cartaz de impressão.</span>
+        </span>
+      </label>
+      <label class="plan-feature-toggle">
+        {{ form.allow_whatsapp_notifications(class="form-check-input mt-1") }}
+        <span>
+          <span class="plan-feature-toggle-title">Notificação automática por WhatsApp</span>
+          <span class="plan-feature-toggle-desc">Avisa o cliente quando o pedido muda de status (precisa da integração configurada em Configurações → WhatsApp).</span>
+        </span>
+      </label>
+      <label class="plan-feature-toggle">
+        {{ form.allow_order_print_ticket(class="form-check-input mt-1") }}
+        <span>
+          <span class="plan-feature-toggle-title">Comanda de impressão</span>
+          <span class="plan-feature-toggle-desc">Botão pra imprimir o pedido formatado pra bobina térmica (80mm) direto do navegador.</span>
+        </span>
+      </label>
     </div>
 
     {{ form.submit(class="btn btn-chili") }}
