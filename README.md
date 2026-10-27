@@ -923,8 +923,18 @@ pytest tests/ -v                    # roda a suíte de testes
 
 [⬆ voltar ao índice](#índice)
 
-## Licença
+## 🤝 Contribuições
 
-Software proprietário — todos os direitos reservados. Uso, cópia,
-modificação e redistribuição exigem autorização expressa do titular.
-Ver texto completo em [`LICENSE`](LICENSE).
+Contribuições são bem-vindas! Você pode colaborar com correções de bugs, melhorias de desempenho, documentação e novas funcionalidades.
+
+1. Faça um fork do repositório.
+2. Crie uma branch para sua alteração.
+3. Implemente e teste suas modificações.
+4. Envie um Pull Request explicando o que foi alterado.
+
+Procure manter o padrão de código existente e documentar as mudanças relevantes.
+
+## 📄 Licença
+
+Este projeto está licenciado sob a [Licença MIT](LICENSE). Consulte o arquivo `LICENSE` para conhecer os termos de uso, modificação e redistribuição.
+
