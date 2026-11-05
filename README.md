@@ -5,7 +5,6 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-produção-336791?logo=postgresql&logoColor=white)
 ![SQLite](https://img.shields.io/badge/SQLite-desenvolvimento-003B57?logo=sqlite&logoColor=white)
 ![Testes](https://img.shields.io/badge/testes-pytest-0A9EDC?logo=pytest&logoColor=white)
-![Licença](https://img.shields.io/badge/licença-proprietária-lightgrey)
 
 Menu Link é uma plataforma multi-tenant de cardápio digital: um Super
 Administrador gerencia a plataforma e os planos, e cada Lojista tem seu
